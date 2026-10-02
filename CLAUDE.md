@@ -41,6 +41,7 @@ src/logbook/
     weeks.py     # ISO 주차 계산 (YYYY-Www)
     report.py    # 주간보고서 데이터 조립 + Markdown 렌더링
     config.py    # 설정 로드
+    platform.py  # OS별 처리 (콘솔 인코딩, 클립보드, 데이터 디렉터리)
     gitcollect.py# git 커밋 수집 (선택 기능)
   cli/
     main.py      # Typer 앱, 엔트리포인트 `lb`
@@ -59,17 +60,37 @@ docs/
 - 날짜는 `date`(로컬 기준)로 저장, 타임스탬프는 ISO 8601 문자열 또는 timezone-aware datetime.
 - 주차는 ISO 8601 주차(월요일 시작)를 기본으로 하되 설정으로 시작 요일 변경 가능하게 설계.
 - 프로젝트는 사용자 입력 시 `slug`(예: `payment`)로 지정한다. 존재하지 않는 slug면 친절한 에러 + 생성 안내.
-- DB 경로 기본값: `~/.logbook/logbook.db`, 환경변수 `LOGBOOK_DB`로 덮어쓰기 가능. 테스트는 항상 임시 DB 사용.
+- DB 경로 기본값: `~/.logbook/logbook.db`, 환경변수 `LOGBOOK_DB`로 덮어쓰기 가능. 테스트는 항상 임시 DB 사용. (OS별 처리는 아래 크로스 플랫폼 규칙 참고)
 - 네트워크가 필요한 기능(LLM 요약 등)은 전부 선택 사항이며, 없어도 모든 핵심 기능이 동작해야 한다.
+
+## 크로스 플랫폼 규칙 (Windows / macOS)
+
+최종 제품은 **Windows 10/11과 macOS 모두에서 동일하게 동작**해야 한다. 모든 기능은 두 OS에서 테스트한다.
+
+- **경로**: 항상 `pathlib.Path`를 사용한다. 문자열 결합, `/` 하드코딩, `os.path` 문자열 조작 금지. `~`는 `Path.expanduser()`로 확장한다.
+- **데이터 디렉터리**: 두 OS 모두 `Path.home() / ".logbook"` (Windows: `C:\Users\<user>\.logbook`). 환경변수 `LOGBOOK_DB`, `LOGBOOK_CONFIG`로 덮어쓰기 가능.
+- **파일 인코딩**: 모든 파일 읽기·쓰기에 `encoding="utf-8"`을 명시한다. 한국어 Windows의 기본 인코딩은 cp949이므로 생략하면 한글이 깨진다.
+- **콘솔 출력**: Rich를 통해서만 출력한다. 시작 시 `sys.stdout`/`sys.stderr`가 UTF-8이 아니면 `reconfigure(encoding="utf-8")`을 시도한다. `✔` 같은 기호는 출력 실패 시 ASCII 대체 문자로 대신한다.
+- **시간대**: `zoneinfo`를 쓰는 경우 Windows에는 IANA 시간대 DB가 없으므로 `tzdata` 패키지를 의존성에 포함한다.
+- **날짜 포맷**: `strftime`의 `%-d`, `%-m`(Unix 전용) 사용 금지. 앞자리 0 제거는 직접 포맷한다 (`f"{d.month}/{d.day}"`).
+- **외부 명령 실행**: `subprocess.run([...], shell=False)`로 리스트 인자만 사용한다. bash 전용 문법, 파이프, `which` 금지 (실행 파일 탐색은 `shutil.which`).
+- **클립보드**: `pyperclip`으로 처리한다 (macOS는 pbcopy, Windows는 Win32 API를 내부적으로 사용). 실패 시 에러 대신 "클립보드 복사 실패, 파일로 저장하세요" 안내.
+- **파일명**: 생성하는 파일명에 `: * ? " < > |` 금지 (Windows 금지 문자). 타임스탬프는 `20261002-153000` 형식.
+- **SQLite**: 연결은 사용 후 반드시 닫고, 테스트 종료 시 `engine.dispose()`를 호출한다. Windows는 열린 파일을 삭제할 수 없어 임시 DB 정리가 실패한다.
+- **줄바꿈**: 저장소는 LF로 통일한다 (`.gitattributes`에 `* text=auto eol=lf`). 생성하는 파일도 `newline="\n"`으로 쓴다.
+- **브라우저 열기**: `webbrowser.open()`만 사용한다.
+- **CI**: GitHub Actions에서 `windows-latest`, `macos-latest` 매트릭스로 테스트·린트·타입체크를 모두 통과해야 한다.
+- 문서와 예시 명령은 두 OS에서 모두 실행 가능한 형태로 쓴다 (`uv run ...` 위주, bash 전용 명령은 PowerShell 대안을 함께 적는다).
 
 ## 자주 쓰는 명령
 
-```bash
+```
 uv sync                      # 의존성 설치
 uv run lb --help             # CLI 실행
 uv run lb serve              # 웹 대시보드 (기본 http://127.0.0.1:8765)
 uv run pytest                # 테스트
-uv run ruff check . && uv run ruff format .
+uv run ruff check .
+uv run ruff format .
 uv run mypy src/logbook/core
 ```
 
@@ -77,7 +98,6 @@ uv run mypy src/logbook/core
 
 - 기능 하나를 구현할 때마다 `core`에 대한 단위 테스트를 함께 작성한다.
 - `docs/ROADMAP.md`의 단계 순서를 지키고, 단계가 끝나면 체크박스를 갱신한다.
-- 사용자 메시지·CLI 출력·웹 UI 문구·커밋 메시지는 **한국어**, 코드·식별자는 영어.
-- 커밋 메시지는 Conventional Commits 형식(`<type>: <설명>`)을 따르되, type(feat, fix, docs 등)은 영어, 설명과 본문은 한국어로 작성한다.
+- 사용자 메시지·CLI 출력·웹 UI 문구는 **한국어**, 코드·식별자·커밋 메시지는 영어.
 - 스키마를 변경하면 `db.py`의 마이그레이션(버전 테이블 기반)을 추가하고 기존 데이터가 보존되는지 테스트한다.
 - 새 의존성을 추가하기 전에 이유를 설명하고 확인을 받는다.

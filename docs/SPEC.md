@@ -6,6 +6,8 @@
 2. **주간 회고와 계획**: 이번 주에 한 일과 다음 주에 할 일을 한 화면/한 명령으로 본다.
 3. **주간업무보고서**: 위 데이터를 바탕으로 Markdown 보고서를 자동 생성한다.
 
+지원 플랫폼: **Windows 10/11, macOS** (두 OS에서 동일한 기능과 동작 보장. 세부 규칙은 CLAUDE.md/AGENTS.md의 크로스 플랫폼 규칙).
+
 비목표(초기 버전): 팀 공유, 클라우드 동기화, 인증, 모바일 앱.
 
 ---
@@ -68,6 +70,9 @@
 ## 3. 설정 파일
 
 경로: `~/.logbook/config.toml` (환경변수 `LOGBOOK_CONFIG`로 변경 가능)
+- macOS: `/Users/<user>/.logbook/config.toml`
+- Windows: `C:\Users\<user>\.logbook\config.toml`
+- 설정 안의 경로 값은 `~` 또는 OS 고유 형식 모두 허용 (Windows 예: `path = 'C:\work\payment-server'` — TOML에서 백슬래시는 작은따옴표 리터럴 문자열로 쓴다)
 
 ```toml
 db_path = "~/.logbook/logbook.db"
@@ -176,6 +181,7 @@ lb plan carry                            # 이번 주 미완료 태스크를 다
 lb stats [--week this] [--by project|category|day]
 lb report [--week this] [--out report.md] [--copy]
 ```
+`--copy`는 `pyperclip`으로 클립보드에 복사한다. 실패하면 경고를 출력하고 `--out` 사용을 안내한다.
 `lb stats` 예시 출력:
 ```
 2026-W40 (09-28 ~ 10-04)   총 35h 00m / 기록 41건
@@ -282,6 +288,8 @@ POST   /api/timer/start | /api/timer/stop
 ## 8. 품질 기준
 
 - `core` 테스트 커버리지 80% 이상 (duration, weeks, services 집계, report 조립은 필수)
+- Windows·macOS 양쪽 CI에서 전체 테스트 통과 (경로, 인코딩, 한글 출력, 클립보드 실패 처리 테스트 포함)
+- 한글 메모·프로젝트명이 Windows Terminal, PowerShell, macOS Terminal/iTerm2에서 깨지지 않을 것
 - `lb add`는 DB 초기화 이후 0.3초 이내 응답 (import 지연 최소화: CLI에서 FastAPI를 import하지 않기)
 - 모든 에러 메시지는 한국어로, 다음 행동을 안내 (예: "프로젝트 'paymnt'가 없습니다. `lb project list`로 확인하세요.")
 - 데이터 손실 방지: 삭제 명령은 확인 프롬프트(`--yes`로 생략), `export`로 언제든 전체 백업 가능
