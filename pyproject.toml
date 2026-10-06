@@ -10,7 +10,7 @@ dependencies = [
     "rich>=13",
     "sqlalchemy>=2.0",
     "tomli-w>=1.0",
-    "typer>=0.12",
+    "typer>=0.16",
     "tzdata",
 ]
 
