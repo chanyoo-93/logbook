@@ -51,7 +51,8 @@ class Week:
         except (ValueError, OverflowError):
             raise InvalidInputError(
                 f"존재하지 않거나 지원 범위를 벗어난 주차입니다: '{self.label}'. "
-                "주차는 연도에 따라 W01~W52 또는 W53까지 있습니다."
+                "주차는 연도에 따라 W01~W52 또는 W53까지 있으니 "
+                "올바른 주차를 지정하세요 (예: 2026-W41)."
             ) from None
 
     @property

@@ -489,7 +489,15 @@ def test_tilde_user_path_in_logbook_config_env_is_rejected(
 
 @pytest.mark.parametrize(
     ("raw", "parts"),
-    [("~", ()), ("~/a", ("a",)), ("~\\a", ("a",)), ("~/a/b.db", ("a", "b.db"))],
+    [
+        ("~", ()),
+        ("~/a", ("a",)),
+        ("~\\a", ("a",)),
+        ("~/a/b.db", ("a", "b.db")),
+        # 구분자가 겹쳐도 홈 밖(절대 경로)으로 빠지지 않는다.
+        ("~//a", ("a",)),
+        ("~/\\a", ("a",)),
+    ],
 )
 def test_home_relative_paths_resolve_under_home(
     isolated_home: Path, monkeypatch: pytest.MonkeyPatch, raw: str, parts: tuple[str, ...]

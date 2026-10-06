@@ -102,7 +102,8 @@ def _expand_home(raw: str, where: str) -> Path:
     if raw == "~":
         return Path.home()
     if raw[:2] in ("~/", "~\\"):
-        return Path.home() / raw[2:]
+        # '~//x'처럼 구분자가 겹쳐도 홈 밖의 절대 경로가 되지 않게 앞쪽 구분자를 지운다.
+        return Path.home() / raw[2:].lstrip("/\\")
     if raw.startswith("~"):
         raise InvalidInputError(
             f"경로가 올바르지 않습니다: {where}의 값 '{raw[:_MAX_ECHO_CHARS]}'. "
