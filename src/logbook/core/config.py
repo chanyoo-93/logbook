@@ -90,10 +90,20 @@ def _keys(cls: type[Any]) -> frozenset[str]:
     return frozenset(f.name for f in fields(cls))
 
 
+def _path_from_env(name: str, fallback: Path) -> Path:
+    """환경변수 name이 비어 있지 않으면 그 경로(~ 확장), 아니면 fallback."""
+    value = os.environ.get(name)
+    return Path(value).expanduser() if value else fallback
+
+
 def config_path() -> Path:
     """설정 파일 경로. LOGBOOK_CONFIG가 있으면 그 값, 없으면 ~/.logbook/config.toml."""
-    env = os.environ.get("LOGBOOK_CONFIG")
-    return Path(env).expanduser() if env else data_dir() / CONFIG_FILE_NAME
+    return _path_from_env("LOGBOOK_CONFIG", data_dir() / CONFIG_FILE_NAME)
+
+
+def default_db_path() -> Path:
+    """설정 파일을 보지 않는 DB 경로. LOGBOOK_DB가 있으면 그 값, 없으면 ~/.logbook/logbook.db."""
+    return _path_from_env("LOGBOOK_DB", data_dir() / DB_FILE_NAME)
 
 
 def load_config(path: Path | None = None) -> Config:
@@ -267,8 +277,7 @@ class _Table:
     def _db_path(self, default: Path) -> Path:
         # 환경변수가 이기더라도 파일 값은 검증한다.
         from_file = self.path("db_path") if "db_path" in self.data else default
-        env = os.environ.get("LOGBOOK_DB")
-        return Path(env).expanduser() if env else from_file
+        return _path_from_env("LOGBOOK_DB", from_file)
 
     def _week_start(self, default: WeekStart) -> WeekStart:
         value = self._value("week_start", default)

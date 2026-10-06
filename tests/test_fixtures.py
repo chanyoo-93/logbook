@@ -3,6 +3,11 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from sqlalchemy import Engine, inspect
+from sqlalchemy.orm import Session
+
+from logbook.core.db import current_version
+from logbook.core.models import Project
 
 CONFTEST = Path(__file__).with_name("conftest.py")
 
@@ -52,3 +57,21 @@ def test_tmp_home_is_not_default_data_dir(tmp_home: Path) -> None:
 def test_today_is_fixed_thursday_of_week_40(today: date) -> None:
     assert today == date(2026, 10, 1)
     assert today.isocalendar() == (2026, 40, 4)
+
+
+def test_engine_uses_initialized_db_in_tmp_home(engine: Engine, tmp_home: Path) -> None:
+    assert engine.url.database == str(tmp_home / "logbook.db")
+    assert (tmp_home / "logbook.db").is_file()
+    assert current_version(engine) == 1
+
+
+def test_session_is_bound_to_engine_and_keeps_objects_after_commit(
+    session: Session, engine: Engine
+) -> None:
+    project = Project(slug="payment", name="결제 시스템")
+    session.add(project)
+    session.commit()
+
+    assert session.get_bind() is engine
+    # expire_on_commit=False: 커밋 후에도 속성이 만료되지 않는다.
+    assert not inspect(project).expired_attributes

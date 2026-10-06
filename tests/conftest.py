@@ -1,14 +1,15 @@
-"""공용 테스트 fixture.
+"""공용 테스트 fixture."""
 
-engine, session fixture는 Phase 1(Task 1-5)에서 추가한다.
-"""
-
+from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
 
 import pytest
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session
 
 from logbook.core.config import Config, load_config
+from logbook.core.db import create_engine_for, init_db
 
 pytest_plugins = ["pytester"]
 
@@ -51,3 +52,28 @@ def today() -> date:
 def config(tmp_home: Path) -> Config:
     """기본 설정. 설정 파일이 없으므로 db_path만 LOGBOOK_DB(tmp_home/logbook.db)를 따른다."""
     return load_config()
+
+
+@pytest.fixture
+def engine(tmp_home: Path) -> Iterator[Engine]:
+    """tmp_home/logbook.db에 스키마를 만든 엔진.
+
+    Windows는 열린 DB 파일을 지울 수 없으므로 종료 시 반드시 dispose한다.
+    """
+    db_engine = create_engine_for(tmp_home / "logbook.db")
+    try:
+        init_db(db_engine)
+        yield db_engine
+    finally:
+        db_engine.dispose()
+
+
+@pytest.fixture
+def session(engine: Engine) -> Iterator[Session]:
+    """engine에 연결된 세션. 종료 시 롤백하고 닫는다."""
+    db_session = Session(engine, expire_on_commit=False)
+    try:
+        yield db_session
+    finally:
+        db_session.rollback()
+        db_session.close()
