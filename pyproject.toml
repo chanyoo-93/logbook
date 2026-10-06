@@ -8,7 +8,7 @@ dependencies = [
   "jinja2>=3.1",
   "pyperclip>=1.9",
   "rich>=13",
-  "sqlalchemy>=2.0",
+  "sqlalchemy>=2.1",
   "tomli-w>=1.0",
   "typer>=0.16",
   "tzdata",
@@ -19,7 +19,7 @@ lb = "logbook.cli.main:app"
 
 [dependency-groups]
 dev = [
-  "mypy>=1.10",
+  "mypy>=2.2",
   "pytest>=8",
   "pytest-cov>=5",
   "ruff>=0.5",
