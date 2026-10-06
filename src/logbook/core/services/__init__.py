@@ -13,6 +13,14 @@ from logbook.core.services.projects import (
     get_project,
     list_projects,
 )
+from logbook.core.services.stats import (
+    MatrixResult,
+    StatsBy,
+    StatsResult,
+    StatsRow,
+    stats_by,
+    stats_matrix,
+)
 from logbook.core.services.tasks import (
     create_task,
     get_task,
@@ -51,4 +59,10 @@ __all__ = [
     "get_worklog",
     "list_worklogs",
     "update_worklog",
+    "MatrixResult",
+    "StatsBy",
+    "StatsResult",
+    "StatsRow",
+    "stats_by",
+    "stats_matrix",
 ]
