@@ -1,7 +1,10 @@
 """logbook.core.db 단위 테스트."""
 
+import sqlite3
+import sys
 from collections.abc import Callable, Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from sqlalchemy import Connection, Engine, inspect, select, text
@@ -58,6 +61,33 @@ def set_version(engine: Engine, version: int) -> None:
 
 def add_extra_column(conn: Connection) -> None:
     conn.exec_driver_sql("ALTER TABLE projects ADD COLUMN extra TEXT")
+
+
+def no_op_migration(conn: Connection) -> None:
+    pass
+
+
+def write_lock_state(path: Path) -> str:
+    """다른 연결에서 즉시 쓰기 잠금을 잡아 본다. 잡히면 "free", 막히면 "locked"."""
+    # 탐침 연결 자신은 자동 커밋 모드로 열어 명시적 BEGIN이 겹치지 않게 한다.
+    options: dict[str, Any] = (
+        {"autocommit": True} if sys.version_info >= (3, 12) else {"isolation_level": None}
+    )
+    probe = sqlite3.connect(path, timeout=0, **options)
+    try:
+        probe.execute("BEGIN IMMEDIATE")
+    except sqlite3.OperationalError:
+        return "locked"
+    else:
+        probe.execute("ROLLBACK")
+        return "free"
+    finally:
+        probe.close()
+
+
+requires_autocommit_attribute = pytest.mark.skipif(
+    sys.version_info < (3, 12), reason="sqlite3 autocommit 속성은 Python 3.12부터 있다"
+)
 
 
 # --- default_db_path ---
@@ -131,6 +161,37 @@ def test_foreign_keys_are_enabled_on_every_connection(
     with engine.connect() as first, engine.connect() as second:
         assert first.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
         assert second.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
+
+
+@requires_autocommit_attribute
+def test_engine_uses_legacy_transaction_control(tmp_path: Path, make_engine: MakeEngine) -> None:
+    engine = make_engine(tmp_path / "logbook.db")
+
+    with engine.connect() as conn:
+        driver = conn.connection.driver_connection
+        assert driver is not None
+        assert driver.autocommit == sqlite3.LEGACY_TRANSACTION_CONTROL
+        assert conn.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
+
+
+@requires_autocommit_attribute
+def test_init_db_survives_autocommit_false_default(
+    tmp_path: Path, make_engine: MakeEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Python 3.16에서 sqlite3 기본값이 autocommit=False로 바뀌는 상황을 흉내 낸다.
+    real_connect = sqlite3.dbapi2.connect
+
+    def connect_with_new_default(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        kwargs.setdefault("autocommit", False)
+        return real_connect(*args, **kwargs)
+
+    monkeypatch.setattr(sqlite3.dbapi2, "connect", connect_with_new_default)
+    engine = make_engine(tmp_path / "logbook.db")
+
+    assert db.init_db(engine) == 1
+
+    with engine.connect() as conn:
+        assert conn.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
 
 
 def test_dispose_releases_database_file(tmp_path: Path) -> None:
@@ -297,6 +358,42 @@ def test_init_db_rechecks_version_under_lock(
 
     assert db.init_db(engine) == 1
     assert version_rows(engine) == [1]
+
+
+def test_init_db_reads_version_under_write_lock(
+    tmp_path: Path, make_engine: MakeEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "logbook.db"
+    engine = make_engine(path)
+    states: list[str] = []
+    real_read_version = db._read_version
+
+    def probing_read_version(conn: Connection) -> int | None:
+        states.append(write_lock_state(path))
+        return real_read_version(conn)
+
+    monkeypatch.setattr(db, "current_version", lambda _engine: None)
+    monkeypatch.setattr(db, "_read_version", probing_read_version)
+
+    assert db.init_db(engine) == 1
+
+    # 잠금 안에서 버전을 다시 읽는 순간 다른 연결은 쓰기 잠금을 잡을 수 없어야 한다.
+    assert states == ["locked"]
+
+
+def test_init_db_rejects_newer_version_found_under_lock(
+    engine: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # 잠금 전에는 v1로 보였지만, 그 사이 다른 프로세스가 더 새로운 버전으로 올린 상황.
+    set_version(engine, 99)
+    monkeypatch.setattr(db, "current_version", lambda _engine: 1)
+    monkeypatch.setattr(db, "SCHEMA_VERSION", 2)
+    monkeypatch.setitem(db.MIGRATIONS, 2, no_op_migration)
+
+    with pytest.raises(LogbookError, match="v99"):
+        db.init_db(engine)
+
+    assert version_rows(engine) == [99]
 
 
 # --- session_scope ---

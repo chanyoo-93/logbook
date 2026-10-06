@@ -37,6 +37,8 @@ DEFAULT_CATEGORIES: Mapping[str, str] = MappingProxyType(
 )
 
 _CATEGORY_KEY = re.compile(r"[a-z][a-z0-9_-]*", re.ASCII)
+# 오류 메시지에 그대로 보여줄 경로 값의 최대 길이
+_MAX_ECHO_CHARS = 40
 
 
 @dataclass(frozen=True)
@@ -90,10 +92,29 @@ def _keys(cls: type[Any]) -> frozenset[str]:
     return frozenset(f.name for f in fields(cls))
 
 
+def _expand_home(raw: str, where: str) -> Path:
+    """'~'와 '~' 뒤에 '/' 또는 백슬래시가 오는 경로만 홈 디렉터리 기준으로 바꾼다.
+
+    '~name' 형식은 where(설정 키·파일 또는 환경변수 이름)를 밝혀 InvalidInputError로 거부한다.
+
+    expanduser()는 '~name'을 macOS에서 RuntimeError로, Windows에서 다른 사용자 프로필로 바꾼다.
+    """
+    if raw == "~":
+        return Path.home()
+    if raw[:2] in ("~/", "~\\"):
+        return Path.home() / raw[2:]
+    if raw.startswith("~"):
+        raise InvalidInputError(
+            f"경로가 올바르지 않습니다: {where}의 값 '{raw[:_MAX_ECHO_CHARS]}'. "
+            "홈 디렉터리 기준 경로는 '~/'로 시작하세요."
+        )
+    return Path(raw)
+
+
 def _path_from_env(name: str, fallback: Path) -> Path:
     """환경변수 name이 비어 있지 않으면 그 경로(~ 확장), 아니면 fallback."""
     value = os.environ.get(name)
-    return Path(value).expanduser() if value else fallback
+    return _expand_home(value, f"환경변수 {name}") if value else fallback
 
 
 def config_path() -> Path:
@@ -108,7 +129,7 @@ def default_db_path() -> Path:
 
 def load_config(path: Path | None = None) -> Config:
     """설정 파일을 읽어 검증한다. 파일이 없으면 기본값을 쓴다."""
-    source = config_path() if path is None else path.expanduser()
+    source = config_path() if path is None else _expand_home(str(path), "설정 파일 경로")
     return _Table(source, "", _read_toml(source)).to_config()
 
 
@@ -118,7 +139,7 @@ def write_default_config(path: Path) -> None:
     대상 파일이 이미 있으면 덮어쓰지 않고 FileExistsError를 낸다.
     그 밖의 파일 시스템 오류(상위 경로가 파일, 권한 없음 등)는 LogbookError로 바꾼다.
     """
-    target = path.expanduser()
+    target = _expand_home(str(path), "설정 파일 경로")
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
     except OSError as error:
@@ -152,7 +173,8 @@ def _default_document() -> dict[str, object]:
         "daily_target_minutes": defaults.daily_target_minutes,
         "categories": dict(defaults.categories),
         "report": asdict(defaults.report),
-        "git": {"author_email": defaults.git.author_email, "repos": []},
+        # repos는 쓰지 않는다: 인라인 배열은 뒤에 덧붙인 [[git.repos]] 블록과 충돌한다.
+        "git": {"author_email": defaults.git.author_email},
         "web": asdict(defaults.web),
     }
 
@@ -245,7 +267,9 @@ class _Table:
 
     def path(self, name: str) -> Path:
         """~를 확장하고, 상대 경로는 설정 파일이 있는 디렉터리 기준으로 바꾼다."""
-        expanded = Path(self.string(name, non_empty=True)).expanduser()
+        expanded = _expand_home(
+            self.string(name, non_empty=True), f"{self.prefix}{name} (파일: {self.source})"
+        )
         if expanded.is_absolute():
             return expanded
         return self.source.absolute().parent / expanded

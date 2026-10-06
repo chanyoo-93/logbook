@@ -372,7 +372,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1" },
     { name = "pyperclip", specifier = ">=1.9" },
     { name = "rich", specifier = ">=13" },
-    { name = "sqlalchemy", specifier = ">=2.0" },
+    { name = "sqlalchemy", specifier = ">=2.1" },
     { name = "tomli-w", specifier = ">=1.0" },
     { name = "typer", specifier = ">=0.16" },
     { name = "tzdata" },
@@ -380,7 +380,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "mypy", specifier = ">=1.10" },
+    { name = "mypy", specifier = ">=2.2" },
     { name = "pytest", specifier = ">=8" },
     { name = "pytest-cov", specifier = ">=5" },
     { name = "ruff", specifier = ">=0.5" },

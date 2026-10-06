@@ -1,5 +1,7 @@
 """SQLite 엔진·세션 생성과 버전 테이블 기반 스키마 마이그레이션."""
 
+import sqlite3
+import sys
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -46,7 +48,13 @@ def create_engine_for(path: Path | str) -> Engine:
             f"({error.strerror or error}). 같은 이름의 파일이 있는지, "
             "쓰기 권한이 있는지 확인하세요."
         ) from error
-    engine = create_engine(URL.create("sqlite+pysqlite", database=str(db_path)))
+    connect_args: dict[str, object] = {}
+    if sys.version_info >= (3, 12):
+        # 3.16에서 기본값이 autocommit=False로 바뀌어도 _transaction이 쓰는 레거시 모드를 유지한다.
+        connect_args = {"autocommit": sqlite3.LEGACY_TRANSACTION_CONTROL}
+    engine = create_engine(
+        URL.create("sqlite+pysqlite", database=str(db_path)), connect_args=connect_args
+    )
     event.listen(engine, "connect", _enable_foreign_keys)
     return engine
 

@@ -18,6 +18,7 @@ from logbook.core.config import (
     load_config,
     write_default_config,
 )
+from logbook.core.config import default_db_path as configured_db_path
 from logbook.core.errors import InvalidInputError, LogbookError
 
 EXPECTED_CATEGORIES = {
@@ -442,6 +443,83 @@ def test_git_repo_invalid_value(config_file: Path, text: str, key: str) -> None:
     assert_invalid(config_file, text, key)
 
 
+@pytest.mark.parametrize(
+    ("text", "key"),
+    [
+        ('db_path = "~x.db"\n', "db_path"),
+        ('[[git.repos]]\nproject = "a"\npath = "~work/repo"\n', "git.repos[1].path"),
+    ],
+)
+def test_tilde_user_path_in_file_is_rejected(config_file: Path, text: str, key: str) -> None:
+    assert_invalid(config_file, text, key, "'~/'")
+
+
+def test_tilde_user_path_message_echoes_at_most_40_chars(config_file: Path) -> None:
+    value = "~" + "x" * 60
+    write_toml(config_file, f'db_path = "{value}"\n')
+
+    with pytest.raises(InvalidInputError) as excinfo:
+        load_config(config_file)
+    message = str(excinfo.value)
+    assert value[:40] in message
+    assert value[:41] not in message
+
+
+def test_tilde_user_path_in_logbook_db_env_is_rejected(
+    config_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("LOGBOOK_DB", "~x")
+
+    with pytest.raises(InvalidInputError, match="LOGBOOK_DB"):
+        load_config(config_file)
+    with pytest.raises(InvalidInputError, match="LOGBOOK_DB"):
+        configured_db_path()
+
+
+def test_tilde_user_path_in_logbook_config_env_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("LOGBOOK_CONFIG", "~x/c.toml")
+
+    with pytest.raises(InvalidInputError, match="LOGBOOK_CONFIG"):
+        config_path()
+    with pytest.raises(InvalidInputError, match="LOGBOOK_CONFIG"):
+        load_config()
+
+
+@pytest.mark.parametrize(
+    ("raw", "parts"),
+    [("~", ()), ("~/a", ("a",)), ("~\\a", ("a",)), ("~/a/b.db", ("a", "b.db"))],
+)
+def test_home_relative_paths_resolve_under_home(
+    isolated_home: Path, monkeypatch: pytest.MonkeyPatch, raw: str, parts: tuple[str, ...]
+) -> None:
+    expected = isolated_home.joinpath(*parts)
+    monkeypatch.setenv("LOGBOOK_DB", raw)
+
+    assert configured_db_path() == expected
+
+
+@pytest.mark.parametrize(
+    ("raw", "parts"),
+    [("~", ()), ("~/a", ("a",)), ("~\\a", ("a",))],
+)
+def test_home_relative_toml_paths_resolve_under_home(
+    config_file: Path, isolated_home: Path, raw: str, parts: tuple[str, ...]
+) -> None:
+    # 리터럴 문자열이라 백슬래시를 그대로 쓴다.
+    write_toml(config_file, f"db_path = '{raw}'\n")
+
+    assert load_config(config_file).db_path == isolated_home.joinpath(*parts)
+
+
+def test_tilde_user_path_argument_is_rejected() -> None:
+    with pytest.raises(InvalidInputError, match="'~/'"):
+        load_config(Path("~x/c.toml"))
+    with pytest.raises(InvalidInputError, match="'~/'"):
+        write_default_config(Path("~x/c.toml"))
+
+
 def test_invalid_toml_db_path_is_rejected_even_when_env_is_set(
     config_file: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -484,10 +562,21 @@ def test_write_default_config_document(config_file: Path) -> None:
             "title_format": "주간업무보고 ({start} ~ {end})",
             "include_commits": True,
         },
-        "git": {"author_email": "", "repos": []},
+        "git": {"author_email": ""},
         "web": {"host": "127.0.0.1", "port": 8765},
     }
     assert list(document["categories"]) == list(EXPECTED_CATEGORIES)
+
+
+def test_write_default_config_accepts_appended_git_repos(config_file: Path) -> None:
+    # SPEC 3절처럼 기본 파일 끝에 [[git.repos]] 블록을 덧붙여도 읽혀야 한다.
+    write_default_config(config_file)
+    with config_file.open("a", encoding="utf-8", newline="\n") as file:
+        file.write('\n[[git.repos]]\nproject = "payment"\npath = "repos/payment"\n')
+
+    assert load_config(config_file).git.repos == (
+        GitRepo(project="payment", path=config_file.parent / "repos" / "payment"),
+    )
 
 
 def test_write_default_config_is_utf8_with_lf(config_file: Path) -> None:
