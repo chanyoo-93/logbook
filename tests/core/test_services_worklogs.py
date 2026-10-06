@@ -1,6 +1,6 @@
 """logbook.core.services.worklogs 단위 테스트."""
 
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
@@ -121,7 +121,10 @@ def test_add_unknown_project_raises_not_found(seeded: Session) -> None:
     with pytest.raises(NotFoundError) as excinfo:
         _add(seeded, project_slug="paymnt")
 
-    assert str(excinfo.value) == "프로젝트 'paymnt'가 없습니다. 'lb project list'로 확인하세요."
+    assert str(excinfo.value) == (
+        "프로젝트 'paymnt'가 없습니다. 'lb project list'로 확인하거나, "
+        "새 프로젝트라면 'lb project add paymnt <이름>'으로 만드세요."
+    )
     assert _count_logs(seeded) == 0
 
 
@@ -286,6 +289,17 @@ def test_add_minutes_out_of_range_raises(seeded: Session, minutes: int, message:
 def test_add_non_int_minutes_raises(seeded: Session, minutes: object) -> None:
     with pytest.raises(InvalidInputError, match="소요 시간"):
         _add(seeded, minutes=minutes)
+
+    assert _count_logs(seeded) == 0
+
+
+INVALID_WORK_DATES = [datetime(2026, 10, 1, 9, 30, tzinfo=UTC), "2026-10-01"]
+
+
+@pytest.mark.parametrize("work_date", INVALID_WORK_DATES)
+def test_add_invalid_work_date_raises(seeded: Session, work_date: object) -> None:
+    with pytest.raises(InvalidInputError, match="작업 날짜는 날짜로 입력하세요"):
+        _add(seeded, work_date=work_date)
 
     assert _count_logs(seeded) == 0
 
@@ -538,6 +552,19 @@ def test_update_blank_note_raises(seeded: Session) -> None:
         services.update_worklog(seeded, log.id, note="  ")
 
 
+@pytest.mark.parametrize("work_date", INVALID_WORK_DATES)
+def test_update_invalid_work_date_raises(seeded: Session, work_date: object) -> None:
+    log = _add(seeded, note="작업", work_date=THU)
+
+    with pytest.raises(InvalidInputError, match="작업 날짜는 날짜로 입력하세요"):
+        services.update_worklog(seeded, log.id, note="새 메모", work_date=work_date)
+
+    assert (log.note, log.date) == ("작업", THU)
+    seeded.expire_all()
+    stored = seeded.execute(select(WorkLog.note, WorkLog.date).where(WorkLog.id == log.id)).one()
+    assert tuple(stored) == ("작업", THU)
+
+
 def test_update_category_not_allowed_raises(seeded: Session) -> None:
     log = _add(seeded, category="dev")
 
@@ -685,6 +712,7 @@ def test_day_total_sums_all_projects_on_that_date(seeded: Session) -> None:
     _add(seeded, minutes=45, project_slug="search", work_date=THU)
     _add(seeded, minutes=90, work_date=THU)
     _add(seeded, minutes=600, work_date=date(2026, 9, 30))
+    _add(seeded, minutes=600, work_date=date(2026, 10, 2))
     services.archive_project(seeded, "search")
 
     assert services.day_total_minutes(seeded, THU) == 165

@@ -54,7 +54,7 @@ def get_project(s: Session, slug: str) -> Project:
     """slug로 프로젝트를 찾는다 (보관된 프로젝트 포함). 없으면 NotFoundError."""
     project = _find_project(s, slug)
     if project is None:
-        raise NotFoundError(f"프로젝트 '{slug}'가 없습니다. 'lb project list'로 확인하세요.")
+        raise NotFoundError(_not_found_message(slug))
     return project
 
 
@@ -121,6 +121,15 @@ def _validate_color(color: str | None) -> None:
         raise InvalidInputError(
             f"색상이 올바르지 않습니다: '{color}'. '#4f46e5'처럼 '#'과 16진수 6자리로 입력하세요."
         )
+
+
+def _not_found_message(slug: str) -> str:
+    # 쓸 수 없는 slug로 만들라고 안내하지 않도록 자리표시자를 쓴다.
+    hint = slug if _SLUG_RE.fullmatch(slug) is not None else "<slug>"
+    return (
+        f"프로젝트 '{slug}'가 없습니다. 'lb project list'로 확인하거나, "
+        f"새 프로젝트라면 'lb project add {hint} <이름>'으로 만드세요."
+    )
 
 
 def _duplicate_message(slug: str) -> str:

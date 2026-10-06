@@ -1,7 +1,7 @@
 """태스크(할 일) 생성·조회·목록·수정·상태 변경과 실제 공수 집계 유스케이스."""
 
 from collections.abc import Callable, Collection
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 from sqlalchemy import func, select
@@ -11,6 +11,7 @@ from logbook.core.errors import InvalidInputError
 from logbook.core.models import Task, TaskStatus, WorkLog, utcnow
 from logbook.core.services._shared import (
     check_category,
+    check_date,
     check_positive_minutes,
     load_task,
     strip_or_none,
@@ -103,6 +104,7 @@ def update_task(
     changes = {name: validators[name](value) for name, value in fields.items()}
     for name, value in changes.items():
         setattr(task, name, value)
+    # 바뀐 값이 없어도 수정 시각을 남긴다 (onupdate는 실제 변경이 있을 때만 동작).
     task.updated_at = utcnow()
     s.flush()
     return task
@@ -171,9 +173,4 @@ def _week_label(week: Week | None) -> str | None:
 
 
 def _checked_due_date(due_date: date | None) -> date | None:
-    # datetime은 date의 하위 타입이지만 마감일로 받지 않는다.
-    if due_date is None:
-        return None
-    if isinstance(due_date, datetime) or not isinstance(due_date, date):
-        raise InvalidInputError(f"마감일은 날짜로 입력하세요 (예: 2026-10-09): {due_date!r}")
-    return due_date
+    return None if due_date is None else check_date(due_date, "마감일은")

@@ -139,7 +139,20 @@ def test_get_missing_slug_raises_not_found(session: Session) -> None:
     with pytest.raises(NotFoundError, match="lb project list") as excinfo:
         projects.get_project(session, "paymnt")
 
-    assert str(excinfo.value) == "프로젝트 'paymnt'가 없습니다. 'lb project list'로 확인하세요."
+    assert str(excinfo.value) == (
+        "프로젝트 'paymnt'가 없습니다. 'lb project list'로 확인하거나, "
+        "새 프로젝트라면 'lb project add paymnt <이름>'으로 만드세요."
+    )
+
+
+def test_get_missing_invalid_slug_hints_placeholder(session: Session) -> None:
+    with pytest.raises(NotFoundError) as excinfo:
+        projects.get_project(session, "Pay Ment")
+
+    assert str(excinfo.value) == (
+        "프로젝트 'Pay Ment'가 없습니다. 'lb project list'로 확인하거나, "
+        "새 프로젝트라면 'lb project add <slug> <이름>'으로 만드세요."
+    )
 
 
 def test_get_returns_archived_project(session: Session) -> None:

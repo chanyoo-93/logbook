@@ -4,6 +4,7 @@ worklogs와 tasks가 서로 import하지 않도록 공통 부분을 여기에 �
 """
 
 from collections.abc import Collection
+from datetime import date, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
@@ -44,6 +45,14 @@ def check_positive_minutes(minutes: object, topic: str) -> int:
     if minutes < 1:
         raise InvalidInputError(f"{topic} 1분 이상이어야 합니다.")
     return minutes
+
+
+def check_date(value: object, topic: str) -> date:
+    """날짜 값을 그대로 반환한다. topic은 조사를 포함한 주어 (예: '마감일은')."""
+    # datetime은 date의 하위 타입이지만 날짜로 받지 않는다.
+    if isinstance(value, datetime) or not isinstance(value, date):
+        raise InvalidInputError(f"{topic} 날짜로 입력하세요 (예: 2026-10-09): {value!r}")
+    return value
 
 
 def strip_or_none(value: str | None) -> str | None:

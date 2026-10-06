@@ -202,6 +202,7 @@ def test_list_empty_statuses_returns_empty(seeded: Session) -> None:
 def test_list_filters_by_week(seeded: Session) -> None:
     _create(seeded, planned_week=W40)
     w41 = _create(seeded, planned_week=W41)
+    _create(seeded, planned_week=W42)
     _create(seeded)
 
     assert _ids(services.list_tasks(seeded, week=W41)) == [w41.id]
@@ -426,12 +427,16 @@ def test_update_without_allowed_categories_accepts_any_category(seeded: Session)
     assert task.category == "anything"
 
 
-def test_update_bumps_updated_at(seeded: Session) -> None:
-    task = _create(seeded)
+@pytest.mark.parametrize(
+    "fields", [{"title": "환불 API 설계"}, {}], ids=["same-value-title", "no-fields"]
+)
+def test_update_bumps_updated_at(seeded: Session, fields: dict[str, Any]) -> None:
+    # 값이 바뀌지 않으면 onupdate가 동작하지 않으므로 명시적 갱신만 검증된다.
+    task = _create(seeded, title="환불 API 설계")
     task.updated_at = LONG_AGO
     seeded.flush()
 
-    services.update_task(seeded, task.id, title="새 제목")
+    services.update_task(seeded, task.id, **fields)
 
     assert task.updated_at > LONG_AGO
 
@@ -483,6 +488,19 @@ def test_set_done_twice_keeps_first_done_at(seeded: Session) -> None:
     services.set_task_status(seeded, task.id, TaskStatus.DONE)
 
     assert task.done_at == LONG_AGO
+
+
+def test_set_done_fills_missing_done_at(seeded: Session) -> None:
+    task = _create(seeded)
+    # 완료 시각이 빠진 DONE 태스크 (예: 직접 고친 DB)를 ORM으로 만든다.
+    task.status = TaskStatus.DONE
+    task.done_at = None
+    seeded.flush()
+
+    services.set_task_status(seeded, task.id, TaskStatus.DONE)
+
+    assert task.done_at is not None
+    assert task.done_at.tzinfo is not None
 
 
 @pytest.mark.parametrize(

@@ -12,6 +12,7 @@ from logbook.core.models import Project, Task, WorkLog
 from logbook.core.services._shared import (
     MISSING_CATEGORY_MESSAGE,
     check_category,
+    check_date,
     check_positive_minutes,
     load_task,
 )
@@ -47,11 +48,12 @@ def add_worklog(
     resolved_category = _resolve_category(category, task, allowed_categories)
     if work_date is None:
         work_date = today if today is not None else date.today()
+    checked_date = _checked_work_date(work_date)
     log = WorkLog(
         project=project,
         task=task,
         category=resolved_category,
-        date=work_date,
+        date=checked_date,
         minutes=checked_minutes,
         note=clean_note,
     )
@@ -109,6 +111,7 @@ def update_worklog(
     log = get_worklog(s, log_id)
     new_minutes = log.minutes if minutes is None else _checked_minutes(minutes)
     new_note = log.note if note is None else _clean_note(note)
+    new_date = log.date if work_date is None else _checked_work_date(work_date)
     new_category = log.category
     if category is not None and category.strip() != log.category:
         new_category = check_category(category, allowed_categories)
@@ -118,9 +121,7 @@ def update_worklog(
     project = _target_project(s, slug, task, current=log.project)
     # 모든 검증을 통과한 뒤에만 바꾼다.
     log.minutes, log.note, log.category = new_minutes, new_note, new_category
-    log.project, log.task = project, task
-    if work_date is not None:
-        log.date = work_date
+    log.project, log.task, log.date = project, task, new_date
     s.flush()
     return log
 
@@ -144,6 +145,10 @@ def _checked_minutes(minutes: int) -> int:
             "소요 시간은 24시간 이하여야 합니다. 하루를 넘는 작업은 날짜별로 나눠 기록하세요."
         )
     return minutes
+
+
+def _checked_work_date(work_date: date) -> date:
+    return check_date(work_date, "작업 날짜는")
 
 
 def _clean_note(note: str) -> str:
