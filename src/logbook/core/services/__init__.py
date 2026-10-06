@@ -13,6 +13,14 @@ from logbook.core.services.projects import (
     get_project,
     list_projects,
 )
+from logbook.core.services.worklogs import (
+    add_worklog,
+    day_total_minutes,
+    delete_worklog,
+    get_worklog,
+    list_worklogs,
+    update_worklog,
+)
 
 __all__ = [
     "COMMON_SLUG",
@@ -23,4 +31,10 @@ __all__ = [
     "get_active_project",
     "get_project",
     "list_projects",
+    "add_worklog",
+    "day_total_minutes",
+    "delete_worklog",
+    "get_worklog",
+    "list_worklogs",
+    "update_worklog",
 ]
