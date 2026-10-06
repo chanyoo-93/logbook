@@ -34,3 +34,20 @@ def check_category(category: str, allowed: Collection[str] | None) -> str:
             f"카테고리 '{category}'는 쓸 수 없습니다. 사용할 수 있는 카테고리: {listed}"
         )
     return category
+
+
+def check_positive_minutes(minutes: object, topic: str) -> int:
+    """1 이상인 정수 분을 반환한다. topic은 조사를 포함한 주어 (예: '소요 시간은')."""
+    # bool은 int의 하위 타입이지만 분으로 받지 않는다.
+    if isinstance(minutes, bool) or not isinstance(minutes, int):
+        raise InvalidInputError(f"{topic} 분 단위 정수로 입력하세요: {minutes!r}")
+    if minutes < 1:
+        raise InvalidInputError(f"{topic} 1분 이상이어야 합니다.")
+    return minutes
+
+
+def strip_or_none(value: str | None) -> str | None:
+    """앞뒤 공백을 지운 값. None이거나 비면 None."""
+    if value is None:
+        return None
+    return value.strip() or None

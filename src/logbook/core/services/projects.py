@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from logbook.core.errors import InvalidInputError, NotFoundError
 from logbook.core.models import Project
+from logbook.core.services._shared import strip_or_none
 
 COMMON_SLUG = "common"
 SLUG_PATTERN = r"^[a-z0-9][a-z0-9_-]{0,31}$"
@@ -37,7 +38,7 @@ def create_project(
     project = Project(
         slug=slug,
         name=clean_name,
-        description=_strip_or_none(description),
+        description=strip_or_none(description),
         color=color,
     )
     s.add(project)
@@ -124,9 +125,3 @@ def _validate_color(color: str | None) -> None:
 
 def _duplicate_message(slug: str) -> str:
     return f"프로젝트 '{slug}'가 이미 존재합니다. 'lb project list'로 확인하세요."
-
-
-def _strip_or_none(value: str | None) -> str | None:
-    if value is None:
-        return None
-    return value.strip() or None

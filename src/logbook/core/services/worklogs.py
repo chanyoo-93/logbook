@@ -9,7 +9,12 @@ from sqlalchemy.orm import Session, joinedload
 from logbook.core.duration import MAX_MINUTES
 from logbook.core.errors import InvalidInputError, NotFoundError
 from logbook.core.models import Project, Task, WorkLog
-from logbook.core.services._shared import MISSING_CATEGORY_MESSAGE, check_category, load_task
+from logbook.core.services._shared import (
+    MISSING_CATEGORY_MESSAGE,
+    check_category,
+    check_positive_minutes,
+    load_task,
+)
 from logbook.core.services.projects import COMMON_SLUG, get_active_project, get_project
 from logbook.core.weeks import Week
 
@@ -133,11 +138,7 @@ def day_total_minutes(s: Session, on: date) -> int:
 
 
 def _checked_minutes(minutes: int) -> int:
-    # bool은 int의 하위 타입이지만 소요 시간으로 받지 않는다.
-    if isinstance(minutes, bool) or not isinstance(minutes, int):
-        raise InvalidInputError(f"소요 시간은 분 단위 정수로 입력하세요: {minutes!r}")
-    if minutes < 1:
-        raise InvalidInputError("소요 시간은 1분 이상이어야 합니다.")
+    minutes = check_positive_minutes(minutes, "소요 시간은")
     if minutes > MAX_MINUTES:
         raise InvalidInputError(
             "소요 시간은 24시간 이하여야 합니다. 하루를 넘는 작업은 날짜별로 나눠 기록하세요."

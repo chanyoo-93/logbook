@@ -13,6 +13,14 @@ from logbook.core.services.projects import (
     get_project,
     list_projects,
 )
+from logbook.core.services.tasks import (
+    create_task,
+    get_task,
+    list_tasks,
+    set_task_status,
+    task_actual_minutes,
+    update_task,
+)
 from logbook.core.services.worklogs import (
     add_worklog,
     day_total_minutes,
@@ -31,6 +39,12 @@ __all__ = [
     "get_active_project",
     "get_project",
     "list_projects",
+    "create_task",
+    "get_task",
+    "list_tasks",
+    "set_task_status",
+    "task_actual_minutes",
+    "update_task",
     "add_worklog",
     "day_total_minutes",
     "delete_worklog",
