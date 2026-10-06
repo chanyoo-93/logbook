@@ -46,10 +46,11 @@ class Week:
     def __post_init__(self) -> None:
         _check_week_start(self.week_start)
         try:
-            date.fromisocalendar(self.year, self.number, 1)
-        except ValueError:
+            # 범위 끝(end)까지 계산해 date 범위(0001-01-01~9999-12-31) 안인지도 확인한다.
+            _ = self.end
+        except (ValueError, OverflowError):
             raise InvalidInputError(
-                f"존재하지 않는 주차입니다: '{self.label}'. "
+                f"존재하지 않거나 지원 범위를 벗어난 주차입니다: '{self.label}'. "
                 "주차는 연도에 따라 W01~W52 또는 W53까지 있습니다."
             ) from None
 
@@ -86,7 +87,13 @@ class Week:
         return [start + timedelta(days=offset) for offset in range(_DAYS_PER_WEEK)]
 
     def _shift(self, delta: timedelta) -> "Week":
-        iso = (self._iso_monday + delta).isocalendar()
+        try:
+            iso = (self._iso_monday + delta).isocalendar()
+        except OverflowError:
+            raise InvalidInputError(
+                f"지원 범위를 벗어난 주차입니다: '{self.label}'의 이전·다음 주차는 "
+                "계산할 수 없습니다. 다른 주차를 지정하세요."
+            ) from None
         return Week(iso.year, iso.week, self.week_start)
 
 
@@ -125,7 +132,7 @@ def parse_week(text: str, *, today: date | None = None, week_start: WeekStart = 
 def parse_date(text: str, *, today: date | None = None, week_start: WeekStart = "monday") -> date:
     """'today', 'yesterday', 'mon'~'sun', 'YYYY-MM-DD', 'MM-DD'를 date로 바꾼다.
 
-    요일은 이번 주(week_start 기준)의 해당 요일이며, 오늘 이후면 지난주 같은 요일이다.
+    요일은 오늘을 포함한 최근 7일 중 해당 요일이며 week_start와 무관하다(week_start는 검증만 한다).
     """
     _check_week_start(week_start)
     base = today if today is not None else date.today()

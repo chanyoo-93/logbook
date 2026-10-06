@@ -1,11 +1,11 @@
 """logbook.core.weeks 단위 테스트."""
 
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 
 from logbook.core.errors import InvalidInputError
-from logbook.core.weeks import Week, parse_date, parse_week, week_of
+from logbook.core.weeks import Week, WeekStart, parse_date, parse_week, week_of
 
 
 def test_label_is_zero_padded() -> None:
@@ -125,6 +125,46 @@ def test_week_rejects_nonexistent_week(year: int, number: int) -> None:
         Week(year, number)
 
 
+# date 범위(0001-01-01~9999-12-31)를 벗어나는 주차는 계산 중 OverflowError 대신 거부한다.
+@pytest.mark.parametrize(
+    ("year", "number", "week_start"),
+    [(9999, 52, "monday"), (9999, 52, "sunday"), (1, 1, "sunday")],
+)
+def test_week_rejects_week_outside_supported_range(
+    year: int, number: int, week_start: WeekStart
+) -> None:
+    with pytest.raises(InvalidInputError, match=f"{year:04d}-W{number:02d}"):
+        Week(year, number, week_start)
+
+
+def test_week_at_end_of_supported_range_still_works() -> None:
+    week = Week(9999, 51)
+    assert week.end == date(9999, 12, 26)
+    assert week.days()[-1] == date(9999, 12, 26)
+    assert Week(1, 1).start == date(1, 1, 1)
+
+
+@pytest.mark.parametrize("week", [Week(1, 1), Week(1, 2, "sunday")], ids=["monday", "sunday"])
+def test_prev_outside_supported_range_raises_invalid_input(week: Week) -> None:
+    with pytest.raises(InvalidInputError):
+        week.prev()
+
+
+def test_next_outside_supported_range_raises_invalid_input() -> None:
+    with pytest.raises(InvalidInputError):
+        Week(9999, 51).next()
+
+
+def test_week_of_last_supported_date_raises_invalid_input() -> None:
+    with pytest.raises(InvalidInputError):
+        week_of(date(9999, 12, 31))
+
+
+def test_parse_week_rejects_week_outside_supported_range(today: date) -> None:
+    with pytest.raises(InvalidInputError, match="9999-W52"):
+        parse_week("9999-W52", today=today)
+
+
 def test_week_rejects_invalid_week_start() -> None:
     with pytest.raises(InvalidInputError, match="friday"):
         Week(2026, 40, "friday")  # type: ignore[arg-type]
@@ -227,6 +267,25 @@ def test_parse_date_valid(text: str, expected: date, today: date) -> None:
 )
 def test_parse_date_sunday_mode(text: str, expected: date, today: date) -> None:
     assert parse_date(text, today=today, week_start="sunday") == expected
+
+
+def test_parse_date_weekday_is_most_recent_within_seven_days_regardless_of_week_start() -> None:
+    # 요일 별칭은 week_start와 무관하게 오늘을 포함한 최근 7일 안의 해당 요일이다.
+    for offset in range(7):
+        base = date(2026, 9, 27) + timedelta(days=offset)
+        for alias, weekday in [
+            ("mon", 0),
+            ("tue", 1),
+            ("wed", 2),
+            ("thu", 3),
+            ("fri", 4),
+            ("sat", 5),
+            ("sun", 6),
+        ]:
+            result = parse_date(alias, today=base)
+            assert parse_date(alias, today=base, week_start="sunday") == result
+            assert base - timedelta(days=6) <= result <= base
+            assert result.weekday() == weekday
 
 
 def test_parse_date_yesterday_crosses_year() -> None:

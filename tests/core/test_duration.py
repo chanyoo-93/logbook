@@ -30,6 +30,7 @@ FULLWIDTH_TWO = "２"  # 전각 숫자 '２'
         ("0.1h", 6),
         ("0.075h", 5),
         ("1h0m", 60),
+        ("1:59", 119),
     ],
 )
 def test_parse_duration_valid(text: str, expected: int) -> None:
@@ -63,6 +64,10 @@ def test_parse_duration_rejects_over_24_hours(text: str) -> None:
         "1hh",
         "1.5h30m",
         "1h75m",
+        "1h60m",
+        "1h 60",
+        "1:60",
+        "0:60",
         "1:5",
         ":30",
         ".5h",
