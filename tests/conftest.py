@@ -1,12 +1,14 @@
 """공용 테스트 fixture.
 
-engine, session, config fixture는 Phase 1(Task 1-4, 1-5)에서 추가한다.
+engine, session fixture는 Phase 1(Task 1-5)에서 추가한다.
 """
 
 from datetime import date
 from pathlib import Path
 
 import pytest
+
+from logbook.core.config import Config, load_config
 
 pytest_plugins = ["pytester"]
 
@@ -43,3 +45,9 @@ def tmp_home(isolated_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 def today() -> date:
     """날짜 의존 테스트의 기준 날짜."""
     return FIXED_TODAY
+
+
+@pytest.fixture
+def config(tmp_home: Path) -> Config:
+    """기본 설정. 설정 파일이 없으므로 db_path만 LOGBOOK_DB(tmp_home/logbook.db)를 따른다."""
+    return load_config()
