@@ -5,13 +5,13 @@ description = "개인 개발자를 위한 업무 기록·공수 집계·주간�
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "jinja2>=3.1",
-    "pyperclip>=1.9",
-    "rich>=13",
-    "sqlalchemy>=2.0",
-    "tomli-w>=1.0",
-    "typer>=0.16",
-    "tzdata",
+  "jinja2>=3.1",
+  "pyperclip>=1.9",
+  "rich>=13",
+  "sqlalchemy>=2.0",
+  "tomli-w>=1.0",
+  "typer>=0.16",
+  "tzdata",
 ]
 
 [project.scripts]
@@ -19,11 +19,11 @@ lb = "logbook.cli.main:app"
 
 [dependency-groups]
 dev = [
-    "mypy>=1.10",
-    "pytest>=8",
-    "pytest-cov>=5",
-    "ruff>=0.5",
-    "types-pyperclip",
+  "mypy>=1.10",
+  "pytest>=8",
+  "pytest-cov>=5",
+  "ruff>=0.5",
+  "types-pyperclip",
 ]
 
 [build-system]
@@ -38,6 +38,7 @@ line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
 extend-exclude = ["docs"]
+force-exclude = true
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
