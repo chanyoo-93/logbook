@@ -1,7 +1,9 @@
 """logbook.core.platform 단위 테스트."""
 
 import io
+import os
 import re
+import subprocess
 import sys
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta, timezone
@@ -389,12 +391,33 @@ def test_timestamp_for_filename_zero_pads() -> None:
     assert platform.timestamp_for_filename(datetime(2026, 1, 2, 3, 4, 5)) == "20260102-030405"
 
 
-def test_timestamp_for_filename_uses_local_time_for_aware_datetimes() -> None:
-    # 같은 순간이면 어느 시간대로 넘겨도 같은 (로컬 시각) 파일명이 나와야 한다.
+def test_timestamp_for_filename_gives_one_stamp_per_instant() -> None:
+    # 같은 순간이면 어느 시간대로 넘겨도 같은 파일명이 나와야 한다.
     in_kst = datetime(2026, 10, 2, 15, 30, 0, tzinfo=timezone(timedelta(hours=9)))
     in_utc = datetime(2026, 10, 2, 6, 30, 0, tzinfo=UTC)
 
     assert platform.timestamp_for_filename(in_kst) == platform.timestamp_for_filename(in_utc)
+
+
+def test_timestamp_for_filename_converts_aware_values_to_local_zone() -> None:
+    # 로컬 시간대를 UTC-5(EST5, 서머타임 없음)로 고정한 새 프로세스에서 확인한다.
+    code = "; ".join(
+        [
+            "from datetime import UTC, datetime",
+            "from logbook.core.platform import timestamp_for_filename",
+            "print(timestamp_for_filename(datetime(2026, 10, 2, 6, 30, 0, tzinfo=UTC)))",
+        ]
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        env={**os.environ, "TZ": "EST5"},
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
+        shell=False,
+    )
+
+    assert result.stdout.strip() == "20261002-013000"
 
 
 def test_timestamp_for_filename_defaults_to_now() -> None:
