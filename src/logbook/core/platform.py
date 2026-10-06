@@ -87,7 +87,10 @@ def copy_to_clipboard(text: str) -> bool:
 
 
 def safe_filename(name: str) -> str:
-    """Windows와 macOS 모두에서 유효한 단일 파일명으로 바꾼다."""
+    """Windows와 macOS 모두에서 쓸 수 있는 단일 파일명으로 바꾼다.
+
+    금지 문자, 끝의 점·공백, 예약 장치 이름만 처리한다. 길이(255) 제한은 호출자가 지켜야 한다.
+    """
     cleaned = _RESERVED_CHARS.sub("-", name).rstrip(". ")
     stem, dot, rest = cleaned.partition(".")
     base = stem.rstrip(" ")
@@ -97,6 +100,11 @@ def safe_filename(name: str) -> str:
 
 
 def timestamp_for_filename(now: datetime | None = None) -> str:
-    """파일명용 타임스탬프 ("20261002-153000"). now가 없으면 현재 로컬 시각."""
+    """파일명용 로컬 시각 타임스탬프 ("20261002-153000").
+
+    now가 없으면 현재 시각을 쓰고, 시간대가 있는 값(예: UTC로 저장한 시각)은 로컬 시각으로 바꾼다.
+    """
     moment = datetime.now() if now is None else now
+    if moment.tzinfo is not None:
+        moment = moment.astimezone()
     return moment.strftime("%Y%m%d-%H%M%S")

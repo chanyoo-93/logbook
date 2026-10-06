@@ -3,7 +3,7 @@
 import io
 import re
 import sys
-from datetime import datetime
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pyperclip
@@ -293,6 +293,14 @@ def test_timestamp_for_filename_formats_given_time() -> None:
 
 def test_timestamp_for_filename_zero_pads() -> None:
     assert platform.timestamp_for_filename(datetime(2026, 1, 2, 3, 4, 5)) == "20260102-030405"
+
+
+def test_timestamp_for_filename_uses_local_time_for_aware_datetimes() -> None:
+    # 같은 순간이면 어느 시간대로 넘겨도 같은 (로컬 시각) 파일명이 나와야 한다.
+    in_kst = datetime(2026, 10, 2, 15, 30, 0, tzinfo=timezone(timedelta(hours=9)))
+    in_utc = datetime(2026, 10, 2, 6, 30, 0, tzinfo=UTC)
+
+    assert platform.timestamp_for_filename(in_kst) == platform.timestamp_for_filename(in_utc)
 
 
 def test_timestamp_for_filename_defaults_to_now() -> None:
