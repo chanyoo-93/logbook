@@ -3,6 +3,7 @@
 import io
 import re
 import sys
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -12,6 +13,40 @@ import pytest
 from logbook.core import platform
 
 RESERVED_CHARS = '"*:<>?|/\\' + "".join(chr(i) for i in range(0x20))
+
+# Windows 예약 장치 이름 30개 (구현과 독립적으로 나열)
+RESERVED_DEVICE_NAMES = [
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "CONIN$",
+    "CONOUT$",
+    "COM1",
+    "COM2",
+    "COM3",
+    "COM4",
+    "COM5",
+    "COM6",
+    "COM7",
+    "COM8",
+    "COM9",
+    "COM¹",
+    "COM²",
+    "COM³",
+    "LPT1",
+    "LPT2",
+    "LPT3",
+    "LPT4",
+    "LPT5",
+    "LPT6",
+    "LPT7",
+    "LPT8",
+    "LPT9",
+    "LPT¹",
+    "LPT²",
+    "LPT³",
+]
 
 
 class SpyStream:
@@ -26,11 +61,15 @@ class SpyStream:
         self.calls.append(kwargs)
 
 
-class FailingStream(SpyStream):
-    """reconfigure가 io.UnsupportedOperation을 던지는 스트림."""
+class RaisingStream(SpyStream):
+    """reconfigure가 지정한 예외를 던지는 스트림."""
+
+    def __init__(self, encoding: str, error: Exception) -> None:
+        super().__init__(encoding)
+        self.error = error
 
     def reconfigure(self, **kwargs: str) -> None:
-        raise io.UnsupportedOperation("not supported")
+        raise self.error
 
 
 def _cp949_stream(errors: str = "strict") -> io.TextIOWrapper:
@@ -91,6 +130,24 @@ def test_ensure_utf8_console_keeps_errors_handler(monkeypatch: pytest.MonkeyPatc
     assert stderr.errors == "backslashreplace"
 
 
+@pytest.mark.parametrize(
+    "make_stdout",
+    [lambda: None, _utf8_stream, io.StringIO],
+    ids=["none", "utf8", "string-io"],
+)
+def test_ensure_utf8_console_handles_each_stream_independently(
+    monkeypatch: pytest.MonkeyPatch, make_stdout: Callable[[], object]
+) -> None:
+    # 콘솔(UTF-8)과 리다이렉트(cp949)가 섞인 경우: stdout을 건너뛰어도 stderr는 바꿔야 한다.
+    stderr = _cp949_stream()
+    monkeypatch.setattr(sys, "stdout", make_stdout())
+    monkeypatch.setattr(sys, "stderr", stderr)
+
+    platform.ensure_utf8_console()
+
+    assert stderr.encoding == "utf-8"
+
+
 @pytest.mark.parametrize("encoding", ["utf-8", "UTF8", "cp65001"])
 def test_ensure_utf8_console_leaves_utf8_streams_alone(
     monkeypatch: pytest.MonkeyPatch, encoding: str
@@ -133,11 +190,29 @@ def test_ensure_utf8_console_ignores_missing_streams(monkeypatch: pytest.MonkeyP
     platform.ensure_utf8_console()
 
 
+@pytest.mark.parametrize(
+    "error",
+    [
+        io.UnsupportedOperation("not supported"),
+        OSError("bad handle"),
+        ValueError("I/O operation on closed file."),
+    ],
+    ids=["unsupported-operation", "os-error", "value-error"],
+)
 def test_ensure_utf8_console_swallows_reconfigure_failure(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, error: Exception
 ) -> None:
-    monkeypatch.setattr(sys, "stdout", FailingStream("cp949"))
-    monkeypatch.setattr(sys, "stderr", FailingStream("cp949"))
+    monkeypatch.setattr(sys, "stdout", RaisingStream("cp949", error))
+    monkeypatch.setattr(sys, "stderr", RaisingStream("cp949", error))
+
+    platform.ensure_utf8_console()
+
+
+def test_ensure_utf8_console_ignores_closed_stream(monkeypatch: pytest.MonkeyPatch) -> None:
+    closed = _cp949_stream()
+    closed.close()
+    monkeypatch.setattr(sys, "stdout", closed)
+    monkeypatch.setattr(sys, "stderr", None)
 
     platform.ensure_utf8_console()
 
@@ -217,6 +292,19 @@ def test_symbol_uses_unicode_on_utf8_stdout(monkeypatch: pytest.MonkeyPatch) -> 
     assert platform.symbol("✔", "v") == "✔"
 
 
+@pytest.mark.parametrize(
+    ("unicode_char", "ascii_fallback", "expected"),
+    [("→", "->", "→"), ("—", "-", "-")],
+)
+def test_symbol_checks_the_given_character(
+    monkeypatch: pytest.MonkeyPatch, unicode_char: str, ascii_fallback: str, expected: str
+) -> None:
+    # cp949는 →는 표현하지만 ✔와 —는 표현하지 못한다.
+    monkeypatch.setattr(sys, "stdout", _cp949_stream())
+
+    assert platform.symbol(unicode_char, ascii_fallback) == expected
+
+
 # --- copy_to_clipboard ------------------------------------------------------
 
 
@@ -271,6 +359,12 @@ def test_copy_to_clipboard_returns_false_on_failure(
 )
 def test_safe_filename(name: str, expected: str) -> None:
     assert platform.safe_filename(name) == expected
+
+
+@pytest.mark.parametrize("name", RESERVED_DEVICE_NAMES)
+def test_safe_filename_suffixes_every_reserved_device_name(name: str) -> None:
+    assert platform.safe_filename(name) == f"{name}_"
+    assert platform.safe_filename(f"{name.lower()}.md") == f"{name.lower()}_.md"
 
 
 @pytest.mark.parametrize("char", list(RESERVED_CHARS))

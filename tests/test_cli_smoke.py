@@ -22,8 +22,7 @@ def test_version_prints() -> None:
     result = CliRunner().invoke(app, ["--version"])
 
     assert result.exit_code == 0
-    assert "logbook" in result.output
-    assert logbook.__version__ in result.output
+    assert result.stdout.strip() == f"logbook {logbook.__version__}"
 
 
 def test_version_matches_pyproject() -> None:
