@@ -7,17 +7,17 @@ CLI만 필요하면 Phase 4까지, 웹 대시보드까지 원하면 Phase 6까�
 - [x] `uv init --package logbook`, `src/` 레이아웃, `[project.scripts] lb = "logbook.cli.main:app"`
 - [x] 의존성: typer, rich, sqlalchemy, tomli-w, jinja2, pyperclip, tzdata / dev: pytest, ruff, mypy
 - [x] ruff·mypy·pytest 설정 (`pyproject.toml`)
-- [ ] `tests/conftest.py`: 임시 DB fixture (`LOGBOOK_DB`를 tmp_path로, 종료 시 `engine.dispose()`) — `tmp_home`·`today` 완료, `engine`·`session`은 Phase 1 `db.py`와 함께 추가
+- [x] `tests/conftest.py`: 임시 DB fixture (`LOGBOOK_DB`를 tmp_path로, 종료 시 `engine.dispose()`)
 - [x] `.gitattributes` (`* text=auto eol=lf`), `.editorconfig`
 - [x] GitHub Actions: `windows-latest` + `macos-latest` 매트릭스에서 pytest·ruff·mypy 실행
 - [x] `core/platform.py`: 콘솔 UTF-8 설정, 클립보드 래퍼, 데이터 디렉터리 해석 + 테스트
 
 ## Phase 1. Core 도메인
-- [ ] `duration.py` 파싱/포맷 + 테스트 (SPEC 4장 모든 케이스)
-- [ ] `weeks.py` 주차 ↔ 날짜 범위, `this/last/next` 별칭 + 연말 경계 테스트 (2026-W53 등)
-- [ ] `config.py` 설정 로드, 기본값, `~` 확장
-- [ ] `models.py`, `db.py` (스키마 생성 + schema_version 기반 마이그레이션)
-- [ ] `services.py`: project / worklog / task CRUD, 집계 함수(`stats_by(week, by)`)
+- [x] `duration.py` 파싱/포맷 + 테스트 (SPEC 4장 모든 케이스)
+- [x] `weeks.py` 주차 ↔ 날짜 범위, `this/last/next` 별칭 + 연말 경계 테스트 (2026-W53 등)
+- [x] `config.py` 설정 로드, 기본값, `~` 확장
+- [x] `models.py`, `db.py` (스키마 생성 + schema_version 기반 마이그레이션)
+- [x] `services/`: project / worklog / task CRUD, 집계 함수(`stats_by(week, by)`)
 
 ## Phase 2. CLI — 기록 중심
 - [ ] `lb init`, `lb project add|list|archive`

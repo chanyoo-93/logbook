@@ -36,11 +36,12 @@ src/logbook/
   core/          # 도메인 로직. CLI/Web에 의존하지 않는다.
     models.py    # SQLAlchemy 모델
     db.py        # 엔진/세션, 스키마 생성 및 마이그레이션
-    services.py  # 기록 추가, 집계, 계획 등 유스케이스 함수
+    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats)
     duration.py  # "1h30m", "1.5h", "90m" 파싱/포맷
     weeks.py     # ISO 주차 계산 (YYYY-Www)
     report.py    # 주간보고서 데이터 조립 + Markdown 렌더링
     config.py    # 설정 로드
+    errors.py    # 사용자에게 보여줄 한국어 오류 타입 (LogbookError 계열)
     platform.py  # OS별 처리 (콘솔 인코딩, 클립보드, 데이터 디렉터리)
     gitcollect.py# git 커밋 수집 (선택 기능)
   cli/
