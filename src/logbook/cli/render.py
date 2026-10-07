@@ -43,17 +43,16 @@ def dash() -> str:
     return symbol("—", "-")
 
 
-def _summary(log: "WorkLog", *, day: date | None = None, suffix: str = "") -> "Text":
-    """'#128 10-01 (목) payment/dev 2h — 메모{suffix}' 형식의 기록 요약.
+def _summary(log: "WorkLog", *, day_text: str | None = None, suffix: str = "") -> "Text":
+    """'#128 {day_text} payment/dev 2h — 메모{suffix}' 형식의 기록 요약.
 
-    day가 없으면 날짜를 뺀다: '#128 payment/dev 2h — 메모'.
+    day_text가 없으면 날짜를 뺀다: '#128 payment/dev 2h — 메모'.
     """
     from rich.text import Text
 
     from logbook.core.duration import format_duration
-    from logbook.core.weeks import day_label
 
-    day_part = f"{day_label(day)} " if day is not None else ""
+    day_part = f"{day_text} " if day_text is not None else ""
     return Text.assemble(
         f"#{log.id} {day_part}",
         Text(log.project.slug),
@@ -75,6 +74,14 @@ def full_day(d: date) -> str:
     from logbook.core.weeks import day_label
 
     return f"{d.year:04d}-{day_label(d)}"
+
+
+def worklog_record(log: "WorkLog") -> "Text":
+    """연도를 붙인 기록 한 줄 요약.
+
+    예: '#128 2026-10-01 (목) payment/dev 2h — 결제 재시도 로직 구현'
+    """
+    return _summary(log, day_text=full_day(log.date))
 
 
 def task_ref(log: "WorkLog") -> str:
@@ -115,10 +122,12 @@ def worklog_lines(logs: "Sequence[WorkLog]") -> "list[Text]":
 
     태스크가 없으면 끝의 '[#42]'를 생략한다.
     """
+    from logbook.core.weeks import day_label
+
     return [
         _summary(
             log,
-            day=log.date,
+            day_text=day_label(log.date),
             suffix=f" [#{log.task_id}]" if log.task_id is not None else "",
         )
         for log in logs

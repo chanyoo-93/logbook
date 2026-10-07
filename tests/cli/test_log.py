@@ -2,20 +2,16 @@
 
 import os
 from collections.abc import Callable
-from contextlib import AbstractContextManager
 from datetime import date
 from pathlib import Path
 
 import pytest
-from sqlalchemy.orm import Session
 from typer.testing import Result
 
 from logbook.cli import console, render
 from logbook.core import services
 from logbook.core.weeks import parse_week
-from tests.cli.helpers import assert_fits, assert_rejected, tokens
-
-OpenDb = Callable[[], AbstractContextManager[Session]]
+from tests.cli.helpers import OpenDb, assert_fits, assert_rejected, run_ok, tokens
 
 HEADER = ["ID", "날짜", "프로젝트", "카테고리", "시간", "메모", "Task"]
 ROW_1 = ["1", "09-30 (수)", "payment", "ops", "30m", "장애 대응", "-"]
@@ -27,12 +23,6 @@ W39_HEADING = "2026-W39 (09-21 ~ 09-27)"
 CATEGORY_LIST = "admin, design, dev, docs, meeting, ops, review, study, support"
 # 기본 3건 기록 표의 필요 폭: 2+10+8+8+4+10+4 + 2×6
 W40_TABLE_WIDTH = 58
-
-
-def run_ok(lb: Callable[..., Result], *args: str) -> Result:
-    result = lb(*args)
-    assert result.exit_code == 0, result.stderr
-    return result
 
 
 @pytest.fixture

@@ -6,13 +6,24 @@ import re
 import shutil
 import subprocess
 import sys
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
+from contextlib import AbstractContextManager
 from pathlib import Path
 from typing import Any, Literal, NamedTuple
 
 import pytest
 from rich.cells import cell_len
+from sqlalchemy.orm import Session
 from typer.testing import Result
+
+# open_db fixture의 타입: 호출하면 데이터 준비·검증용 세션 컨텍스트를 연다.
+OpenDb = Callable[[], AbstractContextManager[Session]]
+
+# 'lb log' 조회 옵션을 하위 명령 앞에 썼을 때의 오류 문구
+QUERY_OPTIONS_MESSAGE = (
+    "조회 옵션(--week, --date, -p, -c)은 'lb log' 목록에만 쓸 수 있습니다. "
+    "기록을 고칠 때는 'lb log edit 128 -p payment'처럼 하위 명령 뒤에 쓰세요."
+)
 
 # CLI 시작 경로(import, --version, --help)에서 로드되면 안 되는 모듈
 FORBIDDEN_MODULES = (
@@ -97,6 +108,13 @@ def assert_rejected(result: Result, message: str) -> None:
     assert result.exit_code == 1
     assert result.stdout == ""
     assert result.stderr == f"오류: {message}\n"
+
+
+def run_ok(lb: Callable[..., Result], *args: str) -> Result:
+    """lb fixture로 실행하고 종료 코드 0을 확인한 뒤 결과를 돌려준다(준비 단계용)."""
+    result = lb(*args)
+    assert result.exit_code == 0, result.stderr
+    return result
 
 
 def lb_env(base: Path, encoding: str) -> dict[str, str]:

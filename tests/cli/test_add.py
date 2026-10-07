@@ -2,19 +2,15 @@
 
 import os
 from collections.abc import Callable
-from contextlib import AbstractContextManager
 from datetime import date
 from pathlib import Path
 
 import pytest
-from sqlalchemy.orm import Session
 from typer.testing import Result
 
 from logbook.core import db, platform, services
-from tests.cli.helpers import assert_rejected
+from tests.cli.helpers import OpenDb, assert_rejected
 from tests.helpers import hold_lock
-
-OpenDb = Callable[[], AbstractContextManager[Session]]
 
 FAST_BUSY_TIMEOUT = 0.05
 CATEGORY_LIST = "admin, design, dev, docs, meeting, ops, review, study, support"
