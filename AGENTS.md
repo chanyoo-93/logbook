@@ -35,7 +35,7 @@
 src/logbook/
   core/          # 도메인 로직. CLI/Web에 의존하지 않는다.
     models.py    # SQLAlchemy 모델
-    db.py        # 엔진/세션, 스키마 생성 및 마이그레이션
+    db.py        # 엔진/세션, 스키마 생성 및 마이그레이션, DB 진입점(open_database·initialize_database)
     services/    # 유스케이스 함수 (projects, worklogs, tasks, stats)
     duration.py  # "1h30m", "1.5h", "90m" 파싱/포맷
     weeks.py     # ISO 주차 계산 (YYYY-Www)
@@ -45,7 +45,12 @@ src/logbook/
     platform.py  # OS별 처리 (콘솔 인코딩, 클립보드, 데이터 디렉터리)
     gitcollect.py# git 커밋 수집 (선택 기능)
   cli/
-    main.py      # Typer 앱, 엔트리포인트 `lb`
+    main.py      # Typer 루트 앱, 진입점 run() (`lb`)
+    group.py     # 단일 오류 경계 (LogbookError → 한국어 한 줄, exit 1)
+    console.py   # Rich 출력 (마크업 해석 안 함, 비 TTY 폭 1000, 좁은 화면 대체 출력)
+    runtime.py   # 설정·DB 세션·today·공용 옵션·ID 파싱·확인 프롬프트
+    render.py    # 한 줄 요약과 표
+    commands/    # 명령별 모듈 (init, project, add, log, stats …)
   web/
     app.py       # FastAPI 앱
     templates/   # Jinja2 + HTMX
@@ -57,6 +62,7 @@ docs/
 ## 아키텍처 규칙
 
 - CLI와 Web은 반드시 `core.services`의 함수만 호출한다. SQL/ORM 쿼리를 CLI·Web 레이어에 직접 쓰지 않는다.
+  단, DB 연결·설정·입력 파싱용 core 공개 진입점(core.db.open_database·initialize_database·session_scope, core.config, core.duration, core.weeks, core.platform, core.errors)은 쓸 수 있다. SQL·ORM 쿼리는 어느 경우에도 CLI·Web에 쓰지 않는다.
 - 시간은 내부적으로 항상 **정수 분(minutes)** 으로 저장한다. 표시할 때만 `1h 30m` 형태로 변환.
 - 날짜는 `date`(로컬 기준)로 저장, 타임스탬프는 ISO 8601 문자열 또는 timezone-aware datetime.
 - 주차는 ISO 8601 주차(월요일 시작)를 기본으로 하되 설정으로 시작 요일 변경 가능하게 설계.
