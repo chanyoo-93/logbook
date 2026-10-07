@@ -102,12 +102,18 @@ def update_worklog(
     project_slug: str | None = None,
     work_date: date | None = None,
     task_id: int | None = None,
+    clear_task: bool = False,
     allowed_categories: Collection[str] | None = None,
 ) -> WorkLog:
     """None인 인자는 그대로 두고, 바뀌는 값만 add_worklog와 같은 규칙으로 검증해 고친다.
 
-    태스크만 바꾸면 프로젝트도 태스크의 프로젝트로 옮긴다.
+    태스크만 바꾸면 프로젝트도 태스크의 프로젝트로 옮긴다. clear_task=True면 태스크
+    연결을 끊는다 (task_id와 함께 줄 수 없다).
     """
+    if clear_task and task_id is not None:
+        raise InvalidInputError(
+            "태스크를 지정하면서 연결을 해제할 수는 없습니다. 둘 중 하나만 지정하세요."
+        )
     log = get_worklog(s, log_id)
     new_minutes = log.minutes if minutes is None else _checked_minutes(minutes)
     new_note = log.note if note is None else _clean_note(note)
@@ -116,9 +122,9 @@ def update_worklog(
     if category is not None and category.strip() != log.category:
         new_category = check_category(category, allowed_categories)
     new_task = load_task(s, task_id) if task_id is not None else None
-    task = new_task if new_task is not None else log.task
+    task = None if clear_task else (new_task if new_task is not None else log.task)
     slug = _pick_slug(project_slug, new_task, log.project.slug)
-    project = _target_project(s, slug, task, current=log.project)
+    project = _target_project(s, slug, task, current=log.project, task_is_new=new_task is not None)
     # 모든 검증을 통과한 뒤에만 바꾼다.
     log.minutes, log.note, log.category = new_minutes, new_note, new_category
     log.project, log.task, log.date = project, task, new_date
@@ -176,19 +182,38 @@ def _pick_slug(explicit: str | None, task: Task | None, fallback: str) -> str:
 
 
 def _target_project(
-    s: Session, slug: str, task: Task | None, *, current: Project | None
+    s: Session,
+    slug: str,
+    task: Task | None,
+    *,
+    current: Project | None,
+    task_is_new: bool = True,
 ) -> Project:
     """기록이 속할 프로젝트. 연결된 태스크와 프로젝트가 같아야 한다.
 
+    current가 None이면 추가 경로, 아니면 수정 경로다. task_is_new는 task가 이번에 새로
+    지정한 태스크인지(False면 기록에 이미 연결된 태스크) 나타낸다.
     프로젝트가 current와 같으면 보관 여부를 다시 확인하지 않는다 (보관된 프로젝트의
     옛 기록도 시간·메모는 고칠 수 있다).
     """
     if task is not None and task.project.slug != slug:
         owner = task.project.slug
+        if not task_is_new:
+            raise InvalidInputError(
+                f"연결된 태스크 #{task.id}의 프로젝트('{owner}')와 다른 프로젝트로 옮길 수 "
+                "없습니다. 태스크 연결을 해제하거나 같은 프로젝트를 지정하세요."
+            )
         raise InvalidInputError(
             f"태스크 #{task.id}는 '{owner}' 프로젝트에 속합니다. "
             f"프로젝트를 빼거나 '{owner}'로 지정하세요."
         )
-    if current is not None and current.slug == slug:
+    if current is None:
+        return get_active_project(s, slug)
+    if current.slug == slug:
         return current
-    return get_active_project(s, slug)
+    project = get_project(s, slug)
+    if project.archived:
+        raise InvalidInputError(
+            f"보관된 프로젝트로는 기록을 옮길 수 없습니다: '{slug}'. 다른 프로젝트를 지정하세요."
+        )
+    return project
