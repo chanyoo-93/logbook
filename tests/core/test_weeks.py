@@ -5,7 +5,15 @@ from datetime import date, timedelta
 import pytest
 
 from logbook.core.errors import InvalidInputError
-from logbook.core.weeks import Week, WeekStart, parse_date, parse_week, week_of
+from logbook.core.weeks import (
+    Week,
+    WeekStart,
+    day_label,
+    parse_date,
+    parse_week,
+    week_heading,
+    week_of,
+)
 
 
 def test_label_is_zero_padded() -> None:
@@ -332,3 +340,28 @@ def test_parse_date_error_shows_input(today: date) -> None:
 def test_parse_date_rejects_invalid_week_start(today: date) -> None:
     with pytest.raises(InvalidInputError, match="friday"):
         parse_date("mon", today=today, week_start="friday")  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("day", "expected"),
+    [
+        (date(2026, 9, 28), "09-28 (월)"),
+        (date(2026, 10, 4), "10-04 (일)"),
+        (date(2027, 1, 1), "01-01 (금)"),
+    ],
+)
+def test_day_label_has_zero_padded_month_day_and_weekday(day: date, expected: str) -> None:
+    assert day_label(day) == expected
+
+
+@pytest.mark.parametrize(
+    ("week", "expected"),
+    [
+        (Week(2026, 40), "2026-W40 (09-28 ~ 10-04)"),
+        (Week(2026, 40, "sunday"), "2026-W40 (09-27 ~ 10-03)"),
+        (Week(2026, 53), "2026-W53 (12-28 ~ 01-03)"),
+        (Week(2020, 53, "sunday"), "2020-W53 (12-27 ~ 01-02)"),
+    ],
+)
+def test_week_heading_shows_label_and_range(week: Week, expected: str) -> None:
+    assert week_heading(week) == expected
