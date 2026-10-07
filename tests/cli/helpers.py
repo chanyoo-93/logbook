@@ -12,6 +12,7 @@ from typing import Any, Literal, NamedTuple
 
 import pytest
 from rich.cells import cell_len
+from typer.testing import Result
 
 # CLI 시작 경로(import, --version, --help)에서 로드되면 안 되는 모듈
 FORBIDDEN_MODULES = (
@@ -89,6 +90,13 @@ def assert_fits(text: str, width: int) -> None:
     """모든 줄이 width 칸 이하인지 확인한다."""
     for line in text.splitlines():
         assert cell_len(line) <= width, f"{cell_len(line)}칸 > {width}칸: {line!r}"
+
+
+def assert_rejected(result: Result, message: str) -> None:
+    """오류 한 줄로 거부되었는지 확인한다: 종료 코드 1, stdout 없음, stderr '오류: {message}'."""
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert result.stderr == f"오류: {message}\n"
 
 
 def lb_env(base: Path, encoding: str) -> dict[str, str]:

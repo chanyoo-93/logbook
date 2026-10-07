@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from typer.testing import Result
 
 from logbook.core import db, platform, services
+from tests.cli.helpers import assert_rejected
 from tests.helpers import hold_lock
 
 OpenDb = Callable[[], AbstractContextManager[Session]]
@@ -37,12 +38,6 @@ def add_payment_task(open_db: OpenDb) -> int:
 def logged_date(open_db: OpenDb, log_id: int) -> date:
     with open_db() as s:
         return services.get_worklog(s, log_id).date
-
-
-def assert_rejected(result: Result, message: str) -> None:
-    assert result.exit_code == 1
-    assert result.stdout == ""
-    assert result.stderr == f"오류: {message}\n"
 
 
 def test_add_with_project_and_category(lb: Callable[..., Result], initialized: Path) -> None:

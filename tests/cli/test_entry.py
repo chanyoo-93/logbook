@@ -1,8 +1,10 @@
 """진입점 run(): 프로세스 내부 실행, 설치된 lb 실행 파일, import 가드."""
 
 import io
+import subprocess
 import sys
 from collections.abc import Callable
+from datetime import date
 from pathlib import Path
 
 import pytest
@@ -13,14 +15,19 @@ from typer.testing import Result
 from logbook import __version__
 from logbook.cli.group import LogbookCommand, LogbookGroup
 from logbook.cli.main import app, run
+from logbook.core import db, services
 from tests.cli.helpers import (
     FORBIDDEN_MODULES,
     LAUNCHER,
+    SUBPROCESS_TIMEOUT_SECONDS,
     lb_env,
     run_import_guard,
     run_lb,
     run_lb_closed_stdout,
 )
+
+# 파이프 버퍼(수십 KB)를 넘겨 읽는 쪽이 닫힌 뒤에도 쓰기가 이어지게 하는 기록 수
+PIPE_TEST_LOG_COUNT = 2000
 
 
 def _run_in_process(monkeypatch: pytest.MonkeyPatch, *args: str) -> tuple[int | str | None, str]:
@@ -203,6 +210,64 @@ def test_add_does_not_expand_windows_args(tmp_path: Path) -> None:
 
 
 @pytest.mark.subprocess
+def test_log_exits_quietly_when_reader_closes_pipe(tmp_path: Path) -> None:
+    # `lb log | head -1`: 읽는 쪽이 첫 줄만 읽고 닫는다. 수정 전 Windows는 traceback과 rc 120이었다.
+    if LAUNCHER is None:
+        pytest.fail("lb 실행 파일이 없습니다. 'uv sync'를 다시 실행하세요.")
+    env = lb_env(tmp_path, "cp1252")
+    assert run_lb(["init"], env=env, cwd=tmp_path).returncode == 0
+    _add_logs_today(Path(env["LOGBOOK_DB"]), PIPE_TEST_LOG_COUNT)
+
+    proc = subprocess.Popen(
+        [LAUNCHER, "log"],
+        shell=False,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        cwd=tmp_path,
+        env=env,
+    )
+    assert proc.stdout is not None
+    first_line = proc.stdout.readline()
+    proc.stdout.close()
+    # None으로 바꾸지 않으면 Windows의 communicate()가 닫힌 파일을 읽는 스레드를 띄워
+    # ValueError('read of closed file')가 난다.
+    proc.stdout = None
+    try:
+        _, err_bytes = proc.communicate(timeout=SUBPROCESS_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        # subprocess.run처럼 멈춘 자식을 끝내야 임시 DB가 열린 채 남지 않는다(Windows 정리 실패).
+        proc.kill()
+        proc.communicate()
+        raise
+    stderr = err_bytes.decode("utf-8")
+
+    assert first_line.startswith(b"20")
+    assert proc.returncode in {0, 1}
+    assert "Traceback" not in stderr
+    assert "Exception ignored" not in stderr
+
+
+def _add_logs_today(db_path: Path, count: int) -> None:
+    """실제 오늘 날짜로 기록 count건을 만든다(서브프로세스 lb는 date.today()를 쓴다)."""
+    today = date.today()
+    engine = db.open_database(db_path)
+    try:
+        with db.session_scope(engine) as s:
+            for number in range(count):
+                services.add_worklog(
+                    s,
+                    minutes=1,
+                    note=f"기록 {number}",
+                    category="dev",
+                    work_date=today,
+                    today=today,
+                )
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.subprocess
 @pytest.mark.parametrize(
     ("args", "exit_code", "error"),
     [
@@ -217,6 +282,8 @@ def test_add_does_not_expand_windows_args(tmp_path: Path) -> None:
         pytest.param(["add", "abc", "x"], 1, "오류: 시간 형식이", id="add-bad-duration"),
         pytest.param(["add", "2h", "x", "-d", "13-45"], 1, "오류: 날짜 형식이", id="add-bad-date"),
         pytest.param(["add", "1h", "x", "-t", "abc"], 1, "오류: 태스크 ID가", id="add-bad-task"),
+        pytest.param(["log", "--help"], 0, None, id="log-help"),
+        pytest.param(["log", "-w", "2026-W99"], 1, "오류: 주차 형식이", id="log-bad-week"),
     ],
 )
 def test_startup_does_not_load_heavy_modules(

@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
 # 접을 수 있는(fold) 이름 열의 최소 폭
 NAME_MIN_WIDTH = 10
+# 기록 표 메모 열의 최소 폭
+NOTE_MIN_WIDTH = 10
 NO_VALUE = "-"
 
 
@@ -41,20 +43,86 @@ def dash() -> str:
     return symbol("—", "-")
 
 
-def worklog_line(log: "WorkLog") -> "Text":
-    """기록 한 줄 요약: '#128 payment/dev 2h — 결제 재시도 로직 구현'."""
+def _summary(log: "WorkLog", *, day: date | None = None, suffix: str = "") -> "Text":
+    """'#128 10-01 (목) payment/dev 2h — 메모{suffix}' 형식의 기록 요약.
+
+    day가 없으면 날짜를 뺀다: '#128 payment/dev 2h — 메모'.
+    """
     from rich.text import Text
 
     from logbook.core.duration import format_duration
+    from logbook.core.weeks import day_label
 
+    day_part = f"{day_label(day)} " if day is not None else ""
     return Text.assemble(
-        f"#{log.id} ",
+        f"#{log.id} {day_part}",
         Text(log.project.slug),
         "/",
         Text(log.category),
         f" {format_duration(log.minutes)} {dash()} ",
         Text(log.note),
+        suffix,
     )
+
+
+def worklog_line(log: "WorkLog") -> "Text":
+    """기록 한 줄 요약: '#128 payment/dev 2h — 결제 재시도 로직 구현'."""
+    return _summary(log)
+
+
+def full_day(d: date) -> str:
+    """연도를 붙인 날짜·요일 표기: '2026-10-01 (목)'."""
+    from logbook.core.weeks import day_label
+
+    return f"{d.year:04d}-{day_label(d)}"
+
+
+def task_ref(log: "WorkLog") -> str:
+    """연결된 태스크 표기: '#42', 없으면 '-'."""
+    return f"#{log.task_id}" if log.task_id is not None else NO_VALUE
+
+
+def worklog_table(logs: "Sequence[WorkLog]") -> "Table":
+    """기록 표(SPEC 5): ID | 날짜 | 프로젝트 | 카테고리 | 시간 | 메모 | Task. 메모 열만 접는다."""
+    from rich.text import Text
+
+    from logbook.core.duration import format_duration
+    from logbook.core.weeks import day_label
+
+    table = new_table()
+    table.add_column("ID", justify="right", no_wrap=True)
+    table.add_column("날짜", no_wrap=True)
+    table.add_column("프로젝트", no_wrap=True)
+    table.add_column("카테고리", no_wrap=True)
+    table.add_column("시간", justify="right", no_wrap=True)
+    table.add_column("메모", overflow="fold", min_width=NOTE_MIN_WIDTH)
+    table.add_column("Task", no_wrap=True)
+    for log in logs:
+        table.add_row(
+            str(log.id),
+            day_label(log.date),
+            Text(log.project.slug),
+            Text(log.category),
+            format_duration(log.minutes),
+            Text(log.note),
+            task_ref(log),
+        )
+    return table
+
+
+def worklog_lines(logs: "Sequence[WorkLog]") -> "list[Text]":
+    """좁은 화면용 기록 목록: '#128 10-01 (목) payment/dev 2h — 메모 [#42]'.
+
+    태스크가 없으면 끝의 '[#42]'를 생략한다.
+    """
+    return [
+        _summary(
+            log,
+            day=log.date,
+            suffix=f" [#{log.task_id}]" if log.task_id is not None else "",
+        )
+        for log in logs
+    ]
 
 
 def total_label(day: date, today: date) -> str:
