@@ -41,5 +41,8 @@ jobs:
       - name: Type check (core)
         run: uv run mypy src/logbook/core
 
-      - name: Test (core coverage >= 80%)
+      - name: Test (logbook coverage >= 80%)
         run: uv run pytest --cov-fail-under=80
+
+      - name: Core coverage (>= 80%, SPEC 8)
+        run: uv run coverage report --include="*/logbook/core/*" --fail-under=80

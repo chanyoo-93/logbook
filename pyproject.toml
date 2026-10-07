@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-lb = "logbook.cli.main:app"
+lb = "logbook.cli.main:run"
 
 [dependency-groups]
 dev = [
@@ -50,4 +50,5 @@ files = ["src/logbook/core"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --cov=logbook.core --cov-report=term-missing"
+addopts = "-q --cov=logbook --cov-report=term-missing"
+markers = ["subprocess: 새 인터프리터나 설치된 lb 실행 파일을 띄우는 테스트 (lb는 uv sync 필요)"]
