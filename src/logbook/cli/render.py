@@ -9,12 +9,13 @@ from typing import TYPE_CHECKING
 from logbook.core.platform import symbol
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
     from rich.table import Table
     from rich.text import Text
 
     from logbook.core.models import Project, WorkLog
+    from logbook.core.services import MatrixResult, StatsResult
 
 # 접을 수 있는(fold) 이름 열의 최소 폭
 NAME_MIN_WIDTH = 10
@@ -167,4 +168,97 @@ def project_table(projects: "Sequence[Project]", *, show_status: bool) -> "Table
         if show_status:
             cells.append(Text("보관" if project.archived else "사용 중"))
         table.add_row(*cells)
+    return table
+
+
+def percent(part: int, total: int) -> str:
+    """비율의 정수 반올림(half-up) 표기: '54%'. total이나 part가 0이면 '-'."""
+    if total == 0 or part == 0:
+        return NO_VALUE
+    return f"{(200 * part + total) // (2 * total)}%"
+
+
+def _minutes_or_dash(minutes: int) -> str:
+    """시간 표기. 0분이면 '-'."""
+    from logbook.core.duration import format_duration
+
+    return format_duration(minutes) if minutes else NO_VALUE
+
+
+def matrix_table(result: "MatrixResult", labels: "Mapping[str, str]") -> "Table":
+    """프로젝트 x 카테고리 표: 프로젝트 | 카테고리 라벨들 | 합계. 빈 칸은 '-'.
+
+    설정에 없는 카테고리는 key를 그대로 머리글로 쓴다. 모든 열을 접지 않는다.
+    """
+    from rich.text import Text
+
+    table = new_table()
+    table.add_column("프로젝트", no_wrap=True)
+    for category in result.categories:
+        table.add_column(Text(labels.get(category, category)), justify="right", no_wrap=True)
+    table.add_column("합계", justify="right", no_wrap=True)
+    for slug in result.projects:
+        table.add_row(
+            Text(slug),
+            *(
+                _minutes_or_dash(result.cells.get((slug, category), 0))
+                for category in result.categories
+            ),
+            _minutes_or_dash(result.row_totals[slug]),
+        )
+    return table
+
+
+def matrix_lines(result: "MatrixResult", labels: "Mapping[str, str]") -> "list[Text]":
+    """좁은 화면용 행렬 목록: 'payment  19h  개발 14h · 코드리뷰 3h · 회의 2h'.
+
+    기록이 있는 칸만 카테고리 열 순서대로 적는다.
+    """
+    from rich.text import Text
+
+    from logbook.core.duration import format_duration
+
+    lines = []
+    for slug in result.projects:
+        parts: list[str | Text] = [Text(slug), f"  {format_duration(result.row_totals[slug])}  "]
+        cells = [
+            (category, result.cells[(slug, category)])
+            for category in result.categories
+            if (slug, category) in result.cells
+        ]
+        for index, (category, minutes) in enumerate(cells):
+            if index:
+                parts.append(f" {info_mark()} ")
+            parts.extend((Text(labels.get(category, category)), f" {format_duration(minutes)}"))
+        lines.append(Text.assemble(*parts))
+    return lines
+
+
+def by_table(result: "StatsResult") -> "Table":
+    """묶음별 합계 표. 이름 열만 접는다.
+
+    - project:  프로젝트 | 이름 | 시간 | 건수 | 비율
+    - category: 카테고리 | 이름 | 시간 | 건수 | 비율
+    - day:      날짜('09-28 (월)') | 시간(0이면 '-') | 건수 | 비율
+    """
+    from rich.text import Text
+
+    table = new_table()
+    if result.by == "day":
+        table.add_column("날짜", no_wrap=True)
+    else:
+        table.add_column("프로젝트" if result.by == "project" else "카테고리", no_wrap=True)
+        table.add_column("이름", overflow="fold", min_width=NAME_MIN_WIDTH)
+    table.add_column("시간", justify="right", no_wrap=True)
+    table.add_column("건수", justify="right", no_wrap=True)
+    table.add_column("비율", justify="right", no_wrap=True)
+    for row in result.rows:
+        # day의 key는 ISO 날짜라 화면에는 label('09-28 (월)')만 쓴다.
+        lead = [Text(row.label)] if result.by == "day" else [Text(row.key), Text(row.label)]
+        table.add_row(
+            *lead,
+            _minutes_or_dash(row.minutes),
+            str(row.count),
+            percent(row.minutes, result.total_minutes),
+        )
     return table

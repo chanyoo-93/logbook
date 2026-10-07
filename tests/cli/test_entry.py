@@ -295,6 +295,9 @@ def _add_logs_today(db_path: Path, count: int) -> None:
             ["log", "edit", "2", "-t", "x"], 1, "오류: 태스크 ID가", id="log-edit-bad-task"
         ),
         pytest.param(["log", "rm", "abc"], 1, "오류: 기록 ID가", id="log-rm-bad-id"),
+        pytest.param(["stats", "--help"], 0, None, id="stats-help"),
+        pytest.param(["stats", "--by", "x"], 1, "오류: 집계 기준이", id="stats-bad-by"),
+        pytest.param(["stats", "-w", "2026-W99"], 1, "오류: 주차 형식이", id="stats-bad-week"),
     ],
 )
 def test_startup_does_not_load_heavy_modules(
