@@ -107,9 +107,14 @@ def _find_project(s: Session, slug: str) -> Project | None:
     return s.scalars(select(Project).where(Project.slug == slug)).one_or_none()
 
 
-def _validate_slug(slug: str) -> None:
+def is_valid_slug(slug: str) -> bool:
+    """slug 형식(SLUG_PATTERN)에 맞는지. 존재 여부는 보지 않는다."""
     # fullmatch: '$'가 끝의 줄바꿈 앞에서도 맞는 것을 막는다.
-    if _SLUG_RE.fullmatch(slug) is None:
+    return _SLUG_RE.fullmatch(slug) is not None
+
+
+def _validate_slug(slug: str) -> None:
+    if not is_valid_slug(slug):
         raise InvalidInputError(
             f"프로젝트 slug가 올바르지 않습니다: '{slug}'. 영문 소문자나 숫자로 시작하고 "
             "영문 소문자·숫자·'-'·'_'만 쓸 수 있습니다 (최대 32자)."
@@ -125,7 +130,7 @@ def _validate_color(color: str | None) -> None:
 
 def _not_found_message(slug: str) -> str:
     # 쓸 수 없는 slug로 만들라고 안내하지 않도록 자리표시자를 쓴다.
-    hint = slug if _SLUG_RE.fullmatch(slug) is not None else "<slug>"
+    hint = slug if is_valid_slug(slug) else "<slug>"
     return (
         f"프로젝트 '{slug}'가 없습니다. 'lb project list'로 확인하거나, "
         f"새 프로젝트라면 'lb project add {hint} <이름>'으로 만드세요."

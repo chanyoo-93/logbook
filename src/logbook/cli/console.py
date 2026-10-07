@@ -11,10 +11,14 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
+    from typing import TypeAlias
 
     from rich.console import Console, RenderableType
     from rich.table import Table
     from rich.text import Text
+
+    # print_line·print_notice에 넘기는 한 조각: 고정 문구, (문자열, 스타일), 사용자 데이터(Text)
+    LinePart: TypeAlias = str | tuple[str, str] | Text
 
 # stdout/stderr가 TTY가 아닐 때(파이프, 파일, 테스트)의 고정 폭. 기록 한 건이 한 줄로 유지된다.
 PIPE_WIDTH = 1000
@@ -113,18 +117,18 @@ def _write_err(renderable: "RenderableType", **kwargs: Any) -> None:
         _silence_stderr()
 
 
-def _assemble(parts: "Sequence[str | tuple[str, str] | Text]") -> "Text":
+def _assemble(parts: "Sequence[LinePart]") -> "Text":
     from rich.text import Text
 
     return Text.assemble(*parts)
 
 
-def print_line(*parts: "str | tuple[str, str] | Text") -> None:
+def print_line(*parts: "LinePart") -> None:
     """stdout에 한 줄을 출력한다. 사용자 데이터는 Text나 (문자열, 스타일)로 넘긴다."""
     _write_out(out(), _assemble(parts), soft_wrap=True)
 
 
-def print_notice(*parts: "str | tuple[str, str] | Text", end: str = "\n") -> None:
+def print_notice(*parts: "LinePart", end: str = "\n") -> None:
     """stderr에 접두어 없는 안내를 출력한다. 확인 프롬프트는 end=""로 쓴다."""
     _write_err(_assemble(parts), soft_wrap=True, end=end)
 

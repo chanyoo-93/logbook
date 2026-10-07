@@ -162,7 +162,11 @@ def test_no_args_shows_help(tmp_path: Path) -> None:
 
 
 @pytest.mark.subprocess
-@pytest.mark.parametrize("args", [[], ["--version"], ["--help"]], ids=["import", "version", "help"])
+@pytest.mark.parametrize(
+    "args",
+    [[], ["--version"], ["--help"], ["init", "--help"], ["project"], ["project", "--help"]],
+    ids=["import", "version", "help", "init-help", "project-no-args", "project-help"],
+)
 def test_startup_does_not_load_heavy_modules(tmp_path: Path, args: list[str]) -> None:
     # pytest 프로세스는 conftest 때문에 이미 sqlalchemy를 로드했으므로 새 인터프리터에서 확인한다.
     loaded = loaded_forbidden(args, env=lb_env(tmp_path, "utf-8"), cwd=tmp_path)

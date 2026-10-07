@@ -54,6 +54,14 @@ def lb(tmp_home: Path) -> Callable[..., Result]:
 
 
 @pytest.fixture
+def initialized(lb: Callable[..., Result], tmp_home: Path) -> Path:
+    """'lb init'을 마친 임시 DB 경로."""
+    result = lb("init")
+    assert result.exit_code == 0, result.stderr
+    return tmp_home / "logbook.db"
+
+
+@pytest.fixture
 def open_db(tmp_home: Path) -> Callable[[], AbstractContextManager[Session]]:
     """데이터 준비·검증용 세션을 여는 함수. 블록이 끝나면 커밋하고 엔진을 dispose한다."""
 
