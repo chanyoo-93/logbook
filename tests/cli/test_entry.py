@@ -17,7 +17,7 @@ from tests.cli.helpers import (
     FORBIDDEN_MODULES,
     LAUNCHER,
     lb_env,
-    loaded_forbidden,
+    run_import_guard,
     run_lb,
     run_lb_closed_stdout,
 )
@@ -162,13 +162,71 @@ def test_no_args_shows_help(tmp_path: Path) -> None:
 
 
 @pytest.mark.subprocess
-@pytest.mark.parametrize(
-    "args",
-    [[], ["--version"], ["--help"], ["init", "--help"], ["project"], ["project", "--help"]],
-    ids=["import", "version", "help", "init-help", "project-no-args", "project-help"],
-)
-def test_startup_does_not_load_heavy_modules(tmp_path: Path, args: list[str]) -> None:
-    # pytest 프로세스는 conftest 때문에 이미 sqlalchemy를 로드했으므로 새 인터프리터에서 확인한다.
-    loaded = loaded_forbidden(args, env=lb_env(tmp_path, "utf-8"), cwd=tmp_path)
+@pytest.mark.parametrize("encoding", ["cp1252", "cp949"])
+def test_add_keeps_note_verbatim_on_legacy_code_page(tmp_path: Path, encoding: str) -> None:
+    # UTF-8 출력, windows_expand_args=False(%VAR%, $VAR, ~ 펼침 없음), 마크업 안전성을 한 번에 본다.
+    env = lb_env(tmp_path, encoding)
+    assert run_lb(["init"], env=env, cwd=tmp_path).returncode == 0
+    note = "%USERNAME% $HOME ~x [/api] 한글"
 
-    assert loaded == [], f"금지 모듈 로드됨: {loaded} (검사 대상: {FORBIDDEN_MODULES})"
+    proc = run_lb(["add", "2h", note, "-c", "dev"], env=env, cwd=tmp_path)
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout == f"✔ #1 common/dev 2h — {note} (오늘 누적 2h)\n"
+    assert proc.stderr == ""
+
+
+@pytest.mark.subprocess
+@pytest.mark.parametrize("encoding", ["cp1252", "cp949"])
+def test_add_error_is_utf8_on_legacy_code_page(tmp_path: Path, encoding: str) -> None:
+    env = lb_env(tmp_path, encoding)
+    assert run_lb(["init"], env=env, cwd=tmp_path).returncode == 0
+
+    proc = run_lb(["add", "1h", "x", "-c", "nope"], env=env, cwd=tmp_path)
+
+    assert proc.returncode == 1
+    assert proc.stdout == ""
+    assert proc.stderr.startswith("오류: 카테고리 'nope'는 쓸 수 없습니다.")
+
+
+@pytest.mark.subprocess
+def test_add_does_not_expand_windows_args(tmp_path: Path) -> None:
+    # Click의 Windows 인자 펼침이 켜져 있으면 %USERNAME%, ~, glob이 'lbtest~a1'로 바뀐다.
+    # 시간 파싱 오류가 DB보다 먼저 나므로 lb init이 필요 없다.
+    (tmp_path / "lbtest~a1").write_text("", encoding="utf-8")
+    pattern = "%USERNAME%~[ab]*"
+
+    proc = run_lb(["add", pattern, "x"], env=lb_env(tmp_path, "cp1252"), cwd=tmp_path)
+
+    assert proc.returncode == 1
+    assert f"'{pattern}'" in proc.stderr
+
+
+@pytest.mark.subprocess
+@pytest.mark.parametrize(
+    ("args", "exit_code", "error"),
+    [
+        pytest.param([], None, None, id="import"),
+        pytest.param(["--version"], 0, None, id="version"),
+        pytest.param(["--help"], 0, None, id="help"),
+        pytest.param(["init", "--help"], 0, None, id="init-help"),
+        pytest.param(["project"], 2, None, id="project-no-args"),
+        pytest.param(["project", "--help"], 0, None, id="project-help"),
+        pytest.param(["add", "--help"], 0, None, id="add-help"),
+        pytest.param(["add", "1h"], 2, None, id="add-missing-note"),
+        pytest.param(["add", "abc", "x"], 1, "오류: 시간 형식이", id="add-bad-duration"),
+        pytest.param(["add", "2h", "x", "-d", "13-45"], 1, "오류: 날짜 형식이", id="add-bad-date"),
+        pytest.param(["add", "1h", "x", "-t", "abc"], 1, "오류: 태스크 ID가", id="add-bad-task"),
+    ],
+)
+def test_startup_does_not_load_heavy_modules(
+    tmp_path: Path, args: list[str], exit_code: int | None, error: str | None
+) -> None:
+    # pytest 프로세스는 conftest 때문에 이미 sqlalchemy를 로드했으므로 새 인터프리터에서 확인한다.
+    guard = run_import_guard(args, env=lb_env(tmp_path, "utf-8"), cwd=tmp_path)
+
+    assert guard.loaded == [], f"금지 모듈 로드됨: {guard.loaded} (검사 대상: {FORBIDDEN_MODULES})"
+    # 다른 이유(설정 오류 등)로 더 일찍 끝나 지연 import 경로를 지나지 않은 경우를 걸러 낸다.
+    assert guard.exit_code == exit_code, guard.stderr
+    if error is not None:
+        assert guard.stderr.startswith(error), guard.stderr

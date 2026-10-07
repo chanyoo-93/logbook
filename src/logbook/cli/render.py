@@ -3,6 +3,7 @@
 rich와 core 모델은 CLI 시작 시간을 줄이려고 함수 안이나 TYPE_CHECKING에서만 import한다.
 """
 
+from datetime import date
 from typing import TYPE_CHECKING
 
 from logbook.core.platform import symbol
@@ -11,8 +12,9 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from rich.table import Table
+    from rich.text import Text
 
-    from logbook.core.models import Project
+    from logbook.core.models import Project, WorkLog
 
 # 접을 수 있는(fold) 이름 열의 최소 폭
 NAME_MIN_WIDTH = 10
@@ -32,6 +34,34 @@ def info_mark() -> str:
 def arrow() -> str:
     """변화 표시 화살표 (예: v1 → v2)."""
     return symbol("→", "->")
+
+
+def dash() -> str:
+    """메모 앞 대시."""
+    return symbol("—", "-")
+
+
+def worklog_line(log: "WorkLog") -> "Text":
+    """기록 한 줄 요약: '#128 payment/dev 2h — 결제 재시도 로직 구현'."""
+    from rich.text import Text
+
+    from logbook.core.duration import format_duration
+
+    return Text.assemble(
+        f"#{log.id} ",
+        Text(log.project.slug),
+        "/",
+        Text(log.category),
+        f" {format_duration(log.minutes)} {dash()} ",
+        Text(log.note),
+    )
+
+
+def total_label(day: date, today: date) -> str:
+    """누적 합계의 날짜 표기: 오늘이면 '오늘', 아니면 'MM-DD'(예: '09-30')."""
+    if day == today:
+        return "오늘"
+    return f"{day.month:02d}-{day.day:02d}"
 
 
 def new_table() -> "Table":

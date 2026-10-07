@@ -43,8 +43,8 @@ _REMOVED_ENV_VARS = (
     "GITHUB_ACTIONS",
 )
 
-# 새 인터프리터에서 run()을 실행한 뒤 로드된 금지 모듈을 결과 파일(JSON)에 기록한다.
-# argv: <결과 파일> [lb 인자…]. lb 인자가 없으면 import만 한다.
+# 새 인터프리터에서 run()을 실행한 뒤 로드된 금지 모듈과 종료 코드를 결과 파일(JSON)에 기록한다.
+# argv: <결과 파일> [lb 인자…]. lb 인자가 없으면 import만 한다(종료 코드 null).
 _GUARD_DRIVER = """\
 import json
 import sys
@@ -53,16 +53,25 @@ FORBIDDEN = {forbidden!r}
 result_path, cli_args = sys.argv[1], sys.argv[2:]
 from logbook.cli.main import run
 
+exit_code = None
 if cli_args:
     sys.argv = ["lb", *cli_args]
     try:
         run()
-    except SystemExit:
-        pass
+    except SystemExit as exc:
+        exit_code = exc.code
 loaded = sorted(name for name in FORBIDDEN if name in sys.modules)
 with open(result_path, "w", encoding="utf-8") as f:
-    json.dump(loaded, f)
+    json.dump({{"loaded": loaded, "exit_code": exit_code}}, f)
 """
+
+
+class GuardRun(NamedTuple):
+    """import 가드 실행 결과: 로드된 금지 모듈, run()의 종료 코드(import만 했으면 None), stderr."""
+
+    loaded: list[str]
+    exit_code: int | None
+    stderr: str
 
 
 class Proc(NamedTuple):
@@ -193,10 +202,11 @@ def _run_closed(
     return Proc(completed.returncode, _decode(completed.stdout), "")
 
 
-def loaded_forbidden(args: Sequence[str], *, env: dict[str, str], cwd: Path) -> list[str]:
+def run_import_guard(args: Sequence[str], *, env: dict[str, str], cwd: Path) -> GuardRun:
     """새 인터프리터에서 lb 인자로 run()을 실행하고 로드된 FORBIDDEN_MODULES 목록을 반환한다.
 
-    args가 비어 있으면 run()을 부르지 않고 import만 한다.
+    args가 비어 있으면 run()을 부르지 않고 import만 한다. 종료 코드와 stderr도 함께 돌려주어,
+    테스트가 의도한 단계(예: 시간 파싱 오류)에서 멈췄는지 확인할 수 있게 한다.
     """
     result_path = cwd / "loaded-modules.json"
     driver = _GUARD_DRIVER.format(forbidden=FORBIDDEN_MODULES)
@@ -211,5 +221,5 @@ def loaded_forbidden(args: Sequence[str], *, env: dict[str, str], cwd: Path) -> 
     )
     if completed.returncode != 0:
         pytest.fail(f"import 가드 드라이버 실패: {completed.stderr.decode('utf-8', 'replace')}")
-    loaded: list[str] = json.loads(result_path.read_text(encoding="utf-8"))
-    return loaded
+    result: dict[str, Any] = json.loads(result_path.read_text(encoding="utf-8"))
+    return GuardRun(result["loaded"], result["exit_code"], _decode(completed.stderr))
