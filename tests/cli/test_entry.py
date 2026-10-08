@@ -228,12 +228,15 @@ def test_timer_round_trip_with_real_clock(tmp_path: Path) -> None:
 
 @pytest.mark.subprocess
 def test_log_rm_accepts_bom_prefixed_pipe_input(tmp_path: Path) -> None:
-    # Windows PowerShell 5.1의 `"y" | lb log rm 1`은 EF BB BF 'y' CR LF를 보낸다.
-    env = lb_env(tmp_path, "utf-8")
+    # PowerShell 5.1은 프로필이 InputEncoding·$OutputEncoding을 UTF-8로 두면 BOM을 두 번 보낸다.
+    # stdin 디코딩이 로케일 코덱(cp949)인 실제 상황을 위해 PYTHONIOENCODING을 cp949로 둔다.
+    env = lb_env(tmp_path, "cp949")
     assert run_lb(["init"], env=env, cwd=tmp_path).returncode == 0
     assert run_lb(["add", "1h", "지울 기록", "-c", "dev"], env=env, cwd=tmp_path).returncode == 0
 
-    proc = run_lb(["log", "rm", "1"], env=env, cwd=tmp_path, input_bytes=b"\xef\xbb\xbfy\r\n")
+    proc = run_lb(
+        ["log", "rm", "1"], env=env, cwd=tmp_path, input_bytes=b"\xef\xbb\xbf\xef\xbb\xbfy\r\n"
+    )
 
     assert proc.returncode == 0, proc.stderr
     assert proc.stdout.startswith("✔ 삭제했습니다: #1 ")

@@ -87,6 +87,52 @@ def test_confirm_rejects_no_after_bom(monkeypatch: pytest.MonkeyPatch) -> None:
     assert runtime.confirm("삭제할까요?") is False
 
 
+def _byte_stdin(data: bytes) -> io.TextIOWrapper:
+    """파이프 stdin처럼 .buffer를 가진 스트림. 텍스트 계층은 cp1252라 잘못 읽으면 깨진다."""
+    return io.TextIOWrapper(io.BytesIO(data), encoding="cp1252")
+
+
+UTF8_BOM = b"\xef\xbb\xbf"
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        pytest.param(b"y\r\n", id="plain"),
+        pytest.param(UTF8_BOM + b"y\r\n", id="single-bom"),
+        pytest.param(UTF8_BOM * 2 + b"y\r\n", id="double-bom"),
+        pytest.param(UTF8_BOM + "ㅛ\r\n".encode(), id="bom-utf8-hangul"),
+        pytest.param("ㅛ\r\n".encode("cp949"), id="cp949-hangul"),
+        pytest.param(UTF8_BOM * 2 + "ㅛ\r\n".encode("cp949"), id="double-bom-cp949-hangul"),
+    ],
+)
+def test_confirm_reads_bytes_ignoring_bom_and_codec(
+    monkeypatch: pytest.MonkeyPatch, data: bytes
+) -> None:
+    monkeypatch.setattr(sys, "stdin", _byte_stdin(data))
+
+    assert runtime.confirm("삭제할까요?") is True
+
+
+def test_cp949_hangul_bytes_are_the_expected_pair() -> None:
+    assert "ㅛ".encode("cp949") == b"\xa4\xcb"
+
+
+def test_confirm_bytes_reject_no_after_bom(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "stdin", _byte_stdin(UTF8_BOM * 2 + b"n\r\n"))
+
+    assert runtime.confirm("삭제할까요?") is False
+
+
+def test_confirm_bytes_empty_is_eof(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setattr(sys, "stdin", _byte_stdin(b""))
+
+    assert runtime.confirm("질문") is None
+    assert capsys.readouterr().err == "질문 [y/N]: \n"
+
+
 @pytest.mark.parametrize("answer", ["n\n", "\n", "maybe\n"])
 def test_confirm_rejects_other_answers(monkeypatch: pytest.MonkeyPatch, answer: str) -> None:
     monkeypatch.setattr(sys, "stdin", io.StringIO(answer))

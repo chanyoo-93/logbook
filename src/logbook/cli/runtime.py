@@ -5,6 +5,7 @@
 core.config와 core.db는 CLI 시작 시간을 줄이려고 함수 안에서 지연 import한다.
 """
 
+import locale
 import re
 import sys
 from contextlib import contextmanager
@@ -57,6 +58,7 @@ _ID_PATTERN = re.compile(rf"#?([0-9]{{1,{MAX_ID_DIGITS}}})")
 MAX_ROUND_MINUTES = 60
 # ASCII 숫자 1~2자리만 받는다(\d는 아랍 숫자·전각 숫자도 받는다).
 _ROUND_PATTERN = re.compile(r"[0-9]{1,2}")
+_UTF8_BOM = b"\xef\xbb\xbf"
 _YES_ANSWERS = frozenset({"y", "yes", "ㅛ", "ㅛㄷㄴ"})  # 한글 자판 상태의 y, yes
 
 
@@ -119,13 +121,34 @@ def confirm(question: str) -> bool | None:
     typer.confirm은 영어 안내를 내고 stdout에 공백을 섞어 쓰지 않는다.
     """
     console.print_notice(f"{question} [y/N]: ", end="")
-    answer = sys.stdin.readline()
-    if answer == "":
+    answer = _read_answer_line()
+    if answer is None:
         console.print_notice("")
         return None
-    # Windows PowerShell 5.1은 파이프 입력 앞에 UTF-8 BOM(U+FEFF)을 붙이고,
-    # strip()은 이를 지우지 않는다.
+    # 텍스트 경로(.buffer 없는 스트림)에서는 U+FEFF가 남을 수 있고, strip()은 이를 지우지 않는다.
     return answer.lstrip("\ufeff").strip().lower() in _YES_ANSWERS
+
+
+def _read_answer_line() -> str | None:
+    """stdin 한 줄을 읽는다. EOF면 None.
+
+    Windows PowerShell 5.1은 프로필이 입출력 인코딩을 UTF-8로 두면 파이프 입력 앞에 UTF-8 BOM을
+    붙이고($OutputEncoding까지 UTF-8이면 두 번), 파이프 stdin은 로케일 코덱(cp949 등)으로
+    디코드되어 BOM이 깨진다. 그래서 바이트로 읽어 BOM을 먼저 지운 뒤 디코드한다.
+    """
+    buffer = getattr(sys.stdin, "buffer", None)
+    if buffer is None:  # .buffer가 없는 스트림(일부 테스트 대역)은 텍스트로 읽는다.
+        line = sys.stdin.readline()
+        return None if line == "" else line
+    raw: bytes = buffer.readline()
+    if raw == b"":
+        return None
+    while raw.startswith(_UTF8_BOM):
+        raw = raw[len(_UTF8_BOM) :]
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode(locale.getpreferredencoding(False), errors="replace")
 
 
 def require_confirmation(question: str, *, cancelled: str, no_input: str) -> None:
