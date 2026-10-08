@@ -363,6 +363,49 @@ def test_prepare_output_path_rejects_parent_that_is_file(tmp_path: Path) -> None
     assert str(exc_info.value).startswith(f"저장할 폴더가 없습니다: {parent}.")
 
 
+# --- prepare_input_path ---
+
+
+def test_prepare_input_path_returns_existing_file(tmp_path: Path) -> None:
+    target = tmp_path / "in.jsonl"
+    target.write_text("x", encoding="utf-8")
+
+    assert runtime.prepare_input_path(str(target), "가져올 파일 경로") == target
+
+
+def test_prepare_input_path_expands_home(isolated_home: Path) -> None:
+    (isolated_home / "백업.jsonl").write_text("x", encoding="utf-8")
+
+    assert runtime.prepare_input_path("~/백업.jsonl", "가져올 파일 경로") == (
+        isolated_home / "백업.jsonl"
+    )
+
+
+def test_prepare_input_path_names_the_target_for_bad_home() -> None:
+    with pytest.raises(InvalidInputError) as exc_info:
+        runtime.prepare_input_path("~nouser/x.jsonl", "가져올 파일 경로")
+
+    assert str(exc_info.value).startswith("경로가 올바르지 않습니다: 가져올 파일 경로 값 ")
+
+
+def test_prepare_input_path_rejects_directory_with_output_wording(tmp_path: Path) -> None:
+    with pytest.raises(InvalidInputError) as exc_info:
+        runtime.prepare_input_path(str(tmp_path), "가져올 파일 경로")
+
+    assert str(exc_info.value) == (
+        f"파일 경로가 아니라 폴더입니다: {tmp_path}. 파일 이름까지 지정하세요."
+    )
+
+
+def test_prepare_input_path_rejects_missing_file(tmp_path: Path) -> None:
+    target = tmp_path / "없음.jsonl"
+
+    with pytest.raises(InvalidInputError) as exc_info:
+        runtime.prepare_input_path(str(target), "가져올 파일 경로")
+
+    assert str(exc_info.value) == f"가져올 파일이 없습니다: {target}"
+
+
 def test_write_text_file_writes_utf8_lf(tmp_path: Path) -> None:
     target = tmp_path / "out.md"
 

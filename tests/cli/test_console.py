@@ -365,6 +365,15 @@ def test_print_raw_does_not_interpret_markup(capsys: pytest.CaptureFixture[str])
     assert capsys.readouterr().out == "[bold]x[/bold] :smile: [/api]\n"
 
 
+def test_print_raw_expands_tabs_to_spaces(capsys: pytest.CaptureFixture[str]) -> None:
+    # Rich Text가 탭을 공백으로 펼친다. 계획서가 받아들인 절충이라 값으로 고정한다.
+    console.print_raw("a\tb\n")
+
+    out = capsys.readouterr().out
+    assert "\t" not in out
+    assert out.startswith("a") and out.endswith("b\n")
+
+
 def test_print_raw_raises_output_closed_on_broken_stdout(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys, "stdout", BrokenStream(BrokenPipeError()))
 

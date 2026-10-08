@@ -219,7 +219,6 @@ def test_import_round_trip_into_other_db(
     seeded: Path,
     workdir: Path,
     switch_db: Callable[[str], Path],
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     original_log = run_ok(lb, "log").stdout
     original_tasks = run_ok(lb, "task", "list", "-s", "all").stdout
@@ -251,7 +250,7 @@ def test_import_uses_ascii_mark_without_unicode(
 
 
 def test_import_rejects_database_with_data(
-    lb: Callable[..., Result], seeded: Path, workdir: Path, open_db: OpenDb
+    lb: Callable[..., Result], seeded: Path, workdir: Path
 ) -> None:
     run_ok(lb, "export", "-o", "b.jsonl")
     before = run_ok(lb, "log").stdout

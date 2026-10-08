@@ -8,6 +8,7 @@ from dataclasses import replace
 from importlib import resources
 from pathlib import Path
 
+import jinja2
 import pytest
 
 from logbook.core.errors import InvalidInputError
@@ -240,6 +241,7 @@ def test_syntax_error_message(tmp_path: Path) -> None:
     suffix = "). 기본 템플릿을 쓰려면 이 파일을 지우거나 이름을 바꾸세요."
     assert message.startswith(prefix)
     assert message.endswith(suffix)
+    assert "Expected an expression" in message  # 가운데는 Jinja2가 만든 {message}다.
 
 
 @pytest.mark.parametrize(
@@ -286,6 +288,21 @@ def test_runtime_error_message(tmp_path: Path, source: str, lineno: int, error_n
     message = str(info.value)
     assert message.startswith(f"{PROCESS_PREFIX}{path} ({lineno}번째 줄: {error_name}: ")
     assert message.endswith(PROCESS_SUFFIX)
+
+
+def test_runtime_error_message_uses_only_first_line(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fail(self: object, *args: object, **kwargs: object) -> str:
+        raise RuntimeError("첫 줄\n둘째 줄")
+
+    monkeypatch.setattr(jinja2.Template, "render", fail)
+    path = write_template(tmp_path, b"x")
+    with pytest.raises(InvalidInputError) as info:
+        render_markdown(empty_data(), template_path=path)
+    message = str(info.value)
+    assert "RuntimeError: 첫 줄)" in message
+    assert "\n" not in message
 
 
 def test_unknown_filter_outside_if_is_syntax_error(tmp_path: Path) -> None:

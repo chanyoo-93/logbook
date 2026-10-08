@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from logbook.core import db, services
 from logbook.core.errors import DatabaseBusyError, InvalidInputError
 from logbook.core.models import ActiveTimer, Project, Task, WorkLog
+from logbook.core.services import backup, backup_import
 from logbook.core.taskstatus import TaskStatus
 
 NOW = datetime(2026, 10, 8, 3, 0, 0, tzinfo=UTC)
@@ -790,3 +791,18 @@ def test_flush의_OperationalError는_번역하지_않아_DatabaseBusyError가_�
     assert excinfo.value.__cause__ is error
     with Session(engine) as check:
         assert [p.slug for p in check.scalars(select(Project))] == ["common"]
+
+
+def test_검증_표의_종류_키는_서로_빠짐없이_맞는다() -> None:
+    assert tuple(backup_import._KINDS) == backup.TABLE_ORDER
+    assert set(backup_import._REFERENCES) == set(backup.TABLE_ORDER)
+    used_kinds = set()
+    for table, fields in backup.FIELDS.items():
+        assert tuple(backup_import._KINDS[table]) == fields, table
+        used_kinds.update(backup_import._KINDS[table].values())
+    base_kinds = {kind.removeprefix("opt_") for kind in used_kinds}
+    # 모든 종류에 변환기와 기대 문구가 있다(opt_ 접두 종류는 접두 없는 변환기를 쓴다).
+    assert base_kinds <= set(backup_import._CONVERTERS)
+    # 쓰이지 않는 변환기·문구가 남아 있지 않다.
+    assert set(backup_import._CONVERTERS) == base_kinds
+    assert set(backup_import._EXPECTED) == used_kinds

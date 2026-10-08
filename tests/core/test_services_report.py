@@ -286,6 +286,15 @@ def test_task_done_in_earlier_week_with_logs_this_week_stays_done(seeded: Sessio
     assert data.done_task_count == 0
 
 
+def test_week_boundary_includes_sunday_and_excludes_next_monday(seeded: Session) -> None:
+    _log(seeded, 60, day=FIXED.end)
+    _log(seeded, 30, day=FIXED.end + timedelta(days=1))
+
+    data = _report(seeded)
+
+    assert (data.total, data.log_count) == ("1h", 1)
+
+
 def test_titles_and_labels_are_single_line(seeded: Session) -> None:
     task = _task(seeded, "첫 줄\n# 둘째\t끝")
     _log(seeded, 60, "dev", task=task)
