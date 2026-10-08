@@ -11,13 +11,10 @@ from sqlalchemy.orm import Session
 from logbook.core import db, services
 from logbook.core.models import ActiveTimer, Base, Project, Task, WorkLog
 from logbook.core.services import backup
-from logbook.core.taskstatus import TaskStatus
 
-NOW = datetime(2026, 10, 8, 3, 0, 0, tzinfo=UTC)
+from .backup_helpers import LS, NEL, NOW, PS, populate
+
 KST = timezone(timedelta(hours=9))
-LS = chr(0x2028)
-PS = chr(0x2029)
-NEL = chr(0x85)
 
 HEADER_LINE = (
     '{"exported_at": "2026-10-08T03:00:00+00:00", "format": 1, '
@@ -27,79 +24,6 @@ HEADER_LINE = (
 
 def _rows(lines: list[str]) -> list[dict[str, Any]]:
     return [json.loads(line) for line in lines[1:]]
-
-
-def _populate(s: Session) -> None:
-    """모든 테이블에 행을 넣는다. null 필드가 있는 행도 포함한다."""
-    common = services.ensure_common_project(s)
-    pay = Project(
-        id=5,
-        slug="pay",
-        name="결제",
-        description="설명",
-        color="#112233",
-        archived=True,
-        created_at=datetime(2026, 9, 1, 0, 0, 0, tzinfo=UTC),
-    )
-    s.add(pay)
-    s.flush()
-    full = Task(
-        project_id=pay.id,
-        title="전체 필드",
-        description="설명",
-        status=TaskStatus.DOING,
-        category="dev",
-        estimate_minutes=90,
-        planned_week="2026-W41",
-        due_date=date(2026, 10, 9),
-        external_ref="JIRA-1",
-        created_at=datetime(2026, 9, 2, 1, 0, 0, tzinfo=UTC),
-        updated_at=datetime(2026, 9, 3, 1, 0, 0, tzinfo=UTC),
-        done_at=datetime(2026, 9, 4, 1, 0, 0, tzinfo=UTC),
-    )
-    sparse = Task(
-        project_id=common.id,
-        title="빈 필드",
-        status=TaskStatus.TODO,
-        created_at=NOW,
-        updated_at=NOW,
-    )
-    s.add_all([full, sparse])
-    s.flush()
-    s.add_all(
-        [
-            WorkLog(
-                project_id=pay.id,
-                task_id=full.id,
-                category="dev",
-                date=date(2026, 10, 7),
-                minutes=90,
-                note="메모",
-                started_at=datetime(2026, 10, 7, 1, 0, 0, tzinfo=UTC),
-                ended_at=datetime(2026, 10, 7, 2, 30, 0, tzinfo=UTC),
-                created_at=NOW,
-            ),
-            WorkLog(
-                project_id=common.id,
-                task_id=None,
-                category="meeting",
-                date=date(2026, 10, 6),
-                minutes=30,
-                note="",
-                created_at=NOW,
-            ),
-        ]
-    )
-    s.add(
-        ActiveTimer(
-            project_id=pay.id,
-            task_id=None,
-            category="dev",
-            note="타이머",
-            started_at=NOW,
-        )
-    )
-    s.flush()
 
 
 def test_empty_db_exports_only_common_project(session: Session) -> None:
@@ -116,7 +40,7 @@ def test_empty_db_exports_only_common_project(session: Session) -> None:
 
 
 def test_exports_all_tables_and_fields_including_nulls(session: Session) -> None:
-    _populate(session)
+    populate(session)
 
     lines, counts = services.export_records(session, now=NOW)
 
@@ -143,7 +67,7 @@ def test_exports_all_tables_and_fields_including_nulls(session: Session) -> None
         "project_id": 5,
         "title": "전체 필드",
         "description": "설명",
-        "status": "doing",
+        "status": "done",
         "category": "dev",
         "estimate_minutes": 90,
         "planned_week": "2026-W41",
@@ -197,7 +121,7 @@ def test_korean_quotes_and_newlines_in_note_are_json_escaped(session: Session) -
 
 
 def test_lines_follow_table_order_then_id(session: Session) -> None:
-    _populate(session)
+    populate(session)
     other = Project(id=2, slug="aaa", name="앞", created_at=NOW)
     session.add(other)
     session.flush()
@@ -259,7 +183,7 @@ def test_microseconds_are_preserved(session: Session) -> None:
 
 
 def test_every_line_is_one_line_for_splitlines(session: Session) -> None:
-    _populate(session)
+    populate(session)
 
     lines, _ = services.export_records(session, now=NOW)
 
@@ -268,7 +192,7 @@ def test_every_line_is_one_line_for_splitlines(session: Session) -> None:
 
 
 def test_keys_are_sorted_by_name(session: Session) -> None:
-    _populate(session)
+    populate(session)
 
     lines, _ = services.export_records(session, now=NOW)
 
