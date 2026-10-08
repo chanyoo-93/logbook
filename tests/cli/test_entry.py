@@ -321,6 +321,9 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(
             ["plan", "carry", "-w", "x"], 1, "오류: 주차 형식이", id="plan-carry-bad-week"
         ),
+        pytest.param(["start", "--help"], 0, None, id="start-help"),
+        pytest.param(["status", "--help"], 0, None, id="status-help"),
+        pytest.param(["start", "x", "-t", "abc"], 1, "오류: 태스크 ID가", id="start-bad-task"),
         pytest.param(["stats", "--help"], 0, None, id="stats-help"),
         pytest.param(["stats", "--by", "x"], 1, "오류: 집계 기준이", id="stats-bad-by"),
         pytest.param(["stats", "-w", "2026-W99"], 1, "오류: 주차 형식이", id="stats-bad-week"),

@@ -642,7 +642,7 @@ import 가드: `plan --help`, `plan carry --help`, `plan -w x`(rc 1), `plan carr
 
 import 가드: `start --help`, `status --help`, `start x -t abc`(rc 1).
 
-- [ ] RED → GREEN → 커밋 `feat: lb start·status 타이머 명령 추가`
+- [x] RED → GREEN → 커밋 `feat: lb start·status 타이머 명령 추가`
 
 ---
 
