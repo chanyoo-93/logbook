@@ -328,7 +328,7 @@ def render_markdown(data: ReportData, *, template_path: Path | None = None) -> s
   - 첫 실행은 build backend(hatchling)를 내려받으므로 네트워크나 uv 캐시가 필요하다(CI와 `uv sync` 뒤에는 캐시가 있다). 3~6초 걸린다.
   - `zipfile.ZipFile(next(tmp_path.glob("*.whl"))).namelist()`에 `logbook/core/templates/report.md.j2`가 있는지 확인한다.
 
-- [ ] RED → GREEN → 커밋 `feat: 주간보고서 Markdown 렌더링과 기본·사용자 템플릿 추가`
+- [x] RED → GREEN → 커밋 `feat: 주간보고서 Markdown 렌더링과 기본·사용자 템플릿 추가`
 
 ---
 
