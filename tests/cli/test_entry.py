@@ -197,6 +197,29 @@ def test_add_error_is_utf8_on_legacy_code_page(tmp_path: Path, encoding: str) ->
 
 
 @pytest.mark.subprocess
+def test_timer_round_trip_with_real_clock(tmp_path: Path) -> None:
+    # 실제 로컬 시간대(astimezone())와 UTF-8 출력 경로를 거친다. 1분이 지나지 않아 stop은 거부된다.
+    env = lb_env(tmp_path, "cp949")
+    assert run_lb(["init"], env=env, cwd=tmp_path).returncode == 0
+
+    started = run_lb(["start", "한글 타이머", "-c", "dev"], env=env, cwd=tmp_path)
+    assert started.returncode == 0, started.stderr
+    assert started.stdout.startswith("✔ 타이머 시작: common/dev — 한글 타이머 (")
+
+    shown = run_lb(["status"], env=env, cwd=tmp_path)
+    assert shown.returncode == 0, shown.stderr
+    assert shown.stdout.startswith("진행 중: common/dev — 한글 타이머\n")
+
+    stopped = run_lb(["stop"], env=env, cwd=tmp_path)
+    assert stopped.returncode == 1
+    assert stopped.stderr.startswith("오류: 1분이 지나지 않아"), stopped.stderr
+
+    cancelled = run_lb(["cancel", "--yes"], env=env, cwd=tmp_path)
+    assert cancelled.returncode == 0, cancelled.stderr
+    assert cancelled.stdout.startswith("✔ 타이머를 버렸습니다: common/dev — 한글 타이머 (경과 ")
+
+
+@pytest.mark.subprocess
 def test_add_does_not_expand_windows_args(tmp_path: Path) -> None:
     # Click의 Windows 인자 펼침이 켜져 있으면 %USERNAME%, ~, glob이 'lbtest~a1'로 바뀐다.
     # 시간 파싱 오류가 DB보다 먼저 나므로 lb init이 필요 없다.
@@ -324,6 +347,9 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(["start", "--help"], 0, None, id="start-help"),
         pytest.param(["status", "--help"], 0, None, id="status-help"),
         pytest.param(["start", "x", "-t", "abc"], 1, "오류: 태스크 ID가", id="start-bad-task"),
+        pytest.param(["stop", "--help"], 0, None, id="stop-help"),
+        pytest.param(["stop", "--round", "abc"], 1, "오류: 반올림 단위가", id="stop-bad-round"),
+        pytest.param(["cancel", "--help"], 0, None, id="cancel-help"),
         pytest.param(["stats", "--help"], 0, None, id="stats-help"),
         pytest.param(["stats", "--by", "x"], 1, "오류: 집계 기준이", id="stats-bad-by"),
         pytest.param(["stats", "-w", "2026-W99"], 1, "오류: 주차 형식이", id="stats-bad-week"),

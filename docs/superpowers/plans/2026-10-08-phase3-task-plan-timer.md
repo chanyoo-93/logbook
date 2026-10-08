@@ -693,7 +693,7 @@ import 가드: `start --help`, `status --help`, `start x -t abc`(rc 1).
 
 import 가드: `stop --help`, `cancel --help`, `stop --round abc`(rc 1).
 
-- [ ] RED → GREEN → 커밋 `feat: lb stop·cancel 타이머 명령 추가`
+- [x] RED → GREEN → 커밋 `feat: lb stop·cancel 타이머 명령 추가`
 
 ---
 
