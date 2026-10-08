@@ -665,12 +665,12 @@ pytest.param(["import", "없는파일.jsonl"], 1, "오류: 가져올 파일이 �
   - services 목록에 `report`, `backup`을 넣는다.
   - commands 예시에 `report`, `data`를 넣는다.
   - 아키텍처 규칙(66행)의 core 공개 진입점 목록에 `core.report`(보고서 렌더링: `render_markdown`·`user_template_path`, DB에 접근하지 않음)와 이미 CLI가 쓰는 `core.taskstatus`(상태 파서)를 추가한다.
-- [ ] **수동 확인(이 PC, PowerShell 5.1과 7, 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`):**
+- [x] **수동 확인(이 PC, PowerShell 5.1과 7, 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`):**
   - `lb report`: 한글 표 출력
   - `lb report -o 주간.md` 후 메모장으로 열어 한글이 깨지지 않는지
   - `lb report --copy` 후 붙여넣기 확인
   - `lb export` → 새 DB에 `lb import`
-- [ ] **전체 검증:** ruff, ruff format, mypy, pytest(전체 80%, core 80%)
+- [x] **전체 검증:** ruff, ruff format, mypy, pytest(전체 80%, core 80%)
 - [x] 커밋 `docs: Phase 4 완료 표시와 주간보고서·백업 사용 안내 추가`
 - [ ] 사용자 확인 후 Phase 4 이슈 생성 → push → develop 대상 PR. CI 두 OS가 녹색이어야 한다. macOS 확인 절차는 PR 댓글로 남긴다.
 
