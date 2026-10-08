@@ -187,3 +187,10 @@ def print_table(table: "Table", fallback: "Callable[[], Sequence[Text]] | None" 
             _write_out(console, line, soft_wrap=True)
         return
     _write_out(console, table)
+
+
+def print_raw(text: str) -> None:
+    """text를 stdout에 그대로 쓴다. 마크업·이모지 해석, 줄 접기, 줄바꿈 추가를 하지 않는다."""
+    from rich.text import Text
+
+    _write_out(out(), Text(text), soft_wrap=True, end="")

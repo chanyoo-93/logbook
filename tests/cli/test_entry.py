@@ -409,6 +409,14 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(["stats", "--help"], 0, None, id="stats-help"),
         pytest.param(["stats", "--by", "x"], 1, "오류: 집계 기준이", id="stats-bad-by"),
         pytest.param(["stats", "-w", "2026-W99"], 1, "오류: 주차 형식이", id="stats-bad-week"),
+        pytest.param(["report", "--help"], 0, None, id="report-help"),
+        pytest.param(["report", "-w", "x"], 1, "오류: 주차 형식이", id="report-bad-week"),
+        pytest.param(
+            ["report", "-o", "없는폴더/x.md"],
+            1,
+            "오류: 저장할 폴더가 없습니다",
+            id="report-missing-dir",
+        ),
     ],
 )
 def test_startup_does_not_load_heavy_modules(

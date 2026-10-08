@@ -418,7 +418,7 @@ import 가드: `report --help`(rc 0), `report -w x`(rc 1). jinja2가 가드 목�
 pytest.param(["report", "-o", "없는폴더/x.md"], 1, "오류: 저장할 폴더가 없습니다", id="report-missing-dir"),
 ```
 
-- [ ] RED → GREEN → 커밋 `feat: lb report 주간보고서 명령 추가`
+- [x] RED → GREEN → 커밋 `feat: lb report 주간보고서 명령 추가`
 
 ---
 
