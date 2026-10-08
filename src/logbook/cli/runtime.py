@@ -1,4 +1,6 @@
-"""명령이 함께 쓰는 런타임 헬퍼: 오늘 날짜, 설정, DB 세션, 공용 옵션, ID 파싱, 확인 프롬프트.
+"""명령이 함께 쓰는 런타임 헬퍼.
+
+오늘 날짜, 지금 시각, 설정, DB 세션, 공용 옵션, ID·반올림 파싱, 확인 프롬프트.
 
 core.config와 core.db는 CLI 시작 시간을 줄이려고 함수 안에서 지연 import한다.
 """
@@ -6,7 +8,7 @@ core.config와 core.db는 CLI 시작 시간을 줄이려고 함수 안에서 지
 import re
 import sys
 from contextlib import contextmanager
-from datetime import date
+from datetime import date, datetime
 from typing import TYPE_CHECKING, Annotated
 
 import typer
@@ -34,18 +36,37 @@ WeekOpt = Annotated[
 ]
 TaskOpt = Annotated[str | None, typer.Option("--task", "-t", help="태스크 ID (예: 42 또는 '#42')")]
 YesOpt = Annotated[bool, typer.Option("--yes", "-y", help="확인 없이 진행합니다.")]
+StatusOpt = Annotated[
+    str | None,
+    typer.Option("--status", "-s", help="상태: todo,doing,done,dropped,all (쉼표 구분)"),
+]
+EstimateOpt = Annotated[
+    str | None, typer.Option("--est", "-e", help="예상 공수 (예: 4h, 90m, 40h)")
+]
+RefOpt = Annotated[str | None, typer.Option("--ref", help="외부 참조 (예: '#43', URL, Jira 키)")]
+DueOpt = Annotated[str | None, typer.Option("--due", help="마감일: today, 10-15, 2026-10-15 …")]
 
 # SQLite INTEGER 최댓값. 넘는 값은 서비스에서 OverflowError(traceback)가 난다.
 MAX_ID = 2**63 - 1
 MAX_ID_DIGITS = 19
 # 자릿수를 먼저 제한해 int()의 자릿수 한도(4300자리) ValueError도 피한다.
 _ID_PATTERN = re.compile(rf"#?([0-9]{{1,{MAX_ID_DIGITS}}})")
+# core.services.timer.MAX_ROUND_MINUTES와 같은 값이다. services를 import하면 형식 오류 경로에서
+# SQLAlchemy가 로드되므로 여기 따로 두고, 두 값이 같은지는 테스트가 확인한다.
+MAX_ROUND_MINUTES = 60
+# ASCII 숫자 1~2자리만 받는다(\d는 아랍 숫자·전각 숫자도 받는다).
+_ROUND_PATTERN = re.compile(r"[0-9]{1,2}")
 _YES_ANSWERS = frozenset({"y", "yes", "ㅛ", "ㅛㄷㄴ"})  # 한글 자판 상태의 y, yes
 
 
 def today() -> date:
     """오늘 날짜. 테스트가 monkeypatch하는 단일 지점이다."""
     return date.today()
+
+
+def now() -> datetime:
+    """로컬 시간대가 붙은 지금 시각. 테스트가 monkeypatch하는 단일 지점이다."""
+    return datetime.now().astimezone()
 
 
 def settings() -> "Config":
@@ -75,6 +96,17 @@ def parse_id(text: str, what: str = "기록") -> int:
     if not 1 <= value <= MAX_ID:
         raise InvalidInputError(
             f"{what} ID가 올바르지 않습니다: '{text}'. 숫자로 입력하세요 (예: 128 또는 #128)."
+        )
+    return value
+
+
+def parse_round(text: str) -> int:
+    """'--round' 값: 1~MAX_ROUND_MINUTES 분. ASCII 숫자 1~2자리만 받는다."""
+    value = int(text) if _ROUND_PATTERN.fullmatch(text) else 0
+    if not 1 <= value <= MAX_ROUND_MINUTES:
+        raise InvalidInputError(
+            f"반올림 단위가 올바르지 않습니다: '{text}'. "
+            f"1~{MAX_ROUND_MINUTES} 사이의 분 단위 숫자로 입력하세요 (예: --round 15)."
         )
     return value
 

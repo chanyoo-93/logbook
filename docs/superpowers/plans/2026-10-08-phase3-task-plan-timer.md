@@ -400,7 +400,7 @@ def timer_line(timer: "ActiveTimer") -> "Text"                 # "payment/design
 
 **테스트:** `parse_round` 경계(`"1"`, `"60"`, `"0"`, `"61"`, `"015"`, `"1.5"`, `""`, `"١٥"`(아랍 숫자))와 `clock_label` 두 경우를 확인한다. `task_details`는 모든 값이 있을 때, 하나도 없을 때, 참조에 `[bold]`가 든 경우를 확인한다. 표 필요 폭은 `assert_fits`로 확인한다.
 
-- [ ] RED → GREEN → 커밋 `feat: CLI 시각·반올림 파서와 태스크·타이머 표기 추가`
+- [x] RED → GREEN → 커밋 `feat: CLI 시각·반올림 파서와 태스크·타이머 표기 추가`
 
 ---
 

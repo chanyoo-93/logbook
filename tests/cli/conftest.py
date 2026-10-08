@@ -13,6 +13,7 @@ from typer.testing import CliRunner, Result
 from logbook.cli import runtime
 from logbook.cli.main import app
 from logbook.core import db
+from tests.cli.helpers import Clock
 
 # Rich·Typer 출력 모양을 바꾸는 환경변수 (CI 러너나 개발자 셸에 있을 수 있다)
 _OUTPUT_ENV_VARS = (
@@ -28,15 +29,22 @@ _OUTPUT_ENV_VARS = (
 TYPER_PANEL_WIDTH = 200
 
 
+@pytest.fixture
+def clock() -> Clock:
+    """runtime.now()가 돌려줄 시각(기본 FIXED_NOW). clock.advance(minutes=85)로 옮긴다."""
+    return Clock()
+
+
 @pytest.fixture(autouse=True)
-def deterministic_cli(monkeypatch: pytest.MonkeyPatch, today: date) -> None:
-    """두 OS와 CI에서 같은 출력이 나오도록 환경과 '오늘'을 고정한다."""
+def deterministic_cli(monkeypatch: pytest.MonkeyPatch, today: date, clock: Clock) -> None:
+    """두 OS와 CI에서 같은 출력이 나오도록 환경과 '오늘'·'지금'을 고정한다."""
     for name in _OUTPUT_ENV_VARS:
         monkeypatch.delenv(name, raising=False)
     # GitHub 러너는 GITHUB_ACTIONS=true라 Typer가 패널에 ANSI 코드를 넣는다(import 시점에 계산됨).
     monkeypatch.setattr(typer.rich_utils, "FORCE_TERMINAL", False)
     monkeypatch.setattr(typer.rich_utils, "MAX_WIDTH", TYPER_PANEL_WIDTH)
     monkeypatch.setattr(runtime, "today", lambda: today)
+    monkeypatch.setattr(runtime, "now", lambda: clock.now)
 
 
 @pytest.fixture
