@@ -597,7 +597,7 @@ import 가드: `task edit --help`, `task edit 1`(바꿀 항목 없음, rc 1), `t
 
 import 가드: `plan --help`, `plan carry --help`, `plan -w x`(rc 1), `plan carry -w x`(rc 1).
 
-- [ ] RED → GREEN → 커밋 `feat: lb plan 주간 계획 조회와 이월 명령 추가`
+- [x] RED → GREEN → 커밋 `feat: lb plan 주간 계획 조회와 이월 명령 추가`
 
 ---
 

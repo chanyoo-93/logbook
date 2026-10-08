@@ -6,7 +6,7 @@ import typer
 
 from logbook import __version__
 from logbook.cli import console
-from logbook.cli.commands import CommandModule, add, init, log, project, stats, task
+from logbook.cli.commands import CommandModule, add, init, log, plan, project, stats, task
 from logbook.cli.group import LogbookGroup
 from logbook.core.platform import ensure_utf8_console
 
@@ -19,8 +19,8 @@ app = typer.Typer(
 )
 
 # 등록 순서대로 help에 나온다. 단, Typer는 단일 명령(init, add, stats)을
-# 그룹(project, log, task)보다 먼저 보여 준다.
-COMMAND_MODULES: tuple[CommandModule, ...] = (init, project, add, log, task, stats)
+# 그룹(project, log, task, plan)보다 먼저 보여 준다.
+COMMAND_MODULES: tuple[CommandModule, ...] = (init, project, add, log, task, plan, stats)
 
 
 def _register_commands(target: typer.Typer) -> None:
