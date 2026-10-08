@@ -8,6 +8,7 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal, NamedTuple
 
@@ -41,6 +42,22 @@ FORBIDDEN_MODULES = (
 LAUNCHER: str | None = shutil.which("lb", path=str(Path(sys.executable).parent))
 
 SUBPROCESS_TIMEOUT_SECONDS = 60
+
+# CLI 테스트의 '지금'. 목요일, today fixture(2026-10-01)와 같은 날, 고정 오프셋 UTC+9.
+FIXED_NOW = datetime(2026, 10, 1, 9, 30, tzinfo=timezone(timedelta(hours=9)))
+
+
+class Clock:
+    """runtime.now()가 돌려줄 시각. advance()로 옮긴다."""
+
+    def __init__(self, now: datetime = FIXED_NOW) -> None:
+        self.now = now
+
+    def advance(self, **delta: float) -> datetime:
+        """timedelta 인자만큼 시각을 옮기고 새 시각을 돌려준다 (예: advance(minutes=85))."""
+        self.now += timedelta(**delta)
+        return self.now
+
 
 # 서브프로세스 출력 모양을 바꾸는 환경변수
 _REMOVED_ENV_VARS = (
@@ -97,6 +114,16 @@ def tokens(line: str) -> list[str]:
     return re.split(r"\s{2,}", line.strip())
 
 
+def lines(result: Result) -> list[str]:
+    """stdout의 줄 목록."""
+    return result.stdout.splitlines()
+
+
+def rows(result: Result) -> list[list[str]]:
+    """표의 데이터 행(첫 토큰이 ID인 줄)의 토큰 목록."""
+    return [tokens(line) for line in lines(result) if tokens(line)[0].isdigit()]
+
+
 def assert_fits(text: str, width: int) -> None:
     """모든 줄이 width 칸 이하인지 확인한다."""
     for line in text.splitlines():
@@ -144,20 +171,28 @@ def _decode(data: bytes) -> str:
 
 
 def run_lb(
-    args: Sequence[str], *, env: dict[str, str], cwd: Path, input: str | None = None
+    args: Sequence[str],
+    *,
+    env: dict[str, str],
+    cwd: Path,
+    input: str | None = None,
+    input_bytes: bytes | None = None,
 ) -> Proc:
     """설치된 lb 실행 파일을 실행한다. 출력은 UTF-8 strict로 디코드하고 줄바꿈을 \\n으로 맞춘다.
 
     input은 자식 프로세스가 stdin을 읽는 인코딩(PYTHONIOENCODING)으로 인코딩한다.
+    input_bytes는 인코딩 없이 그대로 stdin에 쓴다(BOM 같은 원시 바이트 시험용).
     """
     if LAUNCHER is None:
         pytest.fail("lb 실행 파일이 없습니다. 'uv sync'를 다시 실행하세요.")
     # input이 없으면 stdin을 devnull로 준다(부모의 stdin을 물려받아 확인 프롬프트가 멈추지 않게).
-    stdin_kwargs: dict[str, Any] = (
-        {"stdin": subprocess.DEVNULL}
-        if input is None
-        else {"input": input.encode(env.get("PYTHONIOENCODING") or "utf-8")}
-    )
+    stdin_kwargs: dict[str, Any]
+    if input_bytes is not None:
+        stdin_kwargs = {"input": input_bytes}
+    elif input is not None:
+        stdin_kwargs = {"input": input.encode(env.get("PYTHONIOENCODING") or "utf-8")}
+    else:
+        stdin_kwargs = {"stdin": subprocess.DEVNULL}
     completed = subprocess.run(
         [LAUNCHER, *args],
         shell=False,

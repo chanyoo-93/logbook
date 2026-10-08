@@ -106,7 +106,7 @@ def _expand_home(raw: str, where: str) -> Path:
         return Path.home() / raw[2:].lstrip("/\\")
     if raw.startswith("~"):
         raise InvalidInputError(
-            f"경로가 올바르지 않습니다: {where}의 값 '{raw[:_MAX_ECHO_CHARS]}'. "
+            f"경로가 올바르지 않습니다: {where} 값 '{raw[:_MAX_ECHO_CHARS]}'. "
             "홈 디렉터리 기준 경로는 '~/'로 시작하세요."
         )
     return Path(raw)
@@ -226,7 +226,7 @@ class _Table:
     def _invalid(self, name: str, value: object, expected: str) -> InvalidInputError:
         return InvalidInputError(
             f"설정 값이 올바르지 않습니다: {self.prefix}{name} = {_show(value)} "
-            f"(파일: {self.source}). {expected}로 설정하세요."
+            f"(파일: {self.source}). 설정할 수 있는 값: {expected}."
         )
 
     def _value(self, name: str, default: object | None) -> object:

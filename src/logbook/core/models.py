@@ -12,6 +12,8 @@ from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import TypeDecorator
 
+from logbook.core.taskstatus import TaskStatus as TaskStatus  # 기존 import 경로 유지(재노출)
+
 
 def utcnow() -> dt.datetime:
     """현재 시각 (timezone-aware UTC)."""
@@ -38,13 +40,6 @@ class UTCDateTime(TypeDecorator[dt.datetime]):
         if value is None:
             return None
         return value.replace(tzinfo=dt.UTC)
-
-
-class TaskStatus(enum.StrEnum):
-    TODO = "todo"
-    DOING = "doing"
-    DONE = "done"
-    DROPPED = "dropped"
 
 
 def _enum_values(enum_class: type[enum.Enum]) -> list[str]:

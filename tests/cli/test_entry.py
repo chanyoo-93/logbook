@@ -3,6 +3,7 @@
 import io
 import subprocess
 import sys
+import time
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -28,6 +29,8 @@ from tests.cli.helpers import (
 
 # 파이프 버퍼(수십 KB)를 넘겨 읽는 쪽이 닫힌 뒤에도 쓰기가 이어지게 하는 기록 수
 PIPE_TEST_LOG_COUNT = 2000
+# 타이머 왕복 테스트: 이 시간이 지나면 경과가 1분으로 반올림되어 stop이 성공할 수 있다
+SLOW_RUNNER_SECONDS = 30
 
 
 def _run_in_process(monkeypatch: pytest.MonkeyPatch, *args: str) -> tuple[int | str | None, str]:
@@ -193,7 +196,51 @@ def test_add_error_is_utf8_on_legacy_code_page(tmp_path: Path, encoding: str) ->
 
     assert proc.returncode == 1
     assert proc.stdout == ""
-    assert proc.stderr.startswith("오류: 카테고리 'nope'는 쓸 수 없습니다.")
+    assert proc.stderr.startswith("오류: 쓸 수 없는 카테고리입니다: 'nope'.")
+
+
+@pytest.mark.subprocess
+def test_timer_round_trip_with_real_clock(tmp_path: Path) -> None:
+    # 실제 로컬 시간대(astimezone())와 UTF-8 출력 경로를 거친다. 1분이 지나지 않아 stop은 거부된다.
+    env = lb_env(tmp_path, "cp949")
+    assert run_lb(["init"], env=env, cwd=tmp_path).returncode == 0
+
+    started = run_lb(["start", "한글 타이머", "-c", "dev"], env=env, cwd=tmp_path)
+    t0 = time.monotonic()
+    assert started.returncode == 0, started.stderr
+    assert started.stdout.startswith("✔ 타이머 시작: common/dev — 한글 타이머 (")
+
+    shown = run_lb(["status"], env=env, cwd=tmp_path)
+    assert shown.returncode == 0, shown.stderr
+    assert shown.stdout.startswith("진행 중: common/dev — 한글 타이머\n")
+
+    stopped = run_lb(["stop"], env=env, cwd=tmp_path)
+    if stopped.returncode == 0 and time.monotonic() - t0 >= SLOW_RUNNER_SECONDS:
+        # 경과가 30초를 넘으면 1분으로 반올림되어 stop이 저장에 성공한다.
+        pytest.skip("느린 러너: 30초 경과")
+    assert stopped.returncode == 1
+    assert stopped.stderr.startswith("오류: 1분이 지나지 않아"), stopped.stderr
+
+    cancelled = run_lb(["cancel", "--yes"], env=env, cwd=tmp_path)
+    assert cancelled.returncode == 0, cancelled.stderr
+    assert cancelled.stdout.startswith("✔ 타이머를 버렸습니다: common/dev — 한글 타이머 (경과 ")
+
+
+@pytest.mark.subprocess
+def test_log_rm_accepts_bom_prefixed_pipe_input(tmp_path: Path) -> None:
+    # PowerShell 5.1은 프로필이 InputEncoding·$OutputEncoding을 UTF-8로 두면 BOM을 두 번 보낸다.
+    # stdin 디코딩이 로케일 코덱(cp949)인 실제 상황을 위해 PYTHONIOENCODING을 cp949로 둔다.
+    env = lb_env(tmp_path, "cp949")
+    assert run_lb(["init"], env=env, cwd=tmp_path).returncode == 0
+    assert run_lb(["add", "1h", "지울 기록", "-c", "dev"], env=env, cwd=tmp_path).returncode == 0
+
+    proc = run_lb(
+        ["log", "rm", "1"], env=env, cwd=tmp_path, input_bytes=b"\xef\xbb\xbf\xef\xbb\xbfy\r\n"
+    )
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.startswith("✔ 삭제했습니다: #1 ")
+    assert "#1 " not in run_lb(["log"], env=env, cwd=tmp_path).stdout
 
 
 @pytest.mark.subprocess
@@ -295,6 +342,70 @@ def _add_logs_today(db_path: Path, count: int) -> None:
             ["log", "edit", "2", "-t", "x"], 1, "오류: 태스크 ID가", id="log-edit-bad-task"
         ),
         pytest.param(["log", "rm", "abc"], 1, "오류: 기록 ID가", id="log-rm-bad-id"),
+        pytest.param(["task", "--help"], 0, None, id="task-help"),
+        pytest.param(["task", "add", "--help"], 0, None, id="task-add-help"),
+        pytest.param(["task", "list", "--help"], 0, None, id="task-list-help"),
+        pytest.param(
+            ["task", "add", "x", "--est", "abc"], 1, "오류: 시간 형식이", id="task-add-bad-est"
+        ),
+        pytest.param(
+            ["task", "add", "x", "--week", "2026-W99"],
+            1,
+            "오류: 주차 형식이",
+            id="task-add-bad-week",
+        ),
+        pytest.param(
+            ["task", "add", "x", "--due", "13-45"], 1, "오류: 날짜 형식이", id="task-add-bad-due"
+        ),
+        pytest.param(["task", "list", "-s", "x"], 1, "오류: 상태가", id="task-list-bad-status"),
+        pytest.param(
+            ["task", "list", "-w", "2026-W99"], 1, "오류: 주차 형식이", id="task-list-bad-week"
+        ),
+        pytest.param(["task", "edit", "--help"], 0, None, id="task-edit-help"),
+        pytest.param(["task", "edit", "1"], 1, "오류: 바꿀 항목을", id="task-edit-nothing"),
+        pytest.param(
+            ["task", "edit", "1", "--est", "1h", "--no-est"],
+            1,
+            "오류: --est와 --no-est",
+            id="task-edit-conflict",
+        ),
+        pytest.param(
+            ["task", "edit", "abc", "--est", "1h"], 1, "오류: 태스크 ID가", id="task-edit-bad-id"
+        ),
+        pytest.param(
+            ["task", "edit", "1", "--est", "abc"], 1, "오류: 시간 형식이", id="task-edit-bad-est"
+        ),
+        pytest.param(
+            ["task", "edit", "1", "--week", "2026-W99"],
+            1,
+            "오류: 주차 형식이",
+            id="task-edit-bad-week",
+        ),
+        pytest.param(
+            ["task", "edit", "1", "--due", "13-45"], 1, "오류: 날짜 형식이", id="task-edit-bad-due"
+        ),
+        pytest.param(["task", "start", "abc"], 1, "오류: 태스크 ID가", id="task-start-bad-id"),
+        pytest.param(["task", "done", "--help"], 0, None, id="task-done-help"),
+        pytest.param(["plan", "--help"], 0, None, id="plan-help"),
+        pytest.param(["plan", "carry", "--help"], 0, None, id="plan-carry-help"),
+        pytest.param(["plan", "-w", "x"], 1, "오류: 주차 형식이", id="plan-bad-week"),
+        pytest.param(
+            ["plan", "carry", "-w", "x"], 1, "오류: 주차 형식이", id="plan-carry-bad-week"
+        ),
+        pytest.param(
+            ["plan", "-w", "x", "carry"],
+            1,
+            "오류: --week는 'lb plan' 목록에만",
+            id="plan-week-before-subcommand",
+        ),
+        pytest.param(["start", "--help"], 0, None, id="start-help"),
+        pytest.param(["status", "--help"], 0, None, id="status-help"),
+        pytest.param(["start", "x", "-t", "abc"], 1, "오류: 태스크 ID가", id="start-bad-task"),
+        pytest.param(["stop", "--help"], 0, None, id="stop-help"),
+        pytest.param(["stop", "--round", "abc"], 1, "오류: 반올림 단위가", id="stop-bad-round"),
+        pytest.param(["stop", "--round", "0"], 1, "오류: 반올림 단위가", id="stop-round-zero"),
+        pytest.param(["stop", "--round", "99"], 1, "오류: 반올림 단위가", id="stop-round-over"),
+        pytest.param(["cancel", "--help"], 0, None, id="cancel-help"),
         pytest.param(["stats", "--help"], 0, None, id="stats-help"),
         pytest.param(["stats", "--by", "x"], 1, "오류: 집계 기준이", id="stats-bad-by"),
         pytest.param(["stats", "-w", "2026-W99"], 1, "오류: 주차 형식이", id="stats-bad-week"),

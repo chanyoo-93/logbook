@@ -95,7 +95,7 @@ class Week:
             iso = (self._iso_monday + delta).isocalendar()
         except OverflowError:
             raise InvalidInputError(
-                f"지원 범위를 벗어난 주차입니다: '{self.label}'의 이전·다음 주차는 "
+                f"지원 범위를 벗어난 주차입니다: '{self.label}'. 이전·다음 주차를 "
                 "계산할 수 없습니다. 다른 주차를 지정하세요."
             ) from None
         return Week(iso.year, iso.week, self.week_start)

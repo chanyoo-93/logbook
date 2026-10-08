@@ -20,7 +20,7 @@ def load_task(s: Session, task_id: int) -> Task:
     query = select(Task).where(Task.id == task_id).options(joinedload(Task.project))
     task = s.scalars(query).one_or_none()
     if task is None:
-        raise NotFoundError(f"태스크 #{task_id}가 없습니다. 'lb task list'로 확인하세요.")
+        raise NotFoundError(f"태스크를 찾을 수 없습니다: #{task_id}. 'lb task list'로 확인하세요.")
     return task
 
 
@@ -32,7 +32,7 @@ def check_category(category: str, allowed: Collection[str] | None) -> str:
     if allowed is not None and category not in allowed:
         listed = ", ".join(sorted(allowed))
         raise InvalidInputError(
-            f"카테고리 '{category}'는 쓸 수 없습니다. 사용할 수 있는 카테고리: {listed}"
+            f"쓸 수 없는 카테고리입니다: '{category}'. 사용할 수 있는 카테고리: {listed}"
         )
     return category
 

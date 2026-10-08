@@ -3,7 +3,7 @@
 rich와 core 모델은 CLI 시작 시간을 줄이려고 함수 안이나 TYPE_CHECKING에서만 import한다.
 """
 
-from datetime import date
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from logbook.core.platform import symbol
@@ -14,13 +14,17 @@ if TYPE_CHECKING:
     from rich.table import Table
     from rich.text import Text
 
-    from logbook.core.models import Project, WorkLog
+    from logbook.core.models import ActiveTimer, Project, Task, WorkLog
     from logbook.core.services import MatrixResult, StatsResult
 
 # 접을 수 있는(fold) 이름 열의 최소 폭
 NAME_MIN_WIDTH = 10
 # 기록 표 메모 열의 최소 폭
 NOTE_MIN_WIDTH = 10
+# 태스크·계획 표 제목 열의 최소 폭
+TITLE_MIN_WIDTH = 10
+# 태스크 표 참조 열의 최소 폭
+REF_MIN_WIDTH = 6
 NO_VALUE = "-"
 
 
@@ -56,9 +60,7 @@ def _summary(log: "WorkLog", *, day_text: str | None = None, suffix: str = "") -
     day_part = f"{day_text} " if day_text is not None else ""
     return Text.assemble(
         f"#{log.id} {day_part}",
-        Text(log.project.slug),
-        "/",
-        Text(log.category),
+        _scope(log.project.slug, log.category),
         f" {format_duration(log.minutes)} {dash()} ",
         Text(log.note),
         suffix,
@@ -129,7 +131,7 @@ def worklog_lines(logs: "Sequence[WorkLog]") -> "list[Text]":
         _summary(
             log,
             day_text=day_label(log.date),
-            suffix=f" [#{log.task_id}]" if log.task_id is not None else "",
+            suffix=_task_suffix(log.task_id),
         )
         for log in logs
     ]
@@ -262,3 +264,223 @@ def by_table(result: "StatsResult") -> "Table":
             percent(row.minutes, result.total_minutes),
         )
     return table
+
+
+def clock_label(moment: datetime, today: date) -> str:
+    """표시 시각: 오늘이면 '09:30', 아니면 '09-30 (수) 22:10'.
+
+    moment는 호출자가 이미 로컬 시간대로 바꾼 값이다(x.astimezone(now.tzinfo)).
+    """
+    from logbook.core.weeks import day_label
+
+    time_text = f"{moment.hour:02d}:{moment.minute:02d}"
+    if moment.date() == today:
+        return time_text
+    return f"{day_label(moment.date())} {time_text}"
+
+
+def _scope(slug: str, category: str | None) -> "Text":
+    """'payment/design', 카테고리가 없으면 'payment'."""
+    from rich.text import Text
+
+    if category is None:
+        return Text(slug)
+    return Text.assemble(Text(slug), "/", Text(category))
+
+
+def _task_suffix(task_id: int | None) -> str:
+    """연결된 태스크 꼬리 ' [#42]'. 태스크가 없으면 빈 문자열."""
+    return f" [#{task_id}]" if task_id is not None else ""
+
+
+def _join_info(parts: "Sequence[str | Text]") -> "Text":
+    """항목을 ' · '로 잇는다."""
+    from rich.text import Text
+
+    joined: list[str | Text] = []
+    for index, part in enumerate(parts):
+        if index:
+            joined.append(f" {info_mark()} ")
+        joined.append(part)
+    return Text.assemble(*joined)
+
+
+def _estimate_part(minutes: int) -> str:
+    from logbook.core.duration import format_duration
+
+    return f"예상 {format_duration(minutes)}"
+
+
+def _ref_part(ref: str) -> "Text":
+    from rich.text import Text
+
+    return Text.assemble("참조 ", Text(ref))
+
+
+def task_line(task: "Task") -> "Text":
+    """태스크 요약: '#43 payment/design 환불 API 설계', 카테고리가 없으면 '#44 admin 권한 정리'."""
+    from rich.text import Text
+
+    return Text.assemble(f"#{task.id} ", task_scope_title(task))
+
+
+def task_scope_title(task: "Task") -> "Text":
+    """ID를 뺀 태스크 요약: 'payment/design 환불 API 설계'."""
+    from rich.text import Text
+
+    return Text.assemble(_scope(task.project.slug, task.category), " ", Text(task.title))
+
+
+def task_details(task: "Task") -> "Text":
+    """태스크 상세 꼬리: ' (예상 4h · 2026-W42 · 참조 #43 · 마감 10-15)'.
+
+    값이 있는 항목만 넣고, 하나도 없으면 빈 Text를 돌려준다.
+    """
+    from rich.text import Text
+
+    parts: list[str | Text] = []
+    if task.estimate_minutes is not None:
+        parts.append(_estimate_part(task.estimate_minutes))
+    if task.planned_week is not None:
+        parts.append(Text(task.planned_week))
+    if task.external_ref is not None:
+        parts.append(_ref_part(task.external_ref))
+    if task.due_date is not None:
+        parts.append(f"마감 {task.due_date.month:02d}-{task.due_date.day:02d}")
+    if not parts:
+        return Text()
+    return Text.assemble(" (", _join_info(parts), ")")
+
+
+def _estimate_or_dash(minutes: int | None) -> str:
+    """예상 공수 표기. 없으면 '-'."""
+    return _minutes_or_dash(minutes) if minutes is not None else NO_VALUE
+
+
+def _text_or_dash(value: str | None) -> "Text":
+    from rich.text import Text
+
+    return Text(value if value is not None else NO_VALUE)
+
+
+def task_table(tasks: "Sequence[Task]", actual: "Mapping[int, int]") -> "Table":
+    """태스크 표: ID | 상태 | 프로젝트 | 카테고리 | 제목 | 예상 | 실적 | 주차 | 참조.
+
+    제목과 참조 열만 접는다. 빈 값과 실적 0분은 '-'.
+    """
+    from rich.text import Text
+
+    table = new_table()
+    table.add_column("ID", justify="right", no_wrap=True)
+    table.add_column("상태", no_wrap=True)
+    table.add_column("프로젝트", no_wrap=True)
+    table.add_column("카테고리", no_wrap=True)
+    table.add_column("제목", overflow="fold", min_width=TITLE_MIN_WIDTH)
+    table.add_column("예상", justify="right", no_wrap=True)
+    table.add_column("실적", justify="right", no_wrap=True)
+    table.add_column("주차", no_wrap=True)
+    table.add_column("참조", overflow="fold", min_width=REF_MIN_WIDTH)
+    for task in tasks:
+        table.add_row(
+            str(task.id),
+            str(task.status),
+            Text(task.project.slug),
+            _text_or_dash(task.category),
+            Text(task.title),
+            _estimate_or_dash(task.estimate_minutes),
+            _minutes_or_dash(actual.get(task.id, 0)),
+            _text_or_dash(task.planned_week),
+            _text_or_dash(task.external_ref),
+        )
+    return table
+
+
+def _status_line(task: "Task", head: "Text", extras: "Sequence[str | Text]") -> "Text":
+    """'#43 doing {head} · {extras…}' 형식의 한 줄. extras가 없으면 꼬리를 생략한다."""
+    from rich.text import Text
+
+    line = Text.assemble(f"#{task.id} {task.status} ", head)
+    if not extras:
+        return line
+    return Text.assemble(line, f" {info_mark()} ", _join_info(extras))
+
+
+def _plan_extras(task: "Task", actual: "Mapping[int, int]") -> "list[str | Text]":
+    """예상·실적 항목. 값이 있는 것만 넣는다(실적 0분은 뺀다)."""
+    from logbook.core.duration import format_duration
+
+    extras: list[str | Text] = []
+    if task.estimate_minutes is not None:
+        extras.append(_estimate_part(task.estimate_minutes))
+    minutes = actual.get(task.id, 0)
+    if minutes:
+        extras.append(f"실적 {format_duration(minutes)}")
+    return extras
+
+
+def task_lines(tasks: "Sequence[Task]", actual: "Mapping[int, int]") -> "list[Text]":
+    """좁은 화면용 태스크 목록. 값이 있는 항목만 넣는다.
+
+    예: '#43 doing payment/design 환불 API 설계 · 예상 4h · 실적 2h 30m · 2026-W42 · 참조 #43'
+    """
+    from rich.text import Text
+
+    lines = []
+    for task in tasks:
+        extras = _plan_extras(task, actual)
+        if task.planned_week is not None:
+            extras.append(Text(task.planned_week))
+        if task.external_ref is not None:
+            extras.append(_ref_part(task.external_ref))
+        head = Text.assemble(_scope(task.project.slug, task.category), " ", Text(task.title))
+        lines.append(_status_line(task, head, extras))
+    return lines
+
+
+def plan_table(tasks: "Sequence[Task]", actual: "Mapping[int, int]") -> "Table":
+    """계획 표: ID | 상태 | 프로젝트 | 제목 | 예상 | 실적. 제목 열만 접는다."""
+    from rich.text import Text
+
+    table = new_table()
+    table.add_column("ID", justify="right", no_wrap=True)
+    table.add_column("상태", no_wrap=True)
+    table.add_column("프로젝트", no_wrap=True)
+    table.add_column("제목", overflow="fold", min_width=TITLE_MIN_WIDTH)
+    table.add_column("예상", justify="right", no_wrap=True)
+    table.add_column("실적", justify="right", no_wrap=True)
+    for task in tasks:
+        table.add_row(
+            str(task.id),
+            str(task.status),
+            Text(task.project.slug),
+            Text(task.title),
+            _estimate_or_dash(task.estimate_minutes),
+            _minutes_or_dash(actual.get(task.id, 0)),
+        )
+    return table
+
+
+def plan_lines(tasks: "Sequence[Task]", actual: "Mapping[int, int]") -> "list[Text]":
+    """좁은 화면용 계획 목록: '#43 doing payment 환불 API 설계 · 예상 4h · 실적 2h 30m'."""
+    from rich.text import Text
+
+    return [
+        _status_line(
+            task,
+            Text.assemble(Text(task.project.slug), " ", Text(task.title)),
+            _plan_extras(task, actual),
+        )
+        for task in tasks
+    ]
+
+
+def timer_line(timer: "ActiveTimer") -> "Text":
+    """타이머 요약: 'payment/design — 환불 API 설계 [#43]'. 태스크가 없으면 '[#43]'을 뺀다."""
+    from rich.text import Text
+
+    return Text.assemble(
+        _scope(timer.project.slug, timer.category),
+        f" {dash()} ",
+        Text(timer.note),
+        _task_suffix(timer.task_id),
+    )

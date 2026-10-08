@@ -157,6 +157,32 @@ def test_parse_duration_error_echoes_input_with_example_when_too_small() -> None
     assert str(exc_info.value) == "소요 시간은 1분 이상이어야 합니다: '0m'. 예: 30m, 1h"
 
 
+def test_parse_duration_without_max_skips_only_the_upper_bound() -> None:
+    assert parse_duration("40h", max_minutes=None) == 2400
+
+
+def test_parse_duration_default_max_still_rejects_over_24_hours() -> None:
+    with pytest.raises(InvalidInputError, match="24시간 이하"):
+        parse_duration("40h")
+
+
+def test_parse_duration_without_max_still_rejects_under_one_minute() -> None:
+    with pytest.raises(InvalidInputError) as exc_info:
+        parse_duration("0m", max_minutes=None)
+    assert str(exc_info.value) == "소요 시간은 1분 이상이어야 합니다: '0m'. 예: 30m, 1h"
+
+
+def test_parse_duration_without_max_still_rejects_bad_format() -> None:
+    with pytest.raises(InvalidInputError, match="형식"):
+        parse_duration("abc", max_minutes=None)
+
+
+def test_parse_duration_rejects_other_max_minutes_as_programming_error() -> None:
+    with pytest.raises(ValueError, match="max_minutes must be MAX_MINUTES or None") as exc_info:
+        parse_duration("2h", max_minutes=60)
+    assert not isinstance(exc_info.value, InvalidInputError)
+
+
 @pytest.mark.parametrize(
     ("minutes", "expected"),
     [

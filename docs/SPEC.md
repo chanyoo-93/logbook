@@ -154,10 +154,24 @@ lb add 30m "장애 대응" -p payment -c ops -d yesterday
 ### 타이머
 ```bash
 lb start "환불 API 설계" -p payment -c design [-t 43]
+lb start -t 43                           # 메모 생략 시 태스크 제목 사용
 lb status                                # 진행 중 타이머와 경과 시간
 lb stop [--note "추가 메모"]             # WorkLog로 저장, 15분 단위 반올림 옵션 --round 15
-lb cancel
+lb cancel [--yes]
 ```
+- 타이머는 하나만 돌 수 있다. 진행 중인 타이머가 있으면 `lb start`는 거부하고 `lb stop`·`lb cancel`을 안내한다.
+- `lb start`: 프로젝트·카테고리 해석은 `lb add`와 같다(`-t` 지정 시 Task의 값이 기본). `-t`를 주고 메모를 생략하면 태스크 제목을 메모로 쓴다. `-t` 태스크가 todo면 doing으로 바꾸고 `· 태스크 #43 상태를 doing으로 바꿨습니다.`를 덧붙인다.
+  - 출력: `✔ 타이머 시작: payment/design — 환불 API 설계 [#43] (09:30)`. 시작 시각이 오늘이 아니면 `09-30 (수) 22:10`처럼 날짜를 붙인다.
+- `lb status`: `진행 중: payment/design — 환불 API 설계 [#43]`와 `시작 09:30 · 경과 1h 25m`. 타이머가 없으면 `진행 중인 타이머가 없습니다.`를 출력하고 종료 코드 0이다.
+- `lb stop` 규칙:
+  - 경과 시간은 분 단위로 반올림한다(30초 이상 올림).
+  - 1분 미만이거나 24시간(`lb add`와 같은 상한)을 넘으면 저장하지 않고 오류로 끝난다. 타이머는 그대로 남는다(버리려면 `lb cancel`).
+  - 기록 날짜는 타이머를 시작한 날(로컬 날짜)이다. 자정을 넘겨도 시작한 날에 기록하며, 누적은 그 날짜의 합계다.
+  - `--round N`(1~60분): 경과 시간을 N분 단위로 반올림한다. 결과가 0이면 한 단위(N분)로 올린다. 24시간 상한은 반올림 전 경과로 판단하며, 경과가 24시간 이내인데 반올림 결과만 24시간을 넘으면 24시간(1440분)으로 저장한다. 반올림으로 값이 바뀌면 `· 경과 1h 39m을 15분 단위로 반올림했습니다.`를 덧붙인다.
+  - `--note`(`-n`): 시작 메모 뒤에 ` — `로 덧붙인다(`환불 API 설계 — 리뷰 반영`).
+  - 시작한 뒤 프로젝트를 보관하거나 카테고리 설정을 바꿔도 저장할 수 있다(재검증하지 않음).
+  - 출력은 `lb add`와 같다: `✔ #128 payment/design 1h 45m — 환불 API 설계 — 리뷰 반영 (오늘 누적 5h 30m)`
+- `lb cancel`: 버릴 타이머와 경과 시간을 보여 주고 `버릴까요? [y/N]:`로 확인한다. 거절하거나 입력이 없으면 타이머를 남기고 종료 코드 1로 끝난다. `--yes`/`-y`로 확인을 생략한다. 타이머가 없으면 오류(종료 코드 1).
 
 ### 기록 조회·수정
 ```bash
@@ -176,13 +190,27 @@ lb log rm 128 [--yes]
 ### 태스크 / 계획
 ```bash
 lb task add "환불 API 설계" -p payment -c design --est 4h --week next --ref "#43"
-lb task list [-p payment] [--status todo,doing] [--week next]
+lb task list [-p payment] [--status todo,doing|all] [--week next]
+lb task edit 43 [--title "..."] [--est 6h] [--week next] [--no-due]
 lb task start 43                         # status → doing
 lb task done 43
 lb task drop 43
 lb plan [--week next]                    # 해당 주 계획 태스크 + 예상 공수 합계
-lb plan carry                            # 이번 주 미완료 태스크를 다음 주로 이월
+lb plan carry [--week last] [--yes]      # 해당 주(기본 이번 주) 미완료 태스크를 다음 주로 이월
 ```
+- `lb task add <title>`: `-p`를 생략하면 `default_project`. 옵션은 `-c/--category`, `-e/--est`(예상 공수, 하루를 넘을 수 있으므로 24시간 상한 없음, 예: `40h`), `-w/--week`(계획 주차), `--ref`(외부 참조, `"#43"`·URL·Jira 키), `--due`(마감일, 날짜 입력 규칙과 같음).
+  - 출력: `✔ 태스크 추가: #43 payment/design 환불 API 설계 (예상 4h · 2026-W42 · 참조 #43 · 마감 10-15)`. 괄호에는 값이 있는 항목만 쓰고, 하나도 없으면 괄호를 생략한다.
+- `lb task list`: 기본은 todo·doing이다. `-s/--status`는 쉼표로 여러 상태를 받고 `all`은 네 상태 전부다. 보관한 프로젝트의 태스크는 `-p`로 그 프로젝트를 지정할 때만 보인다.
+  - 출력: 표(ID, 상태, 프로젝트, 카테고리, 제목, 예상, 실적, 주차, 참조) + `태스크 3건 / 예상 10h / 실적 1h 45m`. 상태는 key(`todo`, `doing`, `done`, `dropped`)로 표시해 그대로 `--status`에 쓸 수 있다. 실적은 연결된 WorkLog 합계다.
+- `lb task edit <ID>`: 지정한 항목만 바꾼다. 옵션은 `--title`, `-c/--category`, `-e/--est`, `-w/--week`, `--ref`, `--due`, 값을 비우는 `--no-category`, `--no-est`, `--no-week`, `--no-ref`, `--no-due`. 하나도 없거나 값과 같은 항목의 `--no-…`를 함께 주면 오류. 프로젝트는 바꿀 수 없다(연결된 기록과 어긋나지 않도록, 필요하면 drop 후 다시 만든다).
+- `lb task start|done|drop <ID>`: 상태를 doing·done·dropped로 바꾼다. 출력 `✔ #43 todo → doing: payment/design 환불 API 설계`, `done`은 ` (실적 5h 30m / 예상 4h)`를 덧붙인다. 이미 같은 상태면 `· 태스크 #43 상태는 이미 doing입니다: …`를 출력하고 종료 코드 0이다. 완료·중단된 태스크도 다시 시작할 수 있다.
+- `lb plan`: 기본은 이번 주다. 그 주에 계획된 todo·doing·done 태스크를 프로젝트, ID 순으로 보여 주고 dropped와 보관한 프로젝트의 태스크는 뺀다.
+  - 머리줄: `2026-W41 (10-05 ~ 10-11) 계획   예상 6h / 실적 1h 45m / 태스크 2건 (완료 1건)`, 표(ID, 상태, 프로젝트, 제목, 예상, 실적), 하단 `프로젝트별 예상: admin 4h · payment 8h`와 `예상이 없는 태스크 N건`.
+- `lb plan carry`: `-w`로 고른 원본 주(기본 이번 주)에 계획된 todo·doing 태스크를 다음 주로 옮긴다. 더 이전 주에 밀린 태스크와 보관한 프로젝트의 태스크는 옮기지 않는다.
+  - 옮길 목록(`이월할 태스크 (2026-W41 → 2026-W42):`)을 보여 주고 `옮길까요? [y/N]:`로 확인한다. 거절하거나 입력이 없으면 아무것도 옮기지 않고 종료 코드 1로 끝난다. `--yes`/`-y`로 확인을 생략한다.
+  - 출력: `✔ 2건을 옮겼습니다: 2026-W41 → 2026-W42`와 옮긴 태스크 줄. 확인하는 동안 상태·주차가 바뀐 태스크는 건너뛰고 경고한다.
+  - 월요일에 지난주 태스크를 옮기려면 `lb plan carry -w last`.
+- `--week`는 `lb plan` 목록에만 쓴다. `lb plan -w last carry`처럼 하위 명령 앞에 쓰면 거부한다.
 
 ### 집계 / 보고서
 ```bash
@@ -215,7 +243,7 @@ lb serve [--port 8765] [--open]          # 웹 대시보드 실행
 | 코드 | 의미 |
 |---|---|
 | 0 | 성공 |
-| 1 | 입력·데이터 오류(stderr에 `오류: …` 한 줄), 삭제 확인 거절 또는 확인 입력 없음 |
+| 1 | 입력·데이터 오류(stderr에 `오류: …` 한 줄), 삭제·이월·타이머 취소 확인 거절 또는 확인 입력 없음 |
 | 2 | 명령 문법 오류(없는 옵션, 인자 누락·초과 등) |
 | 130 | Ctrl+C로 중단 |
 
@@ -311,5 +339,5 @@ POST   /api/timer/start | /api/timer/stop
 - Windows·macOS 양쪽 CI에서 전체 테스트 통과 (경로, 인코딩, 한글 출력, 클립보드 실패 처리 테스트 포함)
 - 한글 메모·프로젝트명이 Windows Terminal, PowerShell, macOS Terminal/iTerm2에서 깨지지 않을 것
 - `--help`, `--version`, 사용법 오류, 입력 형식 오류는 SQLAlchemy와 웹 스택을 로드하지 않는다(서브프로세스 테스트로 강제). `lb add` 응답 시간은 CI 보고서(`scripts/bench_cli.py`)로 추적한다(파이썬 내부 처리 시간 참고값: Windows 약 500 ms, macOS 약 350 ms). CLI에서 FastAPI를 import하지 않는다.
-- 모든 에러 메시지는 한국어로, 다음 행동을 안내 (예: "프로젝트 'paymnt'가 없습니다. `lb project list`로 확인하세요.") 단, 명령 문법 오류(없는 옵션, 인자 누락 등, 종료 코드 2)와 --help의 틀(Usage, Options 등)은 Typer/Click 기본 영어 문구를 쓴다.
+- 모든 에러 메시지는 한국어로, 다음 행동을 안내 (예: "프로젝트를 찾을 수 없습니다: 'paymnt'. `lb project list`로 확인하세요.") 단, 명령 문법 오류(없는 옵션, 인자 누락 등, 종료 코드 2)와 --help의 틀(Usage, Options 등)은 Typer/Click 기본 영어 문구를 쓴다.
 - 데이터 손실 방지: 삭제 명령은 확인 프롬프트(`--yes`로 생략), `export`로 언제든 전체 백업 가능

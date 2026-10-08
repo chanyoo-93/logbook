@@ -4,6 +4,7 @@ from datetime import UTC, date, datetime
 from typing import Any
 
 import pytest
+from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session
 
 from logbook.core import services
@@ -162,7 +163,7 @@ def test_get_task_returns_task_with_project(seeded: Session) -> None:
 
 
 def test_get_task_unknown_id_raises_not_found(seeded: Session) -> None:
-    with pytest.raises(NotFoundError, match="태스크 #999가 없습니다.*'lb task list'"):
+    with pytest.raises(NotFoundError, match="태스크를 찾을 수 없습니다: #999.*'lb task list'"):
         services.get_task(seeded, 999)
 
 
@@ -237,9 +238,30 @@ def test_list_unknown_project_raises_not_found(seeded: Session) -> None:
         services.list_tasks(seeded, project_slug="paymnt")
 
 
-def test_list_includes_archived_project_tasks(seeded: Session) -> None:
-    task = _create(seeded, project_slug="search")
-    services.archive_project(seeded, "search")
+def _archived_search_task(s: Session) -> Task:
+    task = _create(s, project_slug="search")
+    services.archive_project(s, "search")
+    return task
+
+
+def test_list_excludes_archived_project_tasks_by_default(seeded: Session) -> None:
+    active = _create(seeded)
+    _archived_search_task(seeded)
+
+    assert _ids(services.list_tasks(seeded)) == [active.id]
+
+
+def test_list_include_archived_returns_archived_project_tasks(seeded: Session) -> None:
+    active = _create(seeded)
+    archived = _archived_search_task(seeded)
+
+    tasks = services.list_tasks(seeded, include_archived=True)
+
+    assert _ids(tasks) == [active.id, archived.id]
+
+
+def test_list_project_slug_includes_archived_project_tasks(seeded: Session) -> None:
+    task = _archived_search_task(seeded)
 
     assert _ids(services.list_tasks(seeded, project_slug="search")) == [task.id]
 
@@ -536,7 +558,7 @@ def test_set_status_persists(seeded: Session) -> None:
 
 
 def test_set_status_unknown_task_raises_not_found(seeded: Session) -> None:
-    with pytest.raises(NotFoundError, match="태스크 #999가 없습니다"):
+    with pytest.raises(NotFoundError, match="태스크를 찾을 수 없습니다: #999"):
         services.set_task_status(seeded, 999, TaskStatus.DONE)
 
 
@@ -565,3 +587,144 @@ def test_actual_minutes_zero_without_logs(seeded: Session) -> None:
 def test_actual_minutes_unknown_task_raises_not_found(seeded: Session) -> None:
     with pytest.raises(NotFoundError, match="'lb task list'"):
         services.task_actual_minutes(seeded, 999)
+
+
+# --- actual_minutes_by_task ---
+
+
+def _count_queries(engine: Engine) -> list[str]:
+    statements: list[str] = []
+
+    def record(conn: Any, cursor: Any, statement: str, *args: Any) -> None:
+        statements.append(statement)
+
+    event.listen(engine, "before_cursor_execute", record)
+    return statements
+
+
+def test_actual_minutes_by_task_sums_per_task(seeded: Session) -> None:
+    t1, t2, t3, other = (_create(seeded, category="dev") for _ in range(4))
+    services.add_worklog(seeded, minutes=120, note="a", task_id=t1.id, today=THU)
+    services.add_worklog(seeded, minutes=30, note="b", task_id=t1.id, today=THU)
+    services.add_worklog(seeded, minutes=60, note="c", task_id=t2.id, today=THU)
+    services.add_worklog(seeded, minutes=45, note="d", task_id=other.id, today=THU)
+    services.add_worklog(
+        seeded, minutes=15, note="e", project_slug="payment", category="dev", today=THU
+    )
+
+    result = services.actual_minutes_by_task(seeded, [t1.id, t2.id, t3.id])
+
+    assert result == {t1.id: 150, t2.id: 60}
+
+
+def test_actual_minutes_by_task_empty_input_runs_no_query(seeded: Session, engine: Engine) -> None:
+    statements = _count_queries(engine)
+
+    assert services.actual_minutes_by_task(seeded, []) == {}
+    assert statements == []
+
+
+def test_actual_minutes_by_task_uses_single_query_for_many_tasks(
+    seeded: Session, engine: Engine
+) -> None:
+    tasks = [_create(seeded, category="dev") for _ in range(10)]
+    for task in tasks:
+        services.add_worklog(seeded, minutes=10, note="x", task_id=task.id, today=THU)
+    statements = _count_queries(engine)
+
+    result = services.actual_minutes_by_task(seeded, [task.id for task in tasks])
+
+    assert len(result) == 10
+    assert len(statements) == 1
+
+
+# --- carry_candidates / carry_tasks ---
+
+
+def _carry_setup(s: Session) -> dict[str, Task]:
+    """W41 후보 2개(todo, doing)와 제외 대상들을 만든다."""
+    tasks = {
+        "todo": _create(s, planned_week=W41),
+        "doing": _create(s, planned_week=W41),
+        "done": _create(s, planned_week=W41),
+        "dropped": _create(s, planned_week=W41),
+        "other_week": _create(s, planned_week=W40),
+        "no_week": _create(s),
+        "archived": _create(s, project_slug="search", planned_week=W41),
+    }
+    services.set_task_status(s, tasks["doing"].id, TaskStatus.DOING)
+    services.set_task_status(s, tasks["done"].id, TaskStatus.DONE)
+    services.set_task_status(s, tasks["dropped"].id, TaskStatus.DROPPED)
+    services.archive_project(s, "search")
+    return tasks
+
+
+def test_carry_candidates_returns_only_open_tasks_of_the_week(seeded: Session) -> None:
+    tasks = _carry_setup(seeded)
+
+    candidates = services.carry_candidates(seeded, W41)
+
+    assert _ids(candidates) == [tasks["todo"].id, tasks["doing"].id]
+    assert candidates[0].project.slug == "payment"
+
+
+def test_carry_tasks_moves_all_candidates_to_next_week(seeded: Session) -> None:
+    tasks = _carry_setup(seeded)
+    for task in tasks.values():
+        task.updated_at = LONG_AGO
+    seeded.flush()
+    ids = _ids(services.carry_candidates(seeded, W41))
+
+    moved = services.carry_tasks(seeded, W41, list(reversed(ids)))
+
+    assert _ids(moved) == ids
+    assert all(task.planned_week == "2026-W42" for task in moved)
+    assert all(task.updated_at > LONG_AGO for task in moved)
+    assert tasks["done"].planned_week == "2026-W41"
+    assert tasks["archived"].planned_week == "2026-W41"
+
+
+def test_carry_tasks_moves_only_selected(seeded: Session) -> None:
+    tasks = _carry_setup(seeded)
+
+    moved = services.carry_tasks(seeded, W41, [tasks["todo"].id])
+
+    assert _ids(moved) == [tasks["todo"].id]
+    assert tasks["todo"].planned_week == "2026-W42"
+    assert tasks["doing"].planned_week == "2026-W41"
+
+
+def test_carry_tasks_skips_task_that_is_no_longer_a_candidate(seeded: Session) -> None:
+    tasks = _carry_setup(seeded)
+    ids = _ids(services.carry_candidates(seeded, W41))
+    services.set_task_status(seeded, tasks["todo"].id, TaskStatus.DONE)
+
+    moved = services.carry_tasks(seeded, W41, ids)
+
+    assert _ids(moved) == [tasks["doing"].id]
+    assert tasks["todo"].planned_week == "2026-W41"
+
+
+def test_carry_tasks_ignores_non_candidates_and_unknown_ids(seeded: Session) -> None:
+    tasks = _carry_setup(seeded)
+
+    moved = services.carry_tasks(seeded, W41, [tasks["done"].id, tasks["other_week"].id, 9999])
+
+    assert moved == []
+    assert tasks["done"].planned_week == "2026-W41"
+    assert tasks["other_week"].planned_week == "2026-W40"
+
+
+def test_carry_tasks_empty_ids_returns_empty(seeded: Session) -> None:
+    _carry_setup(seeded)
+
+    assert services.carry_tasks(seeded, W41, []) == []
+
+
+def test_carry_tasks_from_week_53_goes_to_next_year(seeded: Session) -> None:
+    task = _create(seeded, planned_week=Week(2026, 53))
+
+    moved = services.carry_tasks(seeded, Week(2026, 53), [task.id])
+
+    assert _ids(moved) == [task.id]
+    assert task.planned_week == "2027-W01"

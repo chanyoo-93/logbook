@@ -27,9 +27,9 @@ CLI만 필요하면 Phase 4까지, 웹 대시보드까지 원하면 Phase 6까�
 - [x] CLI 테스트 (`typer.testing.CliRunner`)
 
 ## Phase 3. CLI — 태스크·계획·타이머
-- [ ] `lb task add|list|start|done|drop`
-- [ ] `lb plan`, `lb plan carry`
-- [ ] `lb start|status|stop|cancel` 타이머
+- [x] `lb task add|list|edit|start|done|drop`
+- [x] `lb plan`, `lb plan carry`
+- [x] `lb start|status|stop|cancel` 타이머
 
 ## Phase 4. 주간보고서
 - [ ] `report.py`: 구조화 데이터 조립 (SPEC 7장 그룹핑 규칙)

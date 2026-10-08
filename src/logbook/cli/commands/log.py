@@ -160,13 +160,11 @@ def remove(
     record = render.worklog_record(log)
 
     if not yes:
-        answer = runtime.confirm(f"삭제할 기록: {record}\n삭제할까요?")
-        if answer is None:
-            console.print_notice(NO_CONFIRM_INPUT_MESSAGE)
-            raise typer.Exit(EXIT_ERROR)
-        if not answer:
-            console.print_notice(DELETE_CANCELLED_MESSAGE)
-            raise typer.Exit(EXIT_ERROR)
+        runtime.require_confirmation(
+            f"삭제할 기록: {record}\n삭제할까요?",
+            cancelled=DELETE_CANCELLED_MESSAGE,
+            no_input=NO_CONFIRM_INPUT_MESSAGE,
+        )
 
     with runtime.session(cfg) as s:
         # 확인하는 동안 다른 터미널이 기록을 고치거나, 지운 뒤 새 기록이 같은 ID를 다시 받았을 수
