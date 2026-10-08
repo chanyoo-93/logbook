@@ -23,6 +23,9 @@ from logbook.core.services.stats import (
     stats_matrix,
 )
 from logbook.core.services.tasks import (
+    actual_minutes_by_task,
+    carry_candidates,
+    carry_tasks,
     create_task,
     get_task,
     list_tasks,
@@ -49,6 +52,9 @@ __all__ = [
     "get_project",
     "is_valid_slug",
     "list_projects",
+    "actual_minutes_by_task",
+    "carry_candidates",
+    "carry_tasks",
     "create_task",
     "get_task",
     "list_tasks",

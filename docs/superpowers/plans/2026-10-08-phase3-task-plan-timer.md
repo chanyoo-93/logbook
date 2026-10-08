@@ -229,7 +229,7 @@ def carry_tasks(s: Session, week: Week, task_ids: Collection[int]) -> list[Task]
 | `carry_tasks(W41, [후보가 아닌 id, 없는 id])` | `[]`, 아무것도 바뀌지 않음 |
 | `carry_tasks(2026-W53, …)` | `2027-W01`로 옮김 (2026년은 W53이 있다) |
 
-- [ ] RED → GREEN → 커밋 `feat: 태스크 목록 보관 제외, 태스크별 실적 일괄 조회, 주간 이월 서비스 추가`
+- [x] RED → GREEN → 커밋 `feat: 태스크 목록 보관 제외, 태스크별 실적 일괄 조회, 주간 이월 서비스 추가`
 
 ---
 
