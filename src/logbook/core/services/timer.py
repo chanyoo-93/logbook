@@ -100,7 +100,7 @@ def get_timer(s: Session) -> ActiveTimer | None:
 
 def elapsed_minutes(started_at: datetime, now: datetime) -> int:
     """경과 분(30초 이상 올림). now가 더 이르면 0."""
-    return (_elapsed_seconds(started_at, now) + 30) // 60
+    return _round_to_minute(_elapsed_seconds(started_at, now))
 
 
 def stop_timer(
@@ -120,7 +120,7 @@ def stop_timer(
     note = timer.note if extra_note is None else f"{timer.note} — {_clean_extra(extra_note)}"
     step = _checked_round_to(round_to)
     seconds = _elapsed_seconds(timer.started_at, now)
-    elapsed = (seconds + 30) // 60
+    elapsed = _round_to_minute(seconds)
     if elapsed == 0:
         raise InvalidInputError(
             "1분이 지나지 않아 기록하지 않았습니다. 버리려면 'lb cancel'을 실행하세요."
@@ -171,6 +171,11 @@ def _check_aware(now: datetime) -> None:
 def _elapsed_seconds(started_at: datetime, now: datetime) -> int:
     """경과 초(내림). now가 더 이르면 0."""
     return max(0, (now - started_at) // _ONE_SECOND)
+
+
+def _round_to_minute(seconds: int) -> int:
+    """초를 분으로 바꾼다(30초 이상 올림)."""
+    return (seconds + 30) // 60
 
 
 def _rounded_minutes(seconds: int, step: int) -> int:

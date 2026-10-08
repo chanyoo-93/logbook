@@ -60,9 +60,7 @@ def _summary(log: "WorkLog", *, day_text: str | None = None, suffix: str = "") -
     day_part = f"{day_text} " if day_text is not None else ""
     return Text.assemble(
         f"#{log.id} {day_part}",
-        Text(log.project.slug),
-        "/",
-        Text(log.category),
+        _scope(log.project.slug, log.category),
         f" {format_duration(log.minutes)} {dash()} ",
         Text(log.note),
         suffix,
@@ -133,7 +131,7 @@ def worklog_lines(logs: "Sequence[WorkLog]") -> "list[Text]":
         _summary(
             log,
             day_text=day_label(log.date),
-            suffix=f" [#{log.task_id}]" if log.task_id is not None else "",
+            suffix=_task_suffix(log.task_id),
         )
         for log in logs
     ]
@@ -288,6 +286,11 @@ def _scope(slug: str, category: str | None) -> "Text":
     if category is None:
         return Text(slug)
     return Text.assemble(Text(slug), "/", Text(category))
+
+
+def _task_suffix(task_id: int | None) -> str:
+    """연결된 태스크 꼬리 ' [#42]'. 태스크가 없으면 빈 문자열."""
+    return f" [#{task_id}]" if task_id is not None else ""
 
 
 def _join_info(parts: "Sequence[str | Text]") -> "Text":
@@ -479,5 +482,5 @@ def timer_line(timer: "ActiveTimer") -> "Text":
         _scope(timer.project.slug, timer.category),
         f" {dash()} ",
         Text(timer.note),
-        f" [#{timer.task_id}]" if timer.task_id is not None else "",
+        _task_suffix(timer.task_id),
     )
