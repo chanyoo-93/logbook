@@ -630,7 +630,7 @@ pytest.param(["import", "없는파일.jsonl"], 1, "오류: 가져올 파일이 �
 
 **서브프로세스 왕복(test_entry.py, cp949 환경 하나):** 첫 DB에서 `init` → `add` → `export -o b.jsonl`을 하고, 다른 `LOGBOOK_DB`에서 `init` → `import b.jsonl`을 한 뒤 `log`를 실행한다. stdout에 한글 메모가 그대로 나와야 한다.
 
-- [ ] RED → GREEN → 커밋 `feat: lb export·import 백업 명령 추가`
+- [x] RED → GREEN → 커밋 `feat: lb export·import 백업 명령 추가`
 
 ---
 

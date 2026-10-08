@@ -9,6 +9,7 @@ from logbook.cli import console
 from logbook.cli.commands import (
     CommandModule,
     add,
+    data,
     init,
     log,
     plan,
@@ -29,8 +30,8 @@ app = typer.Typer(
     add_completion=False,  # 영어 자동완성 옵션은 Phase 7에서 다시 켠다.
 )
 
-# 등록 순서대로 help에 나온다. 단, Typer는 단일 명령(init, add, start, status, stats, report)을
-# 그룹(project, log, task, plan)보다 먼저 보여 준다.
+# 등록 순서대로 help에 나온다. 단, Typer는 단일 명령(init, add, start, status, stats, report,
+# export, import)을 그룹(project, log, task, plan)보다 먼저 보여 준다.
 COMMAND_MODULES: tuple[CommandModule, ...] = (
     init,
     project,
@@ -41,6 +42,7 @@ COMMAND_MODULES: tuple[CommandModule, ...] = (
     timer,
     stats,
     report,
+    data,
 )
 
 
