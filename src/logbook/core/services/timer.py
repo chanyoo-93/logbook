@@ -125,12 +125,13 @@ def stop_timer(
         raise InvalidInputError(
             "1분이 지나지 않아 기록하지 않았습니다. 버리려면 'lb cancel'을 실행하세요."
         )
-    minutes = elapsed if step is None else _rounded_minutes(seconds, step)
-    if minutes > MAX_MINUTES:
+    if elapsed > MAX_MINUTES:
         raise InvalidInputError(
             f"타이머가 24시간을 넘었습니다 (시작 {_time_label(timer.started_at, now)}). "
             "'lb cancel'로 버린 뒤 'lb add'로 날짜별로 나눠 기록하세요."
         )
+    # 실제 경과가 24시간 이내인데 반올림으로만 넘으면 24시간으로 저장한다.
+    minutes = elapsed if step is None else min(_rounded_minutes(seconds, step), MAX_MINUTES)
     log = WorkLog(
         project=timer.project,
         task=timer.task,

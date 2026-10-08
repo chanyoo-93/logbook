@@ -398,14 +398,38 @@ def test_stop_exactly_24_hours_is_allowed(seeded: Session) -> None:
     assert stopped.log.minutes == MAX_MINUTES
 
 
-def test_stop_round_up_over_24_hours_raises(seeded: Session) -> None:
+@pytest.mark.parametrize(
+    ("delta", "round_to"),
+    [
+        # 경과 1439분은 상한 안이지만 7분 단위로 반올림하면 1442분이다.
+        (timedelta(hours=23, minutes=59), 7),
+        # 경과 1430분은 상한 안이지만 50분 단위로 반올림하면 1450분이다.
+        (timedelta(hours=23, minutes=50), 50),
+    ],
+)
+def test_stop_round_up_over_24_hours_is_clamped(
+    seeded: Session, delta: timedelta, round_to: int
+) -> None:
     _start(seeded)
 
-    # 경과 1430분은 상한 안이지만 50분 단위로 반올림하면 1450분이다.
+    stopped = services.stop_timer(seeded, now=T0 + delta, round_to=round_to)
+
+    assert stopped.log.minutes == MAX_MINUTES
+    assert stopped.elapsed_minutes == services.elapsed_minutes(T0, T0 + delta)
+    assert _count(seeded, ActiveTimer) == 0
+
+
+@pytest.mark.parametrize("round_to", [None, 7])
+def test_stop_elapsed_over_24_hours_raises_even_with_round(
+    seeded: Session, round_to: int | None
+) -> None:
+    _start(seeded)
+
     with pytest.raises(InvalidInputError, match="24시간을 넘었습니다"):
-        services.stop_timer(seeded, now=T0 + timedelta(hours=23, minutes=50), round_to=50)
+        services.stop_timer(seeded, now=T0 + timedelta(hours=24, minutes=1), round_to=round_to)
 
     assert _count(seeded, ActiveTimer) == 1
+    assert _count(seeded, WorkLog) == 0
 
 
 def test_stop_after_midnight_uses_start_date(seeded: Session) -> None:
