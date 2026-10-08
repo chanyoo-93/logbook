@@ -109,7 +109,7 @@
 
 ## Task 3-0: 계획 문서 저장
 
-- [ ] 이 문서를 `docs/superpowers/plans/2026-10-08-phase3-task-plan-timer.md`로 저장하고 커밋한다: `docs: Phase 3 태스크·계획·타이머 구현 계획 추가`
+- [x] 이 문서를 `docs/superpowers/plans/2026-10-08-phase3-task-plan-timer.md`로 저장하고 커밋한다: `docs: Phase 3 태스크·계획·타이머 구현 계획 추가`
 
 ---
 
@@ -175,9 +175,9 @@ def parse_duration(text: str, *, max_minutes: int | None = MAX_MINUTES) -> int: 
 > - 다른 값이면 `ValueError("max_minutes must be MAX_MINUTES or None")`를 낸다. 이는 프로그래밍 오류다.
 > - 테스트는 `parse_duration("2h", max_minutes=60)`이 `ValueError`인지 확인한다.
 
-- [ ] RED: 위 테스트 작성 → `uv run pytest tests/core/test_taskstatus.py tests/core/test_duration.py -q` 실패 확인
-- [ ] GREEN: taskstatus.py 생성, models.py import 교체, duration 수정
-- [ ] 전체 검증 후 커밋 `feat: 태스크 상태 파서와 상한 없는 예상 공수 파싱 추가`
+- [x] RED: 위 테스트 작성 → `uv run pytest tests/core/test_taskstatus.py tests/core/test_duration.py -q` 실패 확인
+- [x] GREEN: taskstatus.py 생성, models.py import 교체, duration 수정
+- [x] 전체 검증 후 커밋 `feat: 태스크 상태 파서와 상한 없는 예상 공수 파싱 추가`
 
 ---
 

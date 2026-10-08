@@ -21,14 +21,14 @@ _PATTERNS = tuple(
 )
 
 
-def _echo(text: str) -> str:
+def echo_input(text: str) -> str:
     """에러 메시지용 입력 표시. 너무 긴 입력은 앞부분만 남긴다."""
     return text if len(text) <= _ECHO_LIMIT else text[:_ECHO_LIMIT] + "..."
 
 
 def _format_error(text: str) -> InvalidInputError:
     return InvalidInputError(
-        f"시간 형식이 올바르지 않습니다: '{_echo(text)}'. 예: 2h, 1.5h, 90m, 1h30m, 1:30"
+        f"시간 형식이 올바르지 않습니다: '{echo_input(text)}'. 예: 2h, 1.5h, 90m, 1h30m, 1:30"
     )
 
 
@@ -44,8 +44,14 @@ def _to_minutes(hours: str | None, minutes: str | None) -> Decimal:
     return context.add(product, minute_value)
 
 
-def parse_duration(text: str) -> int:
-    """소요 시간 문자열을 정수 분으로 바꾼다. 형식이 틀리거나 범위를 벗어나면 InvalidInputError."""
+def parse_duration(text: str, *, max_minutes: int | None = MAX_MINUTES) -> int:
+    """소요 시간 문자열을 정수 분으로 바꾼다. 형식이 틀리거나 범위를 벗어나면 InvalidInputError.
+
+    max_minutes=None이면 24시간 상한 검사만 건너뛴다(예상 공수용).
+    MAX_MINUTES와 None 외의 값은 프로그래밍 오류(ValueError)다.
+    """
+    if max_minutes is not None and max_minutes != MAX_MINUTES:
+        raise ValueError("max_minutes must be MAX_MINUTES or None")
     normalized = text.strip().lower()
     for pattern in _PATTERNS:
         match = pattern.fullmatch(normalized)
@@ -60,11 +66,11 @@ def parse_duration(text: str) -> int:
         rounded = exact.to_integral_value(rounding=ROUND_HALF_UP)
         if rounded < 1:
             raise InvalidInputError(
-                f"소요 시간은 1분 이상이어야 합니다: '{_echo(text)}'. 예: 30m, 1h"
+                f"소요 시간은 1분 이상이어야 합니다: '{echo_input(text)}'. 예: 30m, 1h"
             )
-        if rounded > MAX_MINUTES:
+        if max_minutes is not None and rounded > max_minutes:
             raise InvalidInputError(
-                f"소요 시간은 24시간 이하여야 합니다: '{_echo(text)}'. "
+                f"소요 시간은 24시간 이하여야 합니다: '{echo_input(text)}'. "
                 "하루를 넘는 작업은 날짜별로 나눠 기록하세요."
             )
         return int(rounded)
