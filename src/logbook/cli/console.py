@@ -190,7 +190,10 @@ def print_table(table: "Table", fallback: "Callable[[], Sequence[Text]] | None" 
 
 
 def print_raw(text: str) -> None:
-    """text를 stdout에 그대로 쓴다. 마크업·이모지 해석, 줄 접기, 줄바꿈 추가를 하지 않는다."""
+    """text를 Rich Text로 stdout에 쓴다. 마크업·이모지 해석, 줄 접기, 줄바꿈 추가를 하지 않는다.
+
+    Rich Text를 거치므로 탭은 공백으로 펼쳐지고 제어 문자는 지워진다(받아들인 절충이다).
+    """
     from rich.text import Text
 
     _write_out(out(), Text(text), soft_wrap=True, end="")

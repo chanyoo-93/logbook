@@ -8,8 +8,8 @@ from logbook.core.services.backup import (
     TABLE_ORDER,
     BackupCounts,
     export_records,
-    import_records,
 )
+from logbook.core.services.backup_import import import_records
 from logbook.core.services.projects import (
     COMMON_SLUG,
     SLUG_PATTERN,

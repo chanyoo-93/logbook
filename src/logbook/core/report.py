@@ -163,9 +163,11 @@ def _render_user_template(env: "jinja2.Environment", path: Path, data: ReportDat
             "쓸 수 있는 값은 README의 '보고서 템플릿' 절을 보세요."
         ) from error
     except Exception as error:
+        # CLI 오류는 한 줄이어야 하므로 여러 줄 메시지는 첫 줄만 쓴다.
+        detail = str(error).splitlines()[0] if str(error) else ""
         raise InvalidInputError(
             f"보고서 템플릿을 처리하지 못했습니다: {path} "
-            f"({_where(_runtime_lineno(error))}{type(error).__name__}: {error}). "
+            f"({_where(_runtime_lineno(error))}{type(error).__name__}: {detail}). "
             "템플릿을 고치거나, 기본 템플릿을 쓰려면 이 파일을 지우거나 이름을 바꾸세요."
         ) from error
 

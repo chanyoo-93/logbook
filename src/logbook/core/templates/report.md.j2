@@ -8,6 +8,7 @@
 {% if data.matrix %}
 
 | 프로젝트 | {{ data.categories | map('cell') | join(' | ') }} | 합계 | 비율 |
+{# 구분선 열 수: 프로젝트·합계·비율 3열 + 카테고리 수 #}
 |{{ '---|' * (data.categories | length + 3) }}
 {% for row in data.matrix %}
 | {{ row.project | cell }} | {{ row.cells | join(' | ') }} | {{ row.total }} | {{ row.percent }} |

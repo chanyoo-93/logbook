@@ -58,14 +58,8 @@ def import_(
     ],
 ) -> None:
     """lb export로 만든 JSONL 파일을 빈 데이터베이스(lb init 직후)에 복원합니다."""
-    from logbook.core.config import expand_home
-
     # 파일을 DB·설정보다 먼저 읽는다. 그래야 파일 오류가 DB 접근 없이 끝난다.
-    path = expand_home(path_text, "가져올 파일 경로")
-    if path.is_dir():
-        raise InvalidInputError(f"파일 경로가 아니라 폴더입니다: {path}. 파일 이름까지 지정하세요.")
-    if not path.is_file():
-        raise InvalidInputError(f"가져올 파일이 없습니다: {path}")
+    path = runtime.prepare_input_path(path_text, "가져올 파일 경로")
     try:
         text = path.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError as error:

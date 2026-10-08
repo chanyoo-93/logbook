@@ -121,6 +121,33 @@ def _minutes_or_dash(minutes: int) -> str:
     return format_duration(minutes) if minutes else NO_VALUE
 
 
+def _week_rows(s: Session, week: Week) -> list[tuple[str, int | None, str, int]]:
+    """주 범위 기록을 (프로젝트 slug, 태스크 id, 카테고리, 분 합계)로 묶어 읽는다. 쿼리 한 번."""
+    rows = s.execute(
+        select(Project.slug, WorkLog.task_id, WorkLog.category, func.sum(WorkLog.minutes))
+        .join(WorkLog.project)
+        .where(WorkLog.date.between(week.start, week.end))
+        .group_by(Project.slug, WorkLog.task_id, WorkLog.category)
+    )
+    return [(slug, task_id, category, int(minutes)) for slug, task_id, category, minutes in rows]
+
+
+def _split_rows(
+    rows: list[tuple[str, int | None, str, int]],
+) -> tuple[dict[str, list[int]], dict[str, dict[str, int]]]:
+    """프로젝트별로 (연결된 태스크 id 목록, 연결되지 않은 카테고리별 분)으로 나눈다."""
+    # dict는 삽입 순서를 지키므로 순서를 유지한 채 중복을 없애는 데 쓴다.
+    linked: dict[str, dict[int, None]] = {}
+    unlinked: dict[str, dict[str, int]] = {}
+    for slug, task_id, category, minutes in rows:
+        if task_id is not None:
+            linked.setdefault(slug, {})[task_id] = None
+        else:
+            by_category = unlinked.setdefault(slug, {})
+            by_category[category] = by_category.get(category, 0) + minutes
+    return {slug: list(ids) for slug, ids in linked.items()}, unlinked
+
+
 def _sections(
     s: Session,
     week: Week,
@@ -130,28 +157,12 @@ def _sections(
 ) -> tuple[ProjectSection, ...]:
     if not matrix.projects:
         return ()
-    rows = list(
-        s.execute(
-            select(Project.slug, WorkLog.task_id, WorkLog.category, func.sum(WorkLog.minutes))
-            .join(WorkLog.project)
-            .where(WorkLog.date.between(week.start, week.end))
-            .group_by(Project.slug, WorkLog.task_id, WorkLog.category)
-        )
-    )
+    rows = _week_rows(s, week)
     task_ids = sorted({task_id for _, task_id, _, _ in rows if task_id is not None})
     tasks = _tasks_by_id(s, task_ids)
     cumulative = _cumulative_minutes(s, task_ids, week.end)
     column = {category: index for index, category in enumerate(matrix.categories)}
-
-    tasks_of: dict[str, list[int]] = {}
-    unlinked: dict[str, dict[str, int]] = {}
-    for slug, task_id, category, minutes in rows:
-        if task_id is not None:
-            if task_id not in tasks_of.setdefault(slug, []):
-                tasks_of[slug].append(task_id)
-        else:
-            by_category = unlinked.setdefault(slug, {})
-            by_category[category] = by_category.get(category, 0) + int(minutes)
+    tasks_of, unlinked = _split_rows(rows)
 
     return tuple(
         ProjectSection(

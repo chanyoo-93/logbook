@@ -165,6 +165,22 @@ def require_confirmation(question: str, *, cancelled: str, no_input: str) -> Non
     raise typer.Exit(EXIT_ERROR)
 
 
+def _reject_directory(path: Path) -> None:
+    if path.is_dir():
+        raise InvalidInputError(f"파일 경로가 아니라 폴더입니다: {path}. 파일 이름까지 지정하세요.")
+
+
+def prepare_input_path(path_text: str, where: str) -> Path:
+    """읽을 파일 경로를 바꾸고 폴더이거나 없는 경우를 검사한다. DB·설정 없이 하는 검증이다."""
+    from logbook.core.config import expand_home
+
+    path = expand_home(path_text, where)
+    _reject_directory(path)
+    if not path.is_file():
+        raise InvalidInputError(f"가져올 파일이 없습니다: {path}")
+    return path
+
+
 def prepare_output_path(path_text: str) -> Path:
     """--out 값을 경로로 바꾸고 폴더 쪽 문제를 검사한다. DB·설정 없이 하는 검증이다.
 
@@ -174,8 +190,7 @@ def prepare_output_path(path_text: str) -> Path:
     from logbook.core.config import expand_home
 
     path = expand_home(path_text, "--out")
-    if path.is_dir():
-        raise InvalidInputError(f"파일 경로가 아니라 폴더입니다: {path}. 파일 이름까지 지정하세요.")
+    _reject_directory(path)
     if not path.parent.is_dir():
         raise InvalidInputError(
             f"저장할 폴더가 없습니다: {path.parent}. 폴더를 먼저 만들거나 다른 경로를 지정하세요."
