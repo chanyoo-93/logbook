@@ -163,7 +163,7 @@ def test_get_task_returns_task_with_project(seeded: Session) -> None:
 
 
 def test_get_task_unknown_id_raises_not_found(seeded: Session) -> None:
-    with pytest.raises(NotFoundError, match="태스크 #999가 없습니다.*'lb task list'"):
+    with pytest.raises(NotFoundError, match="태스크를 찾을 수 없습니다: #999.*'lb task list'"):
         services.get_task(seeded, 999)
 
 
@@ -558,7 +558,7 @@ def test_set_status_persists(seeded: Session) -> None:
 
 
 def test_set_status_unknown_task_raises_not_found(seeded: Session) -> None:
-    with pytest.raises(NotFoundError, match="태스크 #999가 없습니다"):
+    with pytest.raises(NotFoundError, match="태스크를 찾을 수 없습니다: #999"):
         services.set_task_status(seeded, 999, TaskStatus.DONE)
 
 

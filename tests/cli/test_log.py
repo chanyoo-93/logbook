@@ -147,7 +147,7 @@ def test_empty_week(lb: Callable[..., Result], seeded: Path) -> None:
         ),
         (
             ["-p", "nope"],
-            "프로젝트 'nope'가 없습니다. 'lb project list'로 확인하거나, "
+            "프로젝트를 찾을 수 없습니다: 'nope'. 'lb project list'로 확인하거나, "
             "새 프로젝트라면 'lb project add nope <이름>'으로 만드세요.",
         ),
         (["-w", ""], "주차 형식이 올바르지 않습니다: ''. 예: this, last, next, 2026-W41"),

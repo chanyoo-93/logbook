@@ -44,7 +44,7 @@ def test_create_duplicate_slug_raises(session: Session) -> None:
         projects.create_project(session, "payment", "다른 이름")
 
     assert str(excinfo.value) == (
-        "프로젝트 'payment'가 이미 존재합니다. 'lb project list'로 확인하세요."
+        "이미 존재하는 프로젝트입니다: 'payment'. 'lb project list'로 확인하세요."
     )
 
 
@@ -140,7 +140,7 @@ def test_get_missing_slug_raises_not_found(session: Session) -> None:
         projects.get_project(session, "paymnt")
 
     assert str(excinfo.value) == (
-        "프로젝트 'paymnt'가 없습니다. 'lb project list'로 확인하거나, "
+        "프로젝트를 찾을 수 없습니다: 'paymnt'. 'lb project list'로 확인하거나, "
         "새 프로젝트라면 'lb project add paymnt <이름>'으로 만드세요."
     )
 
@@ -150,7 +150,7 @@ def test_get_missing_invalid_slug_hints_placeholder(session: Session) -> None:
         projects.get_project(session, "Pay Ment")
 
     assert str(excinfo.value) == (
-        "프로젝트 'Pay Ment'가 없습니다. 'lb project list'로 확인하거나, "
+        "프로젝트를 찾을 수 없습니다: 'Pay Ment'. 'lb project list'로 확인하거나, "
         "새 프로젝트라면 'lb project add <slug> <이름>'으로 만드세요."
     )
 

@@ -148,7 +148,7 @@ def test_no_options_is_rejected(lb: Callable[..., Result], seeded: Path, open_db
         (["-m", "0"], "소요 시간은 1분 이상이어야 합니다: '0'. 예: 30m, 1h"),
         (
             ["-c", "nope"],
-            f"카테고리 'nope'는 쓸 수 없습니다. 사용할 수 있는 카테고리: {CATEGORY_LIST}",
+            f"쓸 수 없는 카테고리입니다: 'nope'. 사용할 수 있는 카테고리: {CATEGORY_LIST}",
         ),
     ],
     ids=[
@@ -183,7 +183,7 @@ def test_linked_record_cannot_move_project(
 
     assert_rejected(
         result,
-        "연결된 태스크 #1의 프로젝트('payment')와 다른 프로젝트로 옮길 수 없습니다. "
+        "연결된 태스크(#1)와 다른 프로젝트로 옮길 수 없습니다 (태스크의 프로젝트: 'payment'). "
         "태스크 연결을 해제하거나 같은 프로젝트를 지정하세요.",
     )
     assert snapshot(open_db, 1) == LOG_1
@@ -239,7 +239,7 @@ def test_cannot_move_to_archived_project(
 def test_unknown_id(lb: Callable[..., Result], seeded: Path) -> None:
     result = lb("log", "edit", "999", "-n", "x")
 
-    assert_rejected(result, "기록 #999가 없습니다. 'lb log'로 확인하세요.")
+    assert_rejected(result, "기록을 찾을 수 없습니다: #999. 'lb log'로 확인하세요.")
     os.replace(seeded, seeded.with_name("moved.db"))
 
 

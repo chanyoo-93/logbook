@@ -218,14 +218,14 @@ def test_invalid_id(lb: Callable[..., Result], seeded: Path, task_id: str) -> No
 def test_unknown_id(lb: Callable[..., Result], seeded: Path) -> None:
     result = lb("task", "edit", "9", "--est", "1h")
 
-    assert_rejected(result, "태스크 #9가 없습니다. 'lb task list'로 확인하세요.")
+    assert_rejected(result, "태스크를 찾을 수 없습니다: #9. 'lb task list'로 확인하세요.")
 
 
 def test_unknown_category(lb: Callable[..., Result], seeded: Path, open_db: OpenDb) -> None:
     result = lb("task", "edit", "1", "-c", "xyz")
 
     assert_rejected(
-        result, f"카테고리 'xyz'는 쓸 수 없습니다. 사용할 수 있는 카테고리: {CATEGORY_LIST}"
+        result, f"쓸 수 없는 카테고리입니다: 'xyz'. 사용할 수 있는 카테고리: {CATEGORY_LIST}"
     )
     assert snapshot(open_db, 1) == TASK_1
 

@@ -166,7 +166,8 @@ def test_task_project_mismatch(
 
     assert_rejected(
         result,
-        "태스크 #1는 'payment' 프로젝트에 속합니다. 프로젝트를 빼거나 'payment'로 지정하세요.",
+        "'payment' 프로젝트에 속한 태스크입니다 (#1). "
+        "프로젝트를 빼거나 같은 프로젝트(-p payment)를 지정하세요.",
     )
     # 세션 안에서 난 오류 뒤에도 엔진이 정리되어 파일을 옮길 수 있다.
     os.replace(initialized, initialized.with_name("moved.db"))
@@ -184,7 +185,7 @@ def test_invalid_task_id(lb: Callable[..., Result], initialized: Path, task: str
 def test_unknown_task(lb: Callable[..., Result], initialized: Path) -> None:
     result = lb("add", "1h", "x", "-c", "dev", "-t", "999")
 
-    assert_rejected(result, "태스크 #999가 없습니다. 'lb task list'로 확인하세요.")
+    assert_rejected(result, "태스크를 찾을 수 없습니다: #999. 'lb task list'로 확인하세요.")
     os.replace(initialized, initialized.with_name("moved.db"))
 
 
@@ -219,13 +220,13 @@ def test_invalid_duration(
         ),
         (
             ["x", "-c", "dev", "-p", "nope"],
-            "프로젝트 'nope'가 없습니다. 'lb project list'로 확인하거나, "
+            "프로젝트를 찾을 수 없습니다: 'nope'. 'lb project list'로 확인하거나, "
             "새 프로젝트라면 'lb project add nope <이름>'으로 만드세요.",
         ),
         (["x"], "카테고리를 지정하세요. 예: -c dev"),
         (
             ["x", "-c", "xyz"],
-            f"카테고리 'xyz'는 쓸 수 없습니다. 사용할 수 있는 카테고리: {CATEGORY_LIST}",
+            f"쓸 수 없는 카테고리입니다: 'xyz'. 사용할 수 있는 카테고리: {CATEGORY_LIST}",
         ),
         (["  ", "-c", "dev"], "메모를 입력하세요. 무엇을 했는지 한 줄로 적어 주세요."),
     ],
@@ -247,7 +248,7 @@ def test_archived_project_is_rejected(lb: Callable[..., Result], initialized: Pa
 
     assert_rejected(
         result,
-        "보관된 프로젝트 'payment'에는 새 기록이나 태스크를 추가할 수 없습니다. "
+        "보관된 프로젝트에는 새 기록이나 태스크를 추가할 수 없습니다: 'payment'. "
         "다른 프로젝트를 지정하세요.",
     )
     os.replace(initialized, initialized.with_name("moved.db"))

@@ -160,16 +160,16 @@ def test_estimate_has_no_upper_limit(
         ),
         (
             ["-c", "xyz"],
-            f"카테고리 'xyz'는 쓸 수 없습니다. 사용할 수 있는 카테고리: {CATEGORY_LIST}",
+            f"쓸 수 없는 카테고리입니다: 'xyz'. 사용할 수 있는 카테고리: {CATEGORY_LIST}",
         ),
         (
             ["-p", "old"],
-            "보관된 프로젝트 'old'에는 새 기록이나 태스크를 추가할 수 없습니다. "
+            "보관된 프로젝트에는 새 기록이나 태스크를 추가할 수 없습니다: 'old'. "
             "다른 프로젝트를 지정하세요.",
         ),
         (
             ["-p", "nope"],
-            "프로젝트 'nope'가 없습니다. 'lb project list'로 확인하거나, "
+            "프로젝트를 찾을 수 없습니다: 'nope'. 'lb project list'로 확인하거나, "
             "새 프로젝트라면 'lb project add nope <이름>'으로 만드세요.",
         ),
     ],

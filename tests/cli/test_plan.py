@@ -264,7 +264,7 @@ def test_carry_no_candidates(lb: Callable[..., Result], seeded: Path, open_db: O
     result = lb("plan", "carry", "-w", "2026-W30", input="y\n")
 
     assert result.exit_code == 0, result.stderr
-    assert result.stdout == "이월할 태스크가 없습니다 (2026-W30의 todo·doing 태스크).\n"
+    assert result.stdout == "이월할 태스크가 없습니다 (2026-W30 주차의 todo·doing 태스크).\n"
     assert result.stderr == ""
     assert weeks_of(open_db) == INITIAL_WEEKS
 

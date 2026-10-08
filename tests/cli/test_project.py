@@ -72,7 +72,7 @@ def test_add_invalid_slug(lb: Callable[..., Result], initialized: Path) -> None:
         ),
         (
             ["payment", "다른 이름"],
-            "프로젝트 'payment'가 이미 존재합니다. 'lb project list'로 확인하세요.",
+            "이미 존재하는 프로젝트입니다: 'payment'. 'lb project list'로 확인하세요.",
         ),
     ],
     ids=["blank-name", "bad-color", "duplicate"],
@@ -187,7 +187,7 @@ def test_archive_unknown_project(lb: Callable[..., Result], initialized: Path) -
     assert result.exit_code == 1
     assert result.stdout == ""
     assert result.stderr == (
-        "오류: 프로젝트 'zzz'가 없습니다. 'lb project list'로 확인하거나, "
+        "오류: 프로젝트를 찾을 수 없습니다: 'zzz'. 'lb project list'로 확인하거나, "
         "새 프로젝트라면 'lb project add zzz <이름>'으로 만드세요.\n"
     )
 

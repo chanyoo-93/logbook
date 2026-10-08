@@ -146,7 +146,7 @@ def test_markup_like_title_is_printed_verbatim(lb: Callable[..., Result], seeded
 def test_unknown_id(lb: Callable[..., Result], seeded: Path, command: str) -> None:
     result = lb("task", command, "9")
 
-    assert_rejected(result, "태스크 #9가 없습니다. 'lb task list'로 확인하세요.")
+    assert_rejected(result, "태스크를 찾을 수 없습니다: #9. 'lb task list'로 확인하세요.")
 
 
 @pytest.mark.parametrize("command", ["start", "done", "drop"])

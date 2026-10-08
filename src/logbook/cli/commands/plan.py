@@ -144,7 +144,7 @@ def carry(week: runtime.WeekOpt = None, yes: runtime.YesOpt = False) -> None:
 
     if not candidates:
         console.print_line(
-            f"이월할 태스크가 없습니다 ({src.label}의 todo{render.info_mark()}doing 태스크)."
+            f"이월할 태스크가 없습니다 ({src.label} 주차의 todo{render.info_mark()}doing 태스크)."
         )
         return
 

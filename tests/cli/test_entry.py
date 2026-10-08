@@ -196,7 +196,7 @@ def test_add_error_is_utf8_on_legacy_code_page(tmp_path: Path, encoding: str) ->
 
     assert proc.returncode == 1
     assert proc.stdout == ""
-    assert proc.stderr.startswith("오류: 카테고리 'nope'는 쓸 수 없습니다.")
+    assert proc.stderr.startswith("오류: 쓸 수 없는 카테고리입니다: 'nope'.")
 
 
 @pytest.mark.subprocess

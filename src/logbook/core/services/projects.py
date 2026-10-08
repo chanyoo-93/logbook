@@ -63,7 +63,7 @@ def get_active_project(s: Session, slug: str) -> Project:
     project = get_project(s, slug)
     if project.archived:
         raise InvalidInputError(
-            f"보관된 프로젝트 '{slug}'에는 새 기록이나 태스크를 추가할 수 없습니다. "
+            f"보관된 프로젝트에는 새 기록이나 태스크를 추가할 수 없습니다: '{slug}'. "
             "다른 프로젝트를 지정하세요."
         )
     return project
@@ -132,10 +132,10 @@ def _not_found_message(slug: str) -> str:
     # 쓸 수 없는 slug로 만들라고 안내하지 않도록 자리표시자를 쓴다.
     hint = slug if is_valid_slug(slug) else "<slug>"
     return (
-        f"프로젝트 '{slug}'가 없습니다. 'lb project list'로 확인하거나, "
+        f"프로젝트를 찾을 수 없습니다: '{slug}'. 'lb project list'로 확인하거나, "
         f"새 프로젝트라면 'lb project add {hint} <이름>'으로 만드세요."
     )
 
 
 def _duplicate_message(slug: str) -> str:
-    return f"프로젝트 '{slug}'가 이미 존재합니다. 'lb project list'로 확인하세요."
+    return f"이미 존재하는 프로젝트입니다: '{slug}'. 'lb project list'로 확인하세요."

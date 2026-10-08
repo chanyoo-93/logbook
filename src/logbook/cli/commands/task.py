@@ -25,6 +25,7 @@ task_app = typer.Typer(
 # 'lb task list'의 기본 상태 목록(사용자 결정 T2: 할 일·진행 중)
 DEFAULT_LIST_STATUSES = "todo,doing"
 
+# 옵션 이름(--est, --no-est 등)은 모두 모음으로 끝나게 읽힌다고 보고 '와'·'는'을 붙인다.
 CONFLICT_MESSAGE = "{}와 {}는 함께 쓸 수 없습니다. 하나만 지정하세요."
 NOTHING_TO_CHANGE_MESSAGE = (
     "바꿀 항목을 하나 이상 지정하세요. 예: lb task edit 43 --est 6h --week next"

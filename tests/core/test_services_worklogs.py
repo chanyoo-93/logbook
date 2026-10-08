@@ -122,7 +122,7 @@ def test_add_unknown_project_raises_not_found(seeded: Session) -> None:
         _add(seeded, project_slug="paymnt")
 
     assert str(excinfo.value) == (
-        "프로젝트 'paymnt'가 없습니다. 'lb project list'로 확인하거나, "
+        "프로젝트를 찾을 수 없습니다: 'paymnt'. 'lb project list'로 확인하거나, "
         "새 프로젝트라면 'lb project add paymnt <이름>'으로 만드세요."
     )
     assert _count_logs(seeded) == 0
@@ -140,7 +140,7 @@ def test_add_to_archived_project_raises(seeded: Session) -> None:
         _add(seeded, project_slug="search")
 
     assert str(excinfo.value) == (
-        "보관된 프로젝트 'search'에는 새 기록이나 태스크를 추가할 수 없습니다. "
+        "보관된 프로젝트에는 새 기록이나 태스크를 추가할 수 없습니다: 'search'. "
         "다른 프로젝트를 지정하세요."
     )
     assert _count_logs(seeded) == 0
@@ -181,8 +181,8 @@ def test_add_explicit_project_different_from_task_raises(seeded: Session) -> Non
         _add(seeded, task_id=task.id, project_slug="search")
 
     assert str(excinfo.value) == (
-        f"태스크 #{task.id}는 'payment' 프로젝트에 속합니다. "
-        "프로젝트를 빼거나 'payment'로 지정하세요."
+        f"'payment' 프로젝트에 속한 태스크입니다 (#{task.id}). "
+        "프로젝트를 빼거나 같은 프로젝트(-p payment)를 지정하세요."
     )
     assert _count_logs(seeded) == 0
 
@@ -191,7 +191,7 @@ def test_add_unknown_task_raises_not_found(seeded: Session) -> None:
     with pytest.raises(NotFoundError) as excinfo:
         _add(seeded, task_id=999)
 
-    assert str(excinfo.value) == "태스크 #999가 없습니다. 'lb task list'로 확인하세요."
+    assert str(excinfo.value) == "태스크를 찾을 수 없습니다: #999. 'lb task list'로 확인하세요."
 
 
 def test_add_task_in_archived_project_raises(seeded: Session) -> None:
@@ -237,7 +237,7 @@ def test_add_category_not_allowed_raises_with_sorted_list(seeded: Session) -> No
         _add(seeded, category="xyz", allowed_categories={"dev", "admin"})
 
     assert str(excinfo.value) == (
-        "카테고리 'xyz'는 쓸 수 없습니다. 사용할 수 있는 카테고리: admin, dev"
+        "쓸 수 없는 카테고리입니다: 'xyz'. 사용할 수 있는 카테고리: admin, dev"
     )
     assert _count_logs(seeded) == 0
 
@@ -352,7 +352,7 @@ def test_get_missing_raises_not_found(seeded: Session) -> None:
     with pytest.raises(NotFoundError) as excinfo:
         services.get_worklog(seeded, 128)
 
-    assert str(excinfo.value) == "기록 #128가 없습니다. 'lb log'로 확인하세요."
+    assert str(excinfo.value) == "기록을 찾을 수 없습니다: #128. 'lb log'로 확인하세요."
 
 
 def test_get_result_is_readable_after_session_closes(engine: Engine) -> None:
@@ -375,7 +375,7 @@ def test_delete_then_get_raises_not_found(seeded: Session) -> None:
 
     services.delete_worklog(seeded, log_id)
 
-    with pytest.raises(NotFoundError, match=f"기록 #{log_id}가 없습니다"):
+    with pytest.raises(NotFoundError, match=f"기록을 찾을 수 없습니다: #{log_id}"):
         services.get_worklog(seeded, log_id)
     assert _count_logs(seeded) == 0
 
@@ -535,7 +535,7 @@ def test_update_note_category_and_date(seeded: Session) -> None:
 
 
 def test_update_missing_raises_not_found(seeded: Session) -> None:
-    with pytest.raises(NotFoundError, match="기록 #128가 없습니다"):
+    with pytest.raises(NotFoundError, match="기록을 찾을 수 없습니다: #128"):
         services.update_worklog(seeded, 128, minutes=90)
 
 
@@ -674,7 +674,7 @@ def test_update_task_in_archived_project_raises(seeded: Session) -> None:
 def test_update_unknown_task_raises_not_found(seeded: Session) -> None:
     log = _add(seeded)
 
-    with pytest.raises(NotFoundError, match="태스크 #999가 없습니다"):
+    with pytest.raises(NotFoundError, match="태스크를 찾을 수 없습니다: #999"):
         services.update_worklog(seeded, log.id, task_id=999)
 
 
@@ -686,8 +686,8 @@ def test_update_explicit_project_inconsistent_with_new_task_raises(seeded: Sessi
         services.update_worklog(seeded, log.id, task_id=task.id, project_slug="search")
 
     assert str(excinfo.value) == (
-        f"태스크 #{task.id}는 'payment' 프로젝트에 속합니다. "
-        "프로젝트를 빼거나 'payment'로 지정하세요."
+        f"'payment' 프로젝트에 속한 태스크입니다 (#{task.id}). "
+        "프로젝트를 빼거나 같은 프로젝트(-p payment)를 지정하세요."
     )
     assert log.task is None
 
@@ -700,7 +700,8 @@ def test_update_project_away_from_linked_task_raises(seeded: Session) -> None:
         services.update_worklog(seeded, log.id, project_slug="search")
 
     assert str(excinfo.value) == (
-        f"연결된 태스크 #{task.id}의 프로젝트('payment')와 다른 프로젝트로 옮길 수 없습니다. "
+        f"연결된 태스크(#{task.id})와 다른 프로젝트로 옮길 수 없습니다 "
+        "(태스크의 프로젝트: 'payment'). "
         "태스크 연결을 해제하거나 같은 프로젝트를 지정하세요."
     )
     assert log.project.slug == "payment"

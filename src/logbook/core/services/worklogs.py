@@ -72,7 +72,7 @@ def get_worklog(s: Session, log_id: int) -> WorkLog:
     query = select(WorkLog).where(WorkLog.id == log_id).options(*_WITH_RELATIONS)
     log = s.scalars(query).one_or_none()
     if log is None:
-        raise NotFoundError(f"기록 #{log_id}가 없습니다. 'lb log'로 확인하세요.")
+        raise NotFoundError(f"기록을 찾을 수 없습니다: #{log_id}. 'lb log'로 확인하세요.")
     return log
 
 

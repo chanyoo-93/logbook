@@ -182,7 +182,7 @@ def test_deleted_while_confirming_reports_not_found(
 
     result = lb("log", "rm", "1")
 
-    assert_rejected(result, "기록 #1가 없습니다. 'lb log'로 확인하세요.")
+    assert_rejected(result, "기록을 찾을 수 없습니다: #1. 'lb log'로 확인하세요.")
     assert log_ids(open_db) == [2]
     os.replace(seeded, seeded.with_name("moved.db"))
 
@@ -190,7 +190,7 @@ def test_deleted_while_confirming_reports_not_found(
 def test_unknown_id_fails_without_prompt(lb: Callable[..., Result], seeded: Path) -> None:
     result = lb("log", "rm", "999", "--yes")
 
-    assert_rejected(result, "기록 #999가 없습니다. 'lb log'로 확인하세요.")
+    assert_rejected(result, "기록을 찾을 수 없습니다: #999. 'lb log'로 확인하세요.")
     assert_clean_output(result)
     os.replace(seeded, seeded.with_name("moved.db"))
 
@@ -198,7 +198,7 @@ def test_unknown_id_fails_without_prompt(lb: Callable[..., Result], seeded: Path
 def test_unknown_id_without_yes_does_not_prompt(lb: Callable[..., Result], seeded: Path) -> None:
     result = lb("log", "rm", "999", input="y\n")
 
-    assert_rejected(result, "기록 #999가 없습니다. 'lb log'로 확인하세요.")
+    assert_rejected(result, "기록을 찾을 수 없습니다: #999. 'lb log'로 확인하세요.")
 
 
 @pytest.mark.parametrize("log_id", ["abc", "99999999999999999999"])

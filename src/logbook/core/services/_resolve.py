@@ -59,12 +59,13 @@ def target_project(
         owner = task.project.slug
         if not task_is_new:
             raise InvalidInputError(
-                f"연결된 태스크 #{task.id}의 프로젝트('{owner}')와 다른 프로젝트로 옮길 수 "
-                "없습니다. 태스크 연결을 해제하거나 같은 프로젝트를 지정하세요."
+                f"연결된 태스크(#{task.id})와 다른 프로젝트로 옮길 수 없습니다 "
+                f"(태스크의 프로젝트: '{owner}'). "
+                "태스크 연결을 해제하거나 같은 프로젝트를 지정하세요."
             )
         raise InvalidInputError(
-            f"태스크 #{task.id}는 '{owner}' 프로젝트에 속합니다. "
-            f"프로젝트를 빼거나 '{owner}'로 지정하세요."
+            f"'{owner}' 프로젝트에 속한 태스크입니다 (#{task.id}). "
+            f"프로젝트를 빼거나 같은 프로젝트(-p {owner})를 지정하세요."
         )
     if current is None:
         return get_active_project(s, slug)

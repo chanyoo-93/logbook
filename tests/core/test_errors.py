@@ -10,7 +10,7 @@ from logbook.core.errors import (
     NotFoundError,
 )
 
-KOREAN_MESSAGE = "프로젝트 'x'가 없습니다. 'lb project list'로 확인하세요."
+KOREAN_MESSAGE = "프로젝트를 찾을 수 없습니다: 'x'. 'lb project list'로 확인하세요."
 
 
 def test_errors_are_subclasses() -> None:
