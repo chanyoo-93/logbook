@@ -515,7 +515,7 @@ def timer_line(timer: "ActiveTimer") -> "Text"                 # "payment/design
 
 import 가드: `task edit --help`, `task edit 1`(바꿀 항목 없음, rc 1), `task edit abc --est 1h`(rc 1).
 
-- [ ] RED → GREEN → 커밋 `feat: lb task edit 명령 추가`
+- [x] RED → GREEN → 커밋 `feat: lb task edit 명령 추가`
 
 ---
 
