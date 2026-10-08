@@ -33,6 +33,16 @@ from logbook.core.services.tasks import (
     task_actual_minutes,
     update_task,
 )
+from logbook.core.services.timer import (
+    MAX_ROUND_MINUTES,
+    StartedTimer,
+    TimerStopped,
+    cancel_timer,
+    elapsed_minutes,
+    get_timer,
+    start_timer,
+    stop_timer,
+)
 from logbook.core.services.worklogs import (
     add_worklog,
     day_total_minutes,
@@ -61,6 +71,14 @@ __all__ = [
     "set_task_status",
     "task_actual_minutes",
     "update_task",
+    "MAX_ROUND_MINUTES",
+    "StartedTimer",
+    "TimerStopped",
+    "cancel_timer",
+    "elapsed_minutes",
+    "get_timer",
+    "start_timer",
+    "stop_timer",
     "add_worklog",
     "day_total_minutes",
     "delete_worklog",

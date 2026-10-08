@@ -250,7 +250,7 @@ worklogs.py의 비공개 함수를 새 모듈 `services/_resolve.py`로 옮기�
 `_shared.py`에 두지 않는 이유: projects.py가 이미 `_shared.strip_or_none`을 import한다. 그래서 `_shared`가 projects를 import하면 순환이 생긴다. `_resolve.py`는 `_shared`와 `projects`를 import하고, worklogs와 timer가 `_resolve`를 import한다.
 
 worklogs 테스트는 바꾸지 않고 그대로 통과해야 한다. 그것이 이 단계의 검증이다.
-- [ ] 커밋 `refactor: 기록과 타이머가 함께 쓰는 프로젝트·카테고리 해석 규칙을 공용 모듈로 이동`
+- [x] 커밋 `refactor: 기록과 타이머가 함께 쓰는 프로젝트·카테고리 해석 규칙을 공용 모듈로 이동`
 
 ### 3-3b 타이머 서비스
 ```python
@@ -354,7 +354,7 @@ def cancel_timer(s) -> ActiveTimer               # 지운 타이머(관계 로�
 | cancel | 지운 타이머 반환(관계 접근 가능), 행 없음, WorkLog 없음 |
 | `get_timer` 없음 / 있음 | None / project 로드된 객체 |
 
-- [ ] RED → GREEN → 커밋 `feat: 타이머 시작·종료·취소 서비스 추가`
+- [x] RED → GREEN → 커밋 `feat: 타이머 시작·종료·취소 서비스 추가`
 
 ---
 
