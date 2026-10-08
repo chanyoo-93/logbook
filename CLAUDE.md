@@ -37,10 +37,11 @@ src/logbook/
     models.py    # SQLAlchemy 모델
     taskstatus.py# 태스크 상태와 상태 목록 파서 (SQLAlchemy 없음)
     db.py        # 엔진/세션, 스키마 생성 및 마이그레이션, DB 진입점(open_database·initialize_database)
-    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer)
+    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer, report, backup, backup_import)
     duration.py  # "1h30m", "1.5h", "90m" 파싱/포맷
     weeks.py     # ISO 주차 계산 (YYYY-Www)
-    report.py    # 주간보고서 데이터 조립 + Markdown 렌더링
+    report.py    # 보고서 데이터 클래스 + Markdown 렌더링 (조립은 services/report.py)
+    templates/   # 기본 보고서 템플릿 (report.md.j2)
     config.py    # 설정 로드
     errors.py    # 사용자에게 보여줄 한국어 오류 타입 (LogbookError 계열)
     platform.py  # OS별 처리 (콘솔 인코딩, 클립보드, 데이터 디렉터리)
@@ -51,7 +52,7 @@ src/logbook/
     console.py   # Rich 출력 (마크업 해석 안 함, 비 TTY 폭 1000, 좁은 화면 대체 출력)
     runtime.py   # 설정·DB 세션·today·공용 옵션·ID 파싱·확인 프롬프트
     render.py    # 한 줄 요약과 표
-    commands/    # 명령별 모듈 (init, project, add, log, stats, task, plan, timer)
+    commands/    # 명령별 모듈 (init, project, add, log, stats, task, plan, timer, report, data)
   web/
     app.py       # FastAPI 앱
     templates/   # Jinja2 + HTMX
@@ -63,7 +64,7 @@ docs/
 ## 아키텍처 규칙
 
 - CLI와 Web은 반드시 `core.services`의 함수만 호출한다. SQL/ORM 쿼리를 CLI·Web 레이어에 직접 쓰지 않는다.
-  단, DB 연결·설정·입력 파싱용 core 공개 진입점(core.db.open_database·initialize_database·session_scope, core.config, core.duration, core.weeks, core.platform, core.errors)은 쓸 수 있다. SQL·ORM 쿼리는 어느 경우에도 CLI·Web에 쓰지 않는다.
+  단, DB 연결·설정·입력 파싱용 core 공개 진입점(core.db.open_database·initialize_database·session_scope, core.config, core.duration, core.weeks, core.platform, core.errors, core.taskstatus(상태 파서), core.report(보고서 렌더링: render_markdown·user_template_path, DB에 접근하지 않음))은 쓸 수 있다. SQL·ORM 쿼리는 어느 경우에도 CLI·Web에 쓰지 않는다.
 - 시간은 내부적으로 항상 **정수 분(minutes)** 으로 저장한다. 표시할 때만 `1h 30m` 형태로 변환.
 - 날짜는 `date`(로컬 기준)로 저장, 타임스탬프는 ISO 8601 문자열 또는 timezone-aware datetime.
 - 주차는 ISO 8601 주차(월요일 시작)를 기본으로 하되 설정으로 시작 요일 변경 가능하게 설계.
@@ -110,3 +111,19 @@ uv run mypy src/logbook/core
 - 커밋 메시지는 Conventional Commits 형식(`<type>: <설명>`)을 따르되, type(feat, fix, docs 등)은 영어, 설명과 본문은 한국어로 작성한다.
 - 스키마를 변경하면 `db.py`의 마이그레이션(버전 테이블 기반)을 추가하고 기존 데이터가 보존되는지 테스트한다.
 - 새 의존성을 추가하기 전에 이유를 설명하고 확인을 받는다.
+
+## 서브에이전트 사용 기준
+
+토큰 비용을 줄이려고 검증·리뷰 서브에이전트의 모델과 effort를 역할별로 고정한다. 정의는 `.claude/agents/`에 있다(폴더를 처음 만든 뒤에는 Claude Code를 재시작해야 인식된다).
+
+| 역할 | 에이전트 | 모델 / effort |
+|---|---|---|
+| 사실 확인, 리뷰 지적 검증 | `fact-verifier` | sonnet / medium |
+| Task 명세 준수 검토 | `spec-reviewer` | sonnet / medium |
+| 브랜치 최종 리뷰 | `final-reviewer` | sonnet / high |
+
+- 워크플로의 `agent()` 호출에는 `agentType`(위 에이전트)이나 `model`과 `effort`를 반드시 지정한다. 지정하지 않으면 메인 세션의 모델과 effort(예: `/effort max`)를 그대로 물려받는다.
+- 검증은 지적마다 따로 띄우지 않는다. 중복을 먼저 제거하고, 관련 지적을 묶어 검증자 한 명이 일괄로 확인한다. 다수결 3중 검증은 사용자가 요청할 때만 한다.
+- Opus나 effort high 이상은 설계 판단이 꼭 필요할 때만 쓰고, 쓸 때는 이유를 먼저 밝힌다.
+- 에이전트를 여러 개 띄우는 큰 작업은 시작 전에 예상 에이전트 수와 모델을 사용자에게 알린다.
+- 서브에이전트에게는 삭제 명령(rm, Remove-Item 등)을 쓰지 말고 매번 새 임시 폴더를 쓰라고 지시한다. 정리가 필요하면 메인 세션이 대상과 이유를 사용자에게 설명한 뒤 한다.

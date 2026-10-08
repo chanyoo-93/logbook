@@ -325,3 +325,57 @@ def test_closed_stderr_keeps_exit_code(
 
     assert proc.returncode == returncode
     assert proc.stdout == stdout
+
+
+# --- print_raw ---
+
+
+def test_print_raw_keeps_single_trailing_newline(capsys: pytest.CaptureFixture[str]) -> None:
+    console.print_raw("# 제목\n본문\n")
+
+    assert capsys.readouterr().out == "# 제목\n본문\n"
+
+
+def test_print_raw_adds_no_newline(capsys: pytest.CaptureFixture[str]) -> None:
+    console.print_raw("끝")
+
+    assert capsys.readouterr().out == "끝"
+
+
+def test_print_raw_keeps_blank_lines_and_trailing_spaces(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    text = "a  \n\n\nb \n"
+
+    console.print_raw(text)
+
+    assert capsys.readouterr().out == text
+
+
+@pytest.mark.parametrize("line", ["x" * 1500, "가" * 600], ids=["ascii", "korean"])
+def test_print_raw_does_not_wrap_long_lines(capsys: pytest.CaptureFixture[str], line: str) -> None:
+    console.print_raw(line + "\n")
+
+    assert capsys.readouterr().out == line + "\n"
+
+
+def test_print_raw_does_not_interpret_markup(capsys: pytest.CaptureFixture[str]) -> None:
+    console.print_raw("[bold]x[/bold] :smile: [/api]\n")
+
+    assert capsys.readouterr().out == "[bold]x[/bold] :smile: [/api]\n"
+
+
+def test_print_raw_expands_tabs_to_spaces(capsys: pytest.CaptureFixture[str]) -> None:
+    # Rich Text가 탭을 공백으로 펼친다. 계획서가 받아들인 절충이라 값으로 고정한다.
+    console.print_raw("a\tb\n")
+
+    out = capsys.readouterr().out
+    assert "\t" not in out
+    assert out.startswith("a") and out.endswith("b\n")
+
+
+def test_print_raw_raises_output_closed_on_broken_stdout(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "stdout", BrokenStream(BrokenPipeError()))
+
+    with pytest.raises(console.OutputClosedError):
+        console.print_raw("x\n")

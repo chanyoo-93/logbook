@@ -92,7 +92,7 @@ def _keys(cls: type[Any]) -> frozenset[str]:
     return frozenset(f.name for f in fields(cls))
 
 
-def _expand_home(raw: str, where: str) -> Path:
+def expand_home(raw: str, where: str) -> Path:
     """'~'와 '~' 뒤에 '/' 또는 백슬래시가 오는 경로만 홈 디렉터리 기준으로 바꾼다.
 
     '~name' 형식은 where(설정 키·파일 또는 환경변수 이름)를 밝혀 InvalidInputError로 거부한다.
@@ -115,7 +115,7 @@ def _expand_home(raw: str, where: str) -> Path:
 def _path_from_env(name: str, fallback: Path) -> Path:
     """환경변수 name이 비어 있지 않으면 그 경로(~ 확장), 아니면 fallback."""
     value = os.environ.get(name)
-    return _expand_home(value, f"환경변수 {name}") if value else fallback
+    return expand_home(value, f"환경변수 {name}") if value else fallback
 
 
 def config_path() -> Path:
@@ -130,7 +130,7 @@ def default_db_path() -> Path:
 
 def load_config(path: Path | None = None) -> Config:
     """설정 파일을 읽어 검증한다. 파일이 없으면 기본값을 쓴다."""
-    source = config_path() if path is None else _expand_home(str(path), "설정 파일 경로")
+    source = config_path() if path is None else expand_home(str(path), "설정 파일 경로")
     return _Table(source, "", _read_toml(source)).to_config()
 
 
@@ -140,7 +140,7 @@ def write_default_config(path: Path) -> None:
     대상 파일이 이미 있으면 덮어쓰지 않고 FileExistsError를 낸다.
     그 밖의 파일 시스템 오류(상위 경로가 파일, 권한 없음 등)는 LogbookError로 바꾼다.
     """
-    target = _expand_home(str(path), "설정 파일 경로")
+    target = expand_home(str(path), "설정 파일 경로")
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
     except OSError as error:
@@ -268,7 +268,7 @@ class _Table:
 
     def path(self, name: str) -> Path:
         """~를 확장하고, 상대 경로는 설정 파일이 있는 디렉터리 기준으로 바꾼다."""
-        expanded = _expand_home(
+        expanded = expand_home(
             self.string(name, non_empty=True), f"{self.prefix}{name} (파일: {self.source})"
         )
         if expanded.is_absolute():

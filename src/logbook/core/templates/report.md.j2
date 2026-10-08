@@ -1,0 +1,50 @@
+# {{ data.title }}
+{% if data.author %}
+작성자: {{ data.author }}
+{% endif %}
+
+## 1. 공수 요약
+총 {{ data.total }} (기록 {{ data.log_count }}건, 완료 태스크 {{ data.done_task_count }}건)
+{% if data.matrix %}
+
+| 프로젝트 | {{ data.categories | map('cell') | join(' | ') }} | 합계 | 비율 |
+{# 구분선 열 수: 프로젝트·합계·비율 3열 + 카테고리 수 #}
+|{{ '---|' * (data.categories | length + 3) }}
+{% for row in data.matrix %}
+| {{ row.project | cell }} | {{ row.cells | join(' | ') }} | {{ row.total }} | {{ row.percent }} |
+{% endfor %}
+{% endif %}
+
+## 2. 프로젝트별 실적
+{% if not data.sections %}
+기록이 없습니다.
+{% endif %}
+{% for section in data.sections %}
+{% if not loop.first %}
+
+{% endif %}
+### {{ section.project }} ({{ section.total }})
+{% for task in section.tasks %}
+- [{{ task.status }}] {{ task.title }} (#{{ task.task_id }}) — {{ task.actual_label }} {{ task.actual }}{{ (' / 예상 ' ~ task.estimate) if task.estimate else '' }}
+{% endfor %}
+{% if section.others %}
+- 기타: {{ section.others | map('join', ' ') | join(', ') }}
+{% endif %}
+{% endfor %}
+
+## 3. 특이사항 / 리스크
+(작성하세요)
+
+## 4. 다음 주 계획
+{% if not data.plan %}
+계획된 태스크가 없습니다.
+{% endif %}
+{% for group in data.plan %}
+{% if not loop.first %}
+
+{% endif %}
+### {{ group.project }} (예상 {{ group.estimate_total }})
+{% for item in group.items %}
+- {{ item.title }} (#{{ item.task_id }}){{ (' — 예상 ' ~ item.estimate) if item.estimate else '' }}{{ ' (이월 후보)' if item.carried else '' }}
+{% endfor %}
+{% endfor %}

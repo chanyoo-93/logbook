@@ -244,6 +244,30 @@ def test_log_rm_accepts_bom_prefixed_pipe_input(tmp_path: Path) -> None:
 
 
 @pytest.mark.subprocess
+def test_export_import_round_trip_on_cp949_console(tmp_path: Path) -> None:
+    env = lb_env(tmp_path, "cp949")
+    assert run_lb(["init"], env=env, cwd=tmp_path).returncode == 0
+    assert run_lb(["add", "1h", "한글 메모", "-c", "dev"], env=env, cwd=tmp_path).returncode == 0
+    exported = run_lb(["export", "-o", "b.jsonl"], env=env, cwd=tmp_path)
+    assert exported.returncode == 0, exported.stderr
+    assert (
+        exported.stdout == "✔ 내보냈습니다: b.jsonl (프로젝트 1 · 태스크 0 · 기록 1 · 타이머 0)\n"
+    )
+
+    other_env = {**env, "LOGBOOK_DB": str(tmp_path / "other" / "logbook.db")}
+    assert run_lb(["init"], env=other_env, cwd=tmp_path).returncode == 0
+    imported = run_lb(["import", "b.jsonl"], env=other_env, cwd=tmp_path)
+    assert imported.returncode == 0, imported.stderr
+    assert (
+        imported.stdout == "✔ 가져왔습니다: b.jsonl (프로젝트 1 · 태스크 0 · 기록 1 · 타이머 0)\n"
+    )
+
+    shown = run_lb(["log"], env=other_env, cwd=tmp_path)
+    assert shown.returncode == 0, shown.stderr
+    assert "한글 메모" in shown.stdout
+
+
+@pytest.mark.subprocess
 def test_add_does_not_expand_windows_args(tmp_path: Path) -> None:
     # Click의 Windows 인자 펼침이 켜져 있으면 %USERNAME%, ~, glob이 'lbtest~a1'로 바뀐다.
     # 시간 파싱 오류가 DB보다 먼저 나므로 lb init이 필요 없다.
@@ -409,6 +433,35 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(["stats", "--help"], 0, None, id="stats-help"),
         pytest.param(["stats", "--by", "x"], 1, "오류: 집계 기준이", id="stats-bad-by"),
         pytest.param(["stats", "-w", "2026-W99"], 1, "오류: 주차 형식이", id="stats-bad-week"),
+        pytest.param(["report", "--help"], 0, None, id="report-help"),
+        pytest.param(["report", "-w", "x"], 1, "오류: 주차 형식이", id="report-bad-week"),
+        pytest.param(
+            ["report", "-o", "없는폴더/x.md"],
+            1,
+            "오류: 저장할 폴더가 없습니다",
+            id="report-missing-dir",
+        ),
+        pytest.param(["export", "--help"], 0, None, id="export-help"),
+        pytest.param(["import", "--help"], 0, None, id="import-help"),
+        pytest.param(["import"], 2, None, id="import-missing-arg"),
+        pytest.param(
+            ["export", "-o", "없는폴더/x.jsonl"],
+            1,
+            "오류: 저장할 폴더가 없습니다",
+            id="export-missing-dir",
+        ),
+        pytest.param(
+            ["import", "없는파일.jsonl"],
+            1,
+            "오류: 가져올 파일이 없습니다",
+            id="import-missing-file",
+        ),
+        pytest.param(
+            ["import", "."], 1, "오류: 파일 경로가 아니라 폴더입니다", id="import-directory"
+        ),
+        pytest.param(
+            ["import", "~nouser/x.jsonl"], 1, "오류: 경로가 올바르지 않습니다", id="import-bad-home"
+        ),
     ],
 )
 def test_startup_does_not_load_heavy_modules(

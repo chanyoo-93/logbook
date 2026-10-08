@@ -10,13 +10,14 @@ import re
 import sys
 from contextlib import contextmanager
 from datetime import date, datetime
+from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 import typer
 
 from logbook.cli import console
 from logbook.cli.group import EXIT_ERROR
-from logbook.core.errors import InvalidInputError
+from logbook.core.errors import InvalidInputError, LogbookError
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -46,6 +47,7 @@ EstimateOpt = Annotated[
     str | None, typer.Option("--est", "-e", help="예상 공수 (예: 4h, 90m, 40h)")
 ]
 RefOpt = Annotated[str | None, typer.Option("--ref", help="외부 참조 (예: '#43', URL, Jira 키)")]
+OutOpt = Annotated[str | None, typer.Option("--out", "-o", help="저장할 파일 경로")]
 DueOpt = Annotated[str | None, typer.Option("--due", help="마감일: today, 10-15, 2026-10-15 …")]
 
 # SQLite INTEGER 최댓값. 넘는 값은 서비스에서 OverflowError(traceback)가 난다.
@@ -161,3 +163,54 @@ def require_confirmation(question: str, *, cancelled: str, no_input: str) -> Non
         return
     console.print_notice(no_input if answer is None else cancelled)
     raise typer.Exit(EXIT_ERROR)
+
+
+def _reject_directory(path: Path) -> None:
+    if path.is_dir():
+        raise InvalidInputError(f"파일 경로가 아니라 폴더입니다: {path}. 파일 이름까지 지정하세요.")
+
+
+def prepare_input_path(path_text: str, where: str) -> Path:
+    """읽을 파일 경로를 바꾸고 폴더이거나 없는 경우를 검사한다. DB·설정 없이 하는 검증이다."""
+    from logbook.core.config import expand_home
+
+    path = expand_home(path_text, where)
+    _reject_directory(path)
+    if not path.is_file():
+        raise InvalidInputError(f"가져올 파일이 없습니다: {path}")
+    return path
+
+
+def prepare_output_path(path_text: str) -> Path:
+    """--out 값을 경로로 바꾸고 폴더 쪽 문제를 검사한다. DB·설정 없이 하는 검증이다.
+
+    검사 순서는 고정이다(예외 종류로 판정하지 않는다). Windows는 폴더를 열면 IsADirectoryError
+    대신 PermissionError를 내므로, 존재 확인보다 폴더 검사를 먼저 해야 '-o .'에서 폴더 문구가 난다.
+    """
+    from logbook.core.config import expand_home
+
+    path = expand_home(path_text, "--out")
+    _reject_directory(path)
+    if not path.parent.is_dir():
+        raise InvalidInputError(
+            f"저장할 폴더가 없습니다: {path.parent}. 폴더를 먼저 만들거나 다른 경로를 지정하세요."
+        )
+    return path
+
+
+def write_text_file(path: Path, text: str, *, yes: bool) -> None:
+    """text를 UTF-8·LF로 쓴다. 파일이 이미 있으면 yes가 아닌 한 덮어쓸지 묻는다."""
+    if path.exists() and not yes:
+        require_confirmation(
+            f"파일이 이미 있습니다: {path}\n덮어쓸까요?",
+            cancelled="덮어쓰지 않았습니다.",
+            no_input=(
+                "확인 입력을 받지 못해 덮어쓰지 않았습니다. 확인 없이 덮어쓰려면 --yes를 붙이세요."
+            ),
+        )
+    try:
+        path.write_text(text, encoding="utf-8", newline="\n")
+    except OSError as error:
+        raise LogbookError(
+            f"파일을 저장하지 못했습니다: {path} ({error.strerror or error})."
+        ) from error

@@ -37,10 +37,11 @@ src/logbook/
     models.py    # SQLAlchemy 모델
     taskstatus.py# 태스크 상태와 상태 목록 파서 (SQLAlchemy 없음)
     db.py        # 엔진/세션, 스키마 생성 및 마이그레이션, DB 진입점(open_database·initialize_database)
-    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer)
+    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer, report, backup, backup_import)
     duration.py  # "1h30m", "1.5h", "90m" 파싱/포맷
     weeks.py     # ISO 주차 계산 (YYYY-Www)
-    report.py    # 주간보고서 데이터 조립 + Markdown 렌더링
+    report.py    # 보고서 데이터 클래스 + Markdown 렌더링 (조립은 services/report.py)
+    templates/   # 기본 보고서 템플릿 (report.md.j2)
     config.py    # 설정 로드
     errors.py    # 사용자에게 보여줄 한국어 오류 타입 (LogbookError 계열)
     platform.py  # OS별 처리 (콘솔 인코딩, 클립보드, 데이터 디렉터리)
@@ -51,7 +52,7 @@ src/logbook/
     console.py   # Rich 출력 (마크업 해석 안 함, 비 TTY 폭 1000, 좁은 화면 대체 출력)
     runtime.py   # 설정·DB 세션·today·공용 옵션·ID 파싱·확인 프롬프트
     render.py    # 한 줄 요약과 표
-    commands/    # 명령별 모듈 (init, project, add, log, stats, task, plan, timer)
+    commands/    # 명령별 모듈 (init, project, add, log, stats, task, plan, timer, report, data)
   web/
     app.py       # FastAPI 앱
     templates/   # Jinja2 + HTMX
@@ -63,7 +64,7 @@ docs/
 ## 아키텍처 규칙
 
 - CLI와 Web은 반드시 `core.services`의 함수만 호출한다. SQL/ORM 쿼리를 CLI·Web 레이어에 직접 쓰지 않는다.
-  단, DB 연결·설정·입력 파싱용 core 공개 진입점(core.db.open_database·initialize_database·session_scope, core.config, core.duration, core.weeks, core.platform, core.errors)은 쓸 수 있다. SQL·ORM 쿼리는 어느 경우에도 CLI·Web에 쓰지 않는다.
+  단, DB 연결·설정·입력 파싱용 core 공개 진입점(core.db.open_database·initialize_database·session_scope, core.config, core.duration, core.weeks, core.platform, core.errors, core.taskstatus(상태 파서), core.report(보고서 렌더링: render_markdown·user_template_path, DB에 접근하지 않음))은 쓸 수 있다. SQL·ORM 쿼리는 어느 경우에도 CLI·Web에 쓰지 않는다.
 - 시간은 내부적으로 항상 **정수 분(minutes)** 으로 저장한다. 표시할 때만 `1h 30m` 형태로 변환.
 - 날짜는 `date`(로컬 기준)로 저장, 타임스탬프는 ISO 8601 문자열 또는 timezone-aware datetime.
 - 주차는 ISO 8601 주차(월요일 시작)를 기본으로 하되 설정으로 시작 요일 변경 가능하게 설계.

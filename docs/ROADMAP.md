@@ -32,11 +32,11 @@ CLI만 필요하면 Phase 4까지, 웹 대시보드까지 원하면 Phase 6까�
 - [x] `lb start|status|stop|cancel` 타이머
 
 ## Phase 4. 주간보고서
-- [ ] `report.py`: 구조화 데이터 조립 (SPEC 7장 그룹핑 규칙)
-- [ ] 기본 Jinja2 템플릿 + 사용자 템플릿 오버라이드
-- [ ] `lb report [--week] [--out] [--copy]`
-- [ ] `lb export|import` (JSONL)
-- [ ] (선택) `gitcollect.py` + `lb git-collect`, 보고서 부록
+- [x] `report.py`: 구조화 데이터 조립 (SPEC 7장 그룹핑 규칙)
+- [x] 기본 Jinja2 템플릿 + 사용자 템플릿 오버라이드
+- [x] `lb report [--week] [--out] [--copy]`
+- [x] `lb export|import` (JSONL)
+- [ ] (선택) `gitcollect.py` + `lb git-collect`, 보고서 부록 (후속, R1)
 
 ## Phase 5. 웹 대시보드 — 기본
 - [ ] 의존성 추가: fastapi, uvicorn (CLI에서는 `lb serve` 실행 시에만 lazy import)

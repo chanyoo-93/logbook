@@ -3,6 +3,13 @@
 사용 예: from logbook.core import services; services.create_project(s, ...)
 """
 
+from logbook.core.services.backup import (
+    FORMAT_VERSION,
+    TABLE_ORDER,
+    BackupCounts,
+    export_records,
+)
+from logbook.core.services.backup_import import import_records
 from logbook.core.services.projects import (
     COMMON_SLUG,
     SLUG_PATTERN,
@@ -14,6 +21,7 @@ from logbook.core.services.projects import (
     is_valid_slug,
     list_projects,
 )
+from logbook.core.services.report import weekly_report
 from logbook.core.services.stats import (
     MatrixResult,
     StatsBy,
@@ -54,6 +62,11 @@ from logbook.core.services.worklogs import (
 )
 
 __all__ = [
+    "FORMAT_VERSION",
+    "TABLE_ORDER",
+    "BackupCounts",
+    "export_records",
+    "import_records",
     "COMMON_SLUG",
     "SLUG_PATTERN",
     "archive_project",
@@ -93,4 +106,5 @@ __all__ = [
     "StatsRow",
     "stats_by",
     "stats_matrix",
+    "weekly_report",
 ]
