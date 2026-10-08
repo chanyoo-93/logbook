@@ -2,6 +2,7 @@
 
 import json
 from datetime import UTC, date, datetime, timedelta, timezone
+from types import MappingProxyType
 from typing import Any
 
 import pytest
@@ -343,6 +344,27 @@ def test_구분자_이스케이프_표는_세_문자만_바꾼다() -> None:
         0x2029: "\\u2029",
         0x85: "\\u0085",
     }
+
+
+def test_모델_대응표는_테이블_순서와_같다() -> None:
+    assert tuple(backup.MODELS) == backup.TABLE_ORDER
+    assert backup.MODELS["projects"] is Project
+    assert backup.MODELS["tasks"] is Task
+    assert backup.MODELS["worklogs"] is WorkLog
+    assert backup.MODELS["active_timer"] is ActiveTimer
+
+
+def test_상수_표는_읽기_전용이다() -> None:
+    for table in (backup.FIELDS, backup.SEPARATOR_ESCAPES, backup.MODELS):
+        assert isinstance(table, MappingProxyType)
+
+
+def test_naive_now는_프로그래밍_오류로_거부한다(session: Session) -> None:
+    services.ensure_common_project(session)
+    session.flush()
+
+    with pytest.raises(ValueError, match="timezone-aware"):
+        services.export_records(session, now=datetime(2026, 10, 8, 3, 0, 0))
 
 
 @pytest.mark.parametrize(

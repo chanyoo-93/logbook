@@ -7,7 +7,9 @@
 import datetime as dt
 import enum
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any
 
 from sqlalchemy import select
@@ -50,16 +52,30 @@ WORKLOG_FIELDS = (
 )
 TIMER_FIELDS = ("id", "project_id", "task_id", "category", "note", "started_at")
 
-FIELDS: dict[str, tuple[str, ...]] = {
-    "projects": PROJECT_FIELDS,
-    "tasks": TASK_FIELDS,
-    "worklogs": WORKLOG_FIELDS,
-    "active_timer": TIMER_FIELDS,
-}
+FIELDS: Mapping[str, tuple[str, ...]] = MappingProxyType(
+    {
+        "projects": PROJECT_FIELDS,
+        "tasks": TASK_FIELDS,
+        "worklogs": WORKLOG_FIELDS,
+        "active_timer": TIMER_FIELDS,
+    }
+)
+
+# 테이블 이름 → 모델. 순서는 TABLE_ORDER와 같다.
+MODELS: Mapping[str, type[Any]] = MappingProxyType(
+    {
+        "projects": Project,
+        "tasks": Task,
+        "worklogs": WorkLog,
+        "active_timer": ActiveTimer,
+    }
+)
 
 # ensure_ascii=False는 이 세 문자를 원문자로 남기고, str.splitlines()와 일부 편집기는
 # 이를 줄 끝으로 본다. 문자열 안에서만 나오므로 JSON 이스케이프로 바꿔도 값은 같다.
-SEPARATOR_ESCAPES = {cp: json.dumps(chr(cp))[1:-1] for cp in (0x2028, 0x2029, 0x85)}
+SEPARATOR_ESCAPES: Mapping[int, str] = MappingProxyType(
+    {cp: json.dumps(chr(cp))[1:-1] for cp in (0x2028, 0x2029, 0x85)}
+)
 
 
 @dataclass(frozen=True)
@@ -92,6 +108,8 @@ def _row_line(table: str, record: object) -> str:
 
 def export_records(s: Session, *, now: dt.datetime) -> tuple[list[str], BackupCounts]:
     """JSONL 줄 목록(줄바꿈 없음)과 개수. now는 머리글 exported_at(aware)."""
+    if now.utcoffset() is None:
+        raise ValueError(f"now must be timezone-aware: {now!r}")
     header: dict[str, Any] = {
         "type": EXPORT_TYPE,
         "format": FORMAT_VERSION,
@@ -99,17 +117,15 @@ def export_records(s: Session, *, now: dt.datetime) -> tuple[list[str], BackupCo
         "exported_at": _encode_value(now),
     }
     lines = [_dump(header)]
-    tables: tuple[tuple[str, type[Any]], ...] = (
-        ("projects", Project),
-        ("tasks", Task),
-        ("worklogs", WorkLog),
-        ("active_timer", ActiveTimer),
-    )
-    counts: list[int] = []
-    for table, model in tables:
+    counts: dict[str, int] = {}
+    for table in TABLE_ORDER:
+        model = MODELS[table]
         records = s.scalars(select(model).order_by(model.id)).all()
         lines.extend(_row_line(table, record) for record in records)
-        counts.append(len(records))
+        counts[table] = len(records)
     return lines, BackupCounts(
-        projects=counts[0], tasks=counts[1], worklogs=counts[2], timers=counts[3]
+        projects=counts["projects"],
+        tasks=counts["tasks"],
+        worklogs=counts["worklogs"],
+        timers=counts["active_timer"],
     )
