@@ -701,12 +701,12 @@ import 가드: `stop --help`, `cancel --help`, `stop --round abc`(rc 1).
 
 **Files:** Modify `README.md`, `docs/SPEC.md`, `docs/ROADMAP.md`, `CLAUDE.md`, `AGENTS.md`
 
-- [ ] **README "사용법"** 명령 예시와 명령 요약 표에 다음을 추가한다.
+- [x] **README "사용법"** 명령 예시와 명령 요약 표에 다음을 추가한다.
   - 태스크: add, list, edit, start, done, drop
   - 계획: plan, plan carry
   - 타이머: start, status, stop, cancel
   - 셸 주의: `--ref "#43"`처럼 `#` 값은 따옴표로 감싼다.
-- [ ] **docs/SPEC.md 5장**
+- [x] **docs/SPEC.md 5장**
   - 태스크/계획:
     - `lb task edit` 줄과 옵션 목록을 추가한다(T1). 프로젝트는 바꿀 수 없다고 적는다.
     - `lb task list` 기본은 todo·doing이고 `-s all`을 받는다. 보관 프로젝트는 `-p`로 지정할 때만 보인다(T2).
@@ -718,8 +718,8 @@ import 가드: `stop --help`, `cancel --help`, `stop --round abc`(rc 1).
     - cancel은 확인을 받는다(T4).
     - `lb status`는 타이머가 없어도 exit 0이다.
   - 종료 코드 표의 1번 설명에 "이월·타이머 취소 확인 거절"을 더한다.
-- [ ] **docs/ROADMAP.md:** Phase 3 세 항목을 `[x]`로 바꾸고, 첫 항목에 `edit`를 덧붙인다.
-- [ ] **CLAUDE.md, AGENTS.md(같은 내용):**
+- [x] **docs/ROADMAP.md:** Phase 3 세 항목을 `[x]`로 바꾸고, 첫 항목에 `edit`를 덧붙인다.
+- [x] **CLAUDE.md, AGENTS.md(같은 내용):**
   - 디렉터리 구조의 `core/`에 `taskstatus.py # 태스크 상태와 상태 목록 파서 (SQLAlchemy 없음)`를 추가한다.
   - `services/` 설명에 `timer`를 더한다.
   - `commands/` 설명의 예시를 `(init, project, add, log, stats, task, plan, timer)`로 바꾼다.
@@ -735,7 +735,7 @@ import 가드: `stop --help`, `cancel --help`, `stop --round abc`(rc 1).
   - `uv run mypy src/logbook/core`
   - `uv run pytest`(전체 80%)
   - core 단독 80%: `uv run coverage report --include="*/logbook/core/*" --fail-under=80`
-- [ ] 커밋 `docs: Phase 3 완료 표시와 태스크·계획·타이머 사용 안내 추가`
+- [x] 커밋 `docs: Phase 3 완료 표시와 태스크·계획·타이머 사용 안내 추가`
 - [ ] 사용자 확인 후 Phase 3 이슈 생성 → push → develop 대상 PR. CI 두 OS 잡이 모두 녹색이어야 한다.
 
 ---
