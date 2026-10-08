@@ -4,7 +4,7 @@
 CLI만 필요하면 Phase 4까지, 웹 대시보드까지 원하면 Phase 6까지 진행한다.
 
 ## Phase 0. 프로젝트 골격
-- [x] `uv init --package logbook`, `src/` 레이아웃, `[project.scripts] lb = "logbook.cli.main:app"`
+- [x] `uv init --package logbook`, `src/` 레이아웃, `[project.scripts] lb = "logbook.cli.main:app"` (Phase 2에서 `:run`으로 변경)
 - [x] 의존성: typer, rich, sqlalchemy, tomli-w, jinja2, pyperclip, tzdata / dev: pytest, ruff, mypy
 - [x] ruff·mypy·pytest 설정 (`pyproject.toml`)
 - [x] `tests/conftest.py`: 임시 DB fixture (`LOGBOOK_DB`를 tmp_path로, 종료 시 `engine.dispose()`)
@@ -20,11 +20,11 @@ CLI만 필요하면 Phase 4까지, 웹 대시보드까지 원하면 Phase 6까�
 - [x] `services/`: project / worklog / task CRUD, 집계 함수(`stats_by(week, by)`)
 
 ## Phase 2. CLI — 기록 중심
-- [ ] `lb init`, `lb project add|list|archive`
-- [ ] `lb add` (기록 후 오늘 누적 시간 출력)
-- [ ] `lb log` 조회 + `edit` / `rm`
-- [ ] `lb stats`
-- [ ] CLI 테스트 (`typer.testing.CliRunner`)
+- [x] `lb init`, `lb project add|list|archive`
+- [x] `lb add` (기록 후 오늘 누적 시간 출력)
+- [x] `lb log` 조회 + `edit` / `rm`
+- [x] `lb stats`
+- [x] CLI 테스트 (`typer.testing.CliRunner`)
 
 ## Phase 3. CLI — 태스크·계획·타이머
 - [ ] `lb task add|list|start|done|drop`

@@ -1,4 +1,4 @@
-"""ISO 8601 주차(YYYY-Www) 계산과 날짜·주차 입력 파싱.
+"""ISO 8601 주차(YYYY-Www) 계산, 날짜·주차 입력 파싱과 표기(day_label, week_heading).
 
 주차 라벨은 항상 ISO 주차를 따른다. sunday 모드는 범위만 하루 앞당긴다(일~토).
 """
@@ -16,6 +16,9 @@ _DAYS_PER_WEEK = 7
 _ONE_DAY = timedelta(days=1)
 _ONE_WEEK = timedelta(days=_DAYS_PER_WEEK)
 _SUNDAY = 6  # date.weekday() 기준
+
+# date.weekday() 순서 (월=0)
+_WEEKDAY_INITIALS = "월화수목금토일"
 
 _WEEKDAYS = {"mon": 0, "tue": 1, "wed": 2, "thu": 3, "fri": 4, "sat": 5, "sun": 6}
 
@@ -96,6 +99,21 @@ class Week:
                 "계산할 수 없습니다. 다른 주차를 지정하세요."
             ) from None
         return Week(iso.year, iso.week, self.week_start)
+
+
+def _month_day(d: date) -> str:
+    """'09-28' 형식. %-d 같은 OS 전용 포맷을 쓰지 않는다."""
+    return f"{d.month:02d}-{d.day:02d}"
+
+
+def day_label(d: date) -> str:
+    """'09-28 (월)' 형식의 날짜·요일 표기."""
+    return f"{_month_day(d)} ({_WEEKDAY_INITIALS[d.weekday()]})"
+
+
+def week_heading(week: Week) -> str:
+    """'2026-W40 (09-28 ~ 10-04)' 형식의 주차 표기. 범위는 week_start를 반영한다."""
+    return f"{week.label} ({_month_day(week.start)} ~ {_month_day(week.end)})"
 
 
 def week_of(d: date, week_start: WeekStart = "monday") -> Week:

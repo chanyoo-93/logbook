@@ -86,7 +86,7 @@ review = "코드리뷰"
 meeting = "회의"
 docs = "문서"
 design = "설계"
-ops = "운영/장애"
+ops = "운영/배포/장애"
 support = "문의대응"
 study = "학습"
 admin = "행정/기타"
@@ -146,8 +146,10 @@ lb add 1h "스프린트 플래닝" -c meeting           # -p 생략 시 default_
 lb add 30m "장애 대응" -p payment -c ops -d yesterday
 ```
 - 인자 순서: `lb add <duration> <note> [옵션]`
-- `-t <task_id>` 지정 시 프로젝트·카테고리는 Task의 값으로 기본 설정
+- 메모는 따옴표로 감싼 한 인자다. `-`로 시작하는 메모는 옵션을 먼저 쓰고 `--` 다음에 쓴다 (`lb add 30m -c dev -- "-5% 개선"`).
+- `-t <task_id>` 지정 시 프로젝트·카테고리는 Task의 값으로 기본 설정. `-t 42`와 `-t "#42"` 모두 받는다.
 - 성공 시 한 줄 출력: `✔ #128 payment/dev 2h — 결제 재시도 로직 구현 (오늘 누적 5h 30m)`
+- 누적은 기록한 날짜의 합계다. 오늘 기록이면 `(오늘 누적 5h 30m)`, 다른 날 기록이면 `(09-30 누적 30m)`.
 
 ### 타이머
 ```bash
@@ -161,9 +163,15 @@ lb cancel
 ```bash
 lb log [--week this|last|2026-W40] [--date today] [-p payment] [-c dev]
 lb log edit 128 --minutes 90 --note "..."
-lb log rm 128
+lb log rm 128 [--yes]
 ```
-출력: Rich 테이블 (ID, 날짜, 프로젝트, 카테고리, 시간, 메모, Task) + 하단 합계.
+- 옵션이 없으면 이번 주 기록을 보여 준다. `--week`(`-w`)와 `--date`(`-d`)는 함께 쓸 수 없다.
+- 조회 옵션은 `lb log` 목록에만 쓴다. `lb log edit`·`rm` 같은 하위 명령 앞에 쓰면 거부한다.
+- 출력: Rich 테이블 (ID, 날짜, 프로젝트, 카테고리, 시간, 메모, Task) + 하단 합계.
+  - 머리줄은 주차와 기간(`2026-W41 (10-05 ~ 10-11)`, `--date`면 `2026-10-08 (목)`), 날짜 열은 `MM-DD (요일)`, 카테고리는 key(`dev`), Task 열은 `#42`(없으면 `-`), 하단은 `합계 5h / 기록 5건`.
+  - 터미널 폭이 좁으면 표 대신 한 줄 목록(`#128 10-01 (목) payment/dev 2h — 메모 [#42]`)으로 바꾼다. 파이프·파일 출력은 줄을 접지 않는다.
+- `lb log edit <ID>`: 지정한 항목만 바꾼다. 옵션은 `-m/--minutes`, `-n/--note`, `-c/--category`, `-p/--project`, `-d/--date`, `-t/--task`, `--no-task`(태스크 연결 해제). 하나도 없으면 오류.
+- `lb log rm <ID>`: 삭제할 기록을 보여 주고 `삭제할까요? [y/N]:`로 확인한다. `y`·`yes`(한글 자판 `ㅛ`·`ㅛㄷㄴ` 포함)만 삭제한다. 거절하거나 입력이 없으면 아무것도 지우지 않고 종료 코드 1로 끝난다. `--yes`/`-y`로 확인을 생략한다.
 
 ### 태스크 / 계획
 ```bash
@@ -182,14 +190,18 @@ lb stats [--week this] [--by project|category|day]
 lb report [--week this] [--out report.md] [--copy]
 ```
 `--copy`는 `pyperclip`으로 클립보드에 복사한다. 실패하면 경고를 출력하고 `--out` 사용을 안내한다.
-`lb stats` 예시 출력:
+`lb stats` 예시 출력 (열 이름은 설정의 카테고리 라벨, 기록이 있는 카테고리만 표시):
 ```
-2026-W40 (09-28 ~ 10-04)   총 35h 00m / 기록 41건
-프로젝트      개발    리뷰   회의   기타    합계
-payment     14h     3h     2h     -      19h
-admin        6h     1h     1h     -       8h
-common       -      -      5h     3h      8h
+2026-W40 (09-28 ~ 10-04)   총 35h / 기록 41건
+프로젝트  개발  코드리뷰  회의  행정/기타  합계
+payment    14h        3h    2h          -   19h
+admin       6h        1h    1h          -    8h
+common       -         -    5h         3h    8h
 ```
+`--by` 출력 열 (머리줄은 같다):
+- `--by project`: 프로젝트(slug), 이름, 시간, 건수, 비율
+- `--by category`: 카테고리(key), 이름(라벨), 시간, 건수, 비율
+- `--by day`: 날짜(`MM-DD (요일)`, 기록 없는 날도 표시), 시간, 건수, 비율
 
 ### 데이터 관리
 ```bash
@@ -198,6 +210,14 @@ lb import backup.jsonl
 lb git-collect [--week this]             # 설정된 레포에서 본인 커밋 수집 (보고서 첨부용, DB 저장 안 함)
 lb serve [--port 8765] [--open]          # 웹 대시보드 실행
 ```
+
+### 오류와 종료 코드
+| 코드 | 의미 |
+|---|---|
+| 0 | 성공 |
+| 1 | 입력·데이터 오류(stderr에 `오류: …` 한 줄), 삭제 확인 거절 또는 확인 입력 없음 |
+| 2 | 명령 문법 오류(없는 옵션, 인자 누락·초과 등) |
+| 130 | Ctrl+C로 중단 |
 
 ---
 
@@ -251,7 +271,7 @@ POST   /api/timer/start | /api/timer/stop
 작성자: 홍길동
 
 ## 1. 공수 요약
-총 35h 00m (기록 41건, 완료 태스크 6건)
+총 35h (기록 41건, 완료 태스크 6건)
 
 | 프로젝트 | 개발 | 리뷰 | 회의 | 기타 | 합계 | 비율 |
 |---|---|---|---|---|---|---|
@@ -290,6 +310,6 @@ POST   /api/timer/start | /api/timer/stop
 - `core` 테스트 커버리지 80% 이상 (duration, weeks, services 집계, report 조립은 필수)
 - Windows·macOS 양쪽 CI에서 전체 테스트 통과 (경로, 인코딩, 한글 출력, 클립보드 실패 처리 테스트 포함)
 - 한글 메모·프로젝트명이 Windows Terminal, PowerShell, macOS Terminal/iTerm2에서 깨지지 않을 것
-- `lb add`는 DB 초기화 이후 0.3초 이내 응답 (import 지연 최소화: CLI에서 FastAPI를 import하지 않기)
-- 모든 에러 메시지는 한국어로, 다음 행동을 안내 (예: "프로젝트 'paymnt'가 없습니다. `lb project list`로 확인하세요.")
+- `--help`, `--version`, 사용법 오류, 입력 형식 오류는 SQLAlchemy와 웹 스택을 로드하지 않는다(서브프로세스 테스트로 강제). `lb add` 응답 시간은 CI 보고서(`scripts/bench_cli.py`)로 추적한다(파이썬 내부 처리 시간 참고값: Windows 약 500 ms, macOS 약 350 ms). CLI에서 FastAPI를 import하지 않는다.
+- 모든 에러 메시지는 한국어로, 다음 행동을 안내 (예: "프로젝트 'paymnt'가 없습니다. `lb project list`로 확인하세요.") 단, 명령 문법 오류(없는 옵션, 인자 누락 등, 종료 코드 2)와 --help의 틀(Usage, Options 등)은 Typer/Click 기본 영어 문구를 쓴다.
 - 데이터 손실 방지: 삭제 명령은 확인 프롬프트(`--yes`로 생략), `export`로 언제든 전체 백업 가능

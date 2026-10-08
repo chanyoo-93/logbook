@@ -30,14 +30,15 @@ def test_version_matches_pyproject() -> None:
         project = tomllib.load(f)["project"]
 
     assert project["version"] == logbook.__version__
-    assert project["scripts"]["lb"] == "logbook.cli.main:app"
+    assert project["scripts"]["lb"] == "logbook.cli.main:run"
 
 
 def test_cli_import_does_not_load_web_stack() -> None:
     code = (
         "import sys\n"
         "import logbook.cli.main\n"
-        "loaded = {'fastapi', 'uvicorn'} & set(sys.modules)\n"
+        "forbidden = {'fastapi', 'uvicorn', 'sqlalchemy', 'jinja2', 'pyperclip'}\n"
+        "loaded = forbidden & set(sys.modules)\n"
         "assert not loaded, loaded\n"
     )
 

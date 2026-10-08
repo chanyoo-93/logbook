@@ -5,7 +5,6 @@
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import date
 from types import MappingProxyType
 from typing import Any, Literal, get_args
 
@@ -14,12 +13,9 @@ from sqlalchemy.orm import QueryableAttribute, Session
 
 from logbook.core.errors import InvalidInputError
 from logbook.core.models import Project, WorkLog
-from logbook.core.weeks import Week
+from logbook.core.weeks import Week, day_label
 
 StatsBy = Literal["project", "category", "day"]
-
-# date.weekday() 순서 (월=0)
-_WEEKDAY_INITIALS = "월화수목금토일"
 
 
 @dataclass(frozen=True)
@@ -158,13 +154,8 @@ def _day_rows(s: Session, week: Week) -> tuple[StatsRow, ...]:
     rows = []
     for day in week.days():
         minutes, logs = totals.get(day, (0, 0))
-        rows.append(StatsRow(day.isoformat(), _day_label(day), minutes, logs))
+        rows.append(StatsRow(day.isoformat(), day_label(day), minutes, logs))
     return tuple(rows)
-
-
-def _day_label(day: date) -> str:
-    """'09-28 (월)' 형식. %-d 같은 OS 전용 포맷을 쓰지 않는다."""
-    return f"{day.month:02d}-{day.day:02d} ({_WEEKDAY_INITIALS[day.weekday()]})"
 
 
 def _ordered_categories(present: Mapping[str, int], order: Sequence[str] | None) -> tuple[str, ...]:

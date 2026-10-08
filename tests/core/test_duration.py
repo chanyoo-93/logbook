@@ -146,7 +146,15 @@ def test_parse_duration_error_truncates_long_input(text: str, keyword: str) -> N
 def test_parse_duration_error_echoes_input_when_too_large() -> None:
     with pytest.raises(InvalidInputError) as exc_info:
         parse_duration("25h")
-    assert str(exc_info.value) == "소요 시간은 24시간 이하여야 합니다: '25h'"
+    assert str(exc_info.value) == (
+        "소요 시간은 24시간 이하여야 합니다: '25h'. 하루를 넘는 작업은 날짜별로 나눠 기록하세요."
+    )
+
+
+def test_parse_duration_error_echoes_input_with_example_when_too_small() -> None:
+    with pytest.raises(InvalidInputError) as exc_info:
+        parse_duration("0m")
+    assert str(exc_info.value) == "소요 시간은 1분 이상이어야 합니다: '0m'. 예: 30m, 1h"
 
 
 @pytest.mark.parametrize(

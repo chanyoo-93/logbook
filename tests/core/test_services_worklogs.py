@@ -136,9 +136,13 @@ def test_add_missing_default_project_raises_not_found(session: Session) -> None:
 def test_add_to_archived_project_raises(seeded: Session) -> None:
     services.archive_project(seeded, "search")
 
-    with pytest.raises(InvalidInputError, match="보관된 프로젝트"):
+    with pytest.raises(InvalidInputError) as excinfo:
         _add(seeded, project_slug="search")
 
+    assert str(excinfo.value) == (
+        "보관된 프로젝트 'search'에는 새 기록이나 태스크를 추가할 수 없습니다. "
+        "다른 프로젝트를 지정하세요."
+    )
     assert _count_logs(seeded) == 0
 
 
@@ -609,9 +613,12 @@ def test_update_project_to_archived_project_raises(seeded: Session) -> None:
     log = _add(seeded, project_slug="payment", minutes=60)
     services.archive_project(seeded, "search")
 
-    with pytest.raises(InvalidInputError, match="보관된 프로젝트"):
+    with pytest.raises(InvalidInputError) as excinfo:
         services.update_worklog(seeded, log.id, minutes=90, project_slug="search")
 
+    assert str(excinfo.value) == (
+        "보관된 프로젝트로는 기록을 옮길 수 없습니다: 'search'. 다른 프로젝트를 지정하세요."
+    )
     assert log.minutes == 60
     assert log.project.slug == "payment"
 
@@ -654,10 +661,14 @@ def test_update_task_in_archived_project_raises(seeded: Session) -> None:
     task = _make_task(seeded, "search")
     services.archive_project(seeded, "search")
 
-    with pytest.raises(InvalidInputError, match="보관된 프로젝트"):
+    with pytest.raises(InvalidInputError) as excinfo:
         services.update_worklog(seeded, log.id, task_id=task.id)
 
+    assert str(excinfo.value) == (
+        "보관된 프로젝트로는 기록을 옮길 수 없습니다: 'search'. 다른 프로젝트를 지정하세요."
+    )
     assert log.task is None
+    assert log.project.slug == "common"
 
 
 def test_update_unknown_task_raises_not_found(seeded: Session) -> None:
@@ -685,9 +696,84 @@ def test_update_project_away_from_linked_task_raises(seeded: Session) -> None:
     task = _make_task(seeded, "payment")
     log = _add(seeded, task_id=task.id)
 
-    with pytest.raises(InvalidInputError, match=f"태스크 #{task.id}는 'payment' 프로젝트"):
+    with pytest.raises(InvalidInputError) as excinfo:
         services.update_worklog(seeded, log.id, project_slug="search")
 
+    assert str(excinfo.value) == (
+        f"연결된 태스크 #{task.id}의 프로젝트('payment')와 다른 프로젝트로 옮길 수 없습니다. "
+        "태스크 연결을 해제하거나 같은 프로젝트를 지정하세요."
+    )
+    assert log.project.slug == "payment"
+    assert log.task is task
+
+
+def test_update_clear_task_unlinks_and_keeps_other_fields(seeded: Session) -> None:
+    task = _make_task(seeded, "payment", category="review")
+    log = _add(seeded, task_id=task.id, minutes=45, note="리뷰 반영", work_date=MON)
+
+    updated = services.update_worklog(seeded, log.id, clear_task=True)
+
+    assert updated.task is None
+    assert (updated.project.slug, updated.category, updated.minutes) == ("payment", "dev", 45)
+    assert (updated.note, updated.date) == ("리뷰 반영", MON)
+    assert seeded.scalar(select(WorkLog.task_id).where(WorkLog.id == log.id)) is None
+
+
+def test_update_clear_task_with_project_moves_project(seeded: Session) -> None:
+    task = _make_task(seeded, "payment")
+    log = _add(seeded, task_id=task.id)
+
+    updated = services.update_worklog(seeded, log.id, clear_task=True, project_slug="search")
+
+    assert updated.task is None
+    assert updated.project.slug == "search"
+
+
+def test_update_clear_task_without_link_is_noop(seeded: Session) -> None:
+    log = _add(seeded, project_slug="payment", minutes=60)
+
+    updated = services.update_worklog(seeded, log.id, clear_task=True)
+
+    assert updated.task is None
+    assert (updated.project.slug, updated.minutes, updated.note) == ("payment", 60, "작업")
+
+
+def test_update_clear_task_with_task_id_raises_before_any_change(seeded: Session) -> None:
+    task = _make_task(seeded, "payment")
+    other = _make_task(seeded, "payment")
+    log = _add(seeded, task_id=task.id, minutes=60)
+
+    with pytest.raises(InvalidInputError) as excinfo:
+        services.update_worklog(seeded, log.id, minutes=90, clear_task=True, task_id=other.id)
+
+    assert str(excinfo.value) == (
+        "태스크를 지정하면서 연결을 해제할 수는 없습니다. 둘 중 하나만 지정하세요."
+    )
+    assert log.task is task
+    assert log.minutes == 60
+
+
+def test_update_clear_task_conflict_is_checked_before_loading_log(seeded: Session) -> None:
+    with pytest.raises(InvalidInputError) as excinfo:
+        services.update_worklog(seeded, 999, task_id=1, clear_task=True)
+
+    assert str(excinfo.value) == (
+        "태스크를 지정하면서 연결을 해제할 수는 없습니다. 둘 중 하나만 지정하세요."
+    )
+
+
+def test_update_clear_task_to_archived_project_raises(seeded: Session) -> None:
+    task = _make_task(seeded, "payment")
+    log = _add(seeded, task_id=task.id)
+    services.archive_project(seeded, "search")
+
+    with pytest.raises(InvalidInputError) as excinfo:
+        services.update_worklog(seeded, log.id, clear_task=True, project_slug="search")
+
+    assert str(excinfo.value) == (
+        "보관된 프로젝트로는 기록을 옮길 수 없습니다: 'search'. 다른 프로젝트를 지정하세요."
+    )
+    assert log.task is task
     assert log.project.slug == "payment"
 
 

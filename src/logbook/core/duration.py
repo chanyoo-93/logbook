@@ -59,9 +59,14 @@ def parse_duration(text: str) -> int:
         exact = _to_minutes(hours, minutes)
         rounded = exact.to_integral_value(rounding=ROUND_HALF_UP)
         if rounded < 1:
-            raise InvalidInputError(f"소요 시간은 1분 이상이어야 합니다: '{_echo(text)}'")
+            raise InvalidInputError(
+                f"소요 시간은 1분 이상이어야 합니다: '{_echo(text)}'. 예: 30m, 1h"
+            )
         if rounded > MAX_MINUTES:
-            raise InvalidInputError(f"소요 시간은 24시간 이하여야 합니다: '{_echo(text)}'")
+            raise InvalidInputError(
+                f"소요 시간은 24시간 이하여야 합니다: '{_echo(text)}'. "
+                "하루를 넘는 작업은 날짜별로 나눠 기록하세요."
+            )
         return int(rounded)
     raise _format_error(text)
 

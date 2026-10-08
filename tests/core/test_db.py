@@ -7,13 +7,13 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from sqlalchemy import Connection, Engine, inspect, select, text
-from sqlalchemy.orm import Session
+from sqlalchemy import Connection, Engine, inspect, text
 
 from logbook.core import db
 from logbook.core.config import load_config
 from logbook.core.errors import LogbookError
 from logbook.core.models import Project
+from tests.helpers import add_extra_column, add_project, column_names, project_slugs, set_version
 
 TABLES = {"projects", "tasks", "worklogs", "active_timer", "schema_version"}
 
@@ -35,32 +35,9 @@ def make_engine() -> Iterator[MakeEngine]:
         engine.dispose()
 
 
-def column_names(engine: Engine, table: str) -> set[str]:
-    return {column["name"] for column in inspect(engine).get_columns(table)}
-
-
 def version_rows(engine: Engine) -> list[int]:
     with engine.connect() as conn:
         return list(conn.scalars(text("SELECT version FROM schema_version")))
-
-
-def project_slugs(engine: Engine) -> list[str]:
-    with Session(engine) as session:
-        return list(session.scalars(select(Project.slug).order_by(Project.slug)))
-
-
-def add_project(engine: Engine, slug: str = "payment") -> None:
-    with db.session_scope(engine) as session:
-        session.add(Project(slug=slug, name="결제 시스템"))
-
-
-def set_version(engine: Engine, version: int) -> None:
-    with engine.begin() as conn:
-        conn.execute(text("UPDATE schema_version SET version = :v"), {"v": version})
-
-
-def add_extra_column(conn: Connection) -> None:
-    conn.exec_driver_sql("ALTER TABLE projects ADD COLUMN extra TEXT")
 
 
 def no_op_migration(conn: Connection) -> None:

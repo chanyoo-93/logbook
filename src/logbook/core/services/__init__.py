@@ -11,6 +11,7 @@ from logbook.core.services.projects import (
     ensure_common_project,
     get_active_project,
     get_project,
+    is_valid_slug,
     list_projects,
 )
 from logbook.core.services.stats import (
@@ -46,6 +47,7 @@ __all__ = [
     "ensure_common_project",
     "get_active_project",
     "get_project",
+    "is_valid_slug",
     "list_projects",
     "create_task",
     "get_task",

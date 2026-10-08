@@ -273,6 +273,18 @@ def test_slug_pattern_constant() -> None:
     assert projects.SLUG_PATTERN == r"^[a-z0-9][a-z0-9_-]{0,31}$"
 
 
+@pytest.mark.parametrize("slug", ["payment", "a", "0x", "my-proj_2", "a" * 32])
+def test_is_valid_slug_accepts_valid(slug: str) -> None:
+    assert projects.is_valid_slug(slug) is True
+
+
+@pytest.mark.parametrize(
+    "slug", ["", "Payment", "my proj", "-a", "_a", "a" * 33, "pay\n", "결제", "ｐａｙ"]
+)
+def test_is_valid_slug_rejects_invalid(slug: str) -> None:
+    assert projects.is_valid_slug(slug) is False
+
+
 def test_package_reexports_project_services() -> None:
     assert services.create_project is projects.create_project
     assert services.get_project is projects.get_project
@@ -282,6 +294,7 @@ def test_package_reexports_project_services() -> None:
     assert services.ensure_common_project is projects.ensure_common_project
     assert services.COMMON_SLUG == projects.COMMON_SLUG
     assert services.SLUG_PATTERN == projects.SLUG_PATTERN
+    assert services.is_valid_slug is projects.is_valid_slug
     assert set(services.__all__) >= {
         "COMMON_SLUG",
         "SLUG_PATTERN",
@@ -290,5 +303,6 @@ def test_package_reexports_project_services() -> None:
         "ensure_common_project",
         "get_active_project",
         "get_project",
+        "is_valid_slug",
         "list_projects",
     }
