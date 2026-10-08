@@ -318,9 +318,14 @@ def task_line(task: "Task") -> "Text":
     """태스크 요약: '#43 payment/design 환불 API 설계', 카테고리가 없으면 '#44 admin 권한 정리'."""
     from rich.text import Text
 
-    return Text.assemble(
-        f"#{task.id} ", _scope(task.project.slug, task.category), " ", Text(task.title)
-    )
+    return Text.assemble(f"#{task.id} ", task_scope_title(task))
+
+
+def task_scope_title(task: "Task") -> "Text":
+    """ID를 뺀 태스크 요약: 'payment/design 환불 API 설계'."""
+    from rich.text import Text
+
+    return Text.assemble(_scope(task.project.slug, task.category), " ", Text(task.title))
 
 
 def task_details(task: "Task") -> "Text":

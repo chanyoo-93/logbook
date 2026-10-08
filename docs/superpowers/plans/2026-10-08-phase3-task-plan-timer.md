@@ -538,7 +538,7 @@ import 가드: `task edit --help`, `task edit 1`(바꿀 항목 없음, rc 1), `t
 
 **테스트 케이스:** 세 명령의 정상 경로, 이미 같은 상태, done의 실적 꼬리(예상 있음·없음), done → start 되돌리기(`done_at is None`), 없는 ID, 잘못된 ID 형식을 확인한다. import 가드에는 `task start abc`, `task done --help`를 추가한다.
 
-- [ ] RED → GREEN → 커밋 `feat: lb task start·done·drop 상태 변경 명령 추가`
+- [x] RED → GREEN → 커밋 `feat: lb task start·done·drop 상태 변경 명령 추가`
 
 ---
 

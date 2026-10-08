@@ -193,6 +193,65 @@ def edit(
     )
 
 
+@task_app.command("start", cls=LogbookCommand)
+def start(task_id: TaskIdArg) -> None:
+    """태스크를 진행 중(doing)으로 바꿉니다. 완료·중단된 태스크를 다시 시작할 수도 있습니다."""
+    _change_status(task_id, "doing")
+
+
+@task_app.command("done", cls=LogbookCommand)
+def done(task_id: TaskIdArg) -> None:
+    """태스크를 완료(done)로 바꾸고 실적을 보여 줍니다."""
+    _change_status(task_id, "done")
+
+
+@task_app.command("drop", cls=LogbookCommand)
+def drop(task_id: TaskIdArg) -> None:
+    """태스크를 중단(dropped)으로 바꿉니다."""
+    _change_status(task_id, "dropped")
+
+
+def _change_status(task_id_text: str, status_value: str) -> None:
+    """세 상태 명령의 공통 처리. 같은 상태면 안내만 하고 성공(exit 0)한다."""
+    target_id = runtime.parse_id(task_id_text, "태스크")
+    cfg = runtime.settings()
+
+    # services는 SQLAlchemy를 로드하므로 검증이 끝난 뒤에 import한다.
+    from logbook.core import services
+    from logbook.core.taskstatus import TaskStatus
+
+    status = TaskStatus(status_value)
+    with runtime.session(cfg) as s:
+        old_status = services.get_task(s, target_id).status
+        task = services.set_task_status(s, target_id, status)
+        actual = services.task_actual_minutes(s, target_id) if status == TaskStatus.DONE else None
+        scope_title = render.task_scope_title(task)
+        estimate = task.estimate_minutes
+
+    tail = _actual_tail(actual, estimate) if actual is not None else ""
+    if old_status == status:
+        console.print_line(
+            render.info_mark(), f" #{target_id}은 이미 {status} 상태입니다: ", scope_title, tail
+        )
+    else:
+        console.print_line(
+            render.ok_mark(),
+            f" #{target_id} {old_status} {render.arrow()} {status}: ",
+            scope_title,
+            tail,
+        )
+
+
+def _actual_tail(actual: int, estimate: int | None) -> str:
+    """done 꼬리: ' (실적 5h 30m / 예상 4h)', 예상이 없으면 ' (실적 5h 30m)'."""
+    from logbook.core.duration import format_duration
+
+    text = f"실적 {format_duration(actual)}"
+    if estimate is not None:
+        text += f" / 예상 {format_duration(estimate)}"
+    return f" ({text})"
+
+
 def _reject_bad_flags(
     title: str | None, values: dict[str, str | None], clears: dict[str, bool]
 ) -> None:
