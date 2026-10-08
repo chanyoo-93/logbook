@@ -348,7 +348,19 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(
             ["task", "add", "x", "--est", "abc"], 1, "오류: 시간 형식이", id="task-add-bad-est"
         ),
+        pytest.param(
+            ["task", "add", "x", "--week", "2026-W99"],
+            1,
+            "오류: 주차 형식이",
+            id="task-add-bad-week",
+        ),
+        pytest.param(
+            ["task", "add", "x", "--due", "13-45"], 1, "오류: 날짜 형식이", id="task-add-bad-due"
+        ),
         pytest.param(["task", "list", "-s", "x"], 1, "오류: 상태가", id="task-list-bad-status"),
+        pytest.param(
+            ["task", "list", "-w", "2026-W99"], 1, "오류: 주차 형식이", id="task-list-bad-week"
+        ),
         pytest.param(["task", "edit", "--help"], 0, None, id="task-edit-help"),
         pytest.param(["task", "edit", "1"], 1, "오류: 바꿀 항목을", id="task-edit-nothing"),
         pytest.param(
@@ -360,6 +372,18 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(
             ["task", "edit", "abc", "--est", "1h"], 1, "오류: 태스크 ID가", id="task-edit-bad-id"
         ),
+        pytest.param(
+            ["task", "edit", "1", "--est", "abc"], 1, "오류: 시간 형식이", id="task-edit-bad-est"
+        ),
+        pytest.param(
+            ["task", "edit", "1", "--week", "2026-W99"],
+            1,
+            "오류: 주차 형식이",
+            id="task-edit-bad-week",
+        ),
+        pytest.param(
+            ["task", "edit", "1", "--due", "13-45"], 1, "오류: 날짜 형식이", id="task-edit-bad-due"
+        ),
         pytest.param(["task", "start", "abc"], 1, "오류: 태스크 ID가", id="task-start-bad-id"),
         pytest.param(["task", "done", "--help"], 0, None, id="task-done-help"),
         pytest.param(["plan", "--help"], 0, None, id="plan-help"),
@@ -368,11 +392,19 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(
             ["plan", "carry", "-w", "x"], 1, "오류: 주차 형식이", id="plan-carry-bad-week"
         ),
+        pytest.param(
+            ["plan", "-w", "x", "carry"],
+            1,
+            "오류: --week는 'lb plan' 목록에만",
+            id="plan-week-before-subcommand",
+        ),
         pytest.param(["start", "--help"], 0, None, id="start-help"),
         pytest.param(["status", "--help"], 0, None, id="status-help"),
         pytest.param(["start", "x", "-t", "abc"], 1, "오류: 태스크 ID가", id="start-bad-task"),
         pytest.param(["stop", "--help"], 0, None, id="stop-help"),
         pytest.param(["stop", "--round", "abc"], 1, "오류: 반올림 단위가", id="stop-bad-round"),
+        pytest.param(["stop", "--round", "0"], 1, "오류: 반올림 단위가", id="stop-round-zero"),
+        pytest.param(["stop", "--round", "99"], 1, "오류: 반올림 단위가", id="stop-round-over"),
         pytest.param(["cancel", "--help"], 0, None, id="cancel-help"),
         pytest.param(["stats", "--help"], 0, None, id="stats-help"),
         pytest.param(["stats", "--by", "x"], 1, "오류: 집계 기준이", id="stats-bad-by"),

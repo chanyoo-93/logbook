@@ -11,7 +11,7 @@ from typer.testing import Result
 from logbook.cli import console, render
 from logbook.core import services
 from logbook.core.weeks import parse_week
-from tests.cli.helpers import OpenDb, assert_fits, assert_rejected, run_ok, tokens
+from tests.cli.helpers import OpenDb, assert_fits, assert_rejected, lines, rows, run_ok, tokens
 
 HEADER = ["ID", "날짜", "프로젝트", "카테고리", "시간", "메모", "Task"]
 ROW_1 = ["1", "09-30 (수)", "payment", "ops", "30m", "장애 대응", "-"]
@@ -36,15 +36,6 @@ def seeded(lb: Callable[..., Result], initialized: Path, open_db: OpenDb) -> Pat
     run_ok(lb, "add", "1h", "스프린트 플래닝", "-c", "meeting")
     run_ok(lb, "add", "1h", "회의록 정리", "-c", "docs", "-d", "2026-09-22")
     return initialized
-
-
-def lines(result: Result) -> list[str]:
-    return result.stdout.splitlines()
-
-
-def rows(result: Result) -> list[list[str]]:
-    """표의 데이터 행(첫 토큰이 ID인 줄)의 토큰 목록."""
-    return [tokens(line) for line in lines(result) if tokens(line)[0].isdigit()]
 
 
 def row_ids(result: Result) -> list[str]:

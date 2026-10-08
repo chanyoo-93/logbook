@@ -114,6 +114,16 @@ def tokens(line: str) -> list[str]:
     return re.split(r"\s{2,}", line.strip())
 
 
+def lines(result: Result) -> list[str]:
+    """stdout의 줄 목록."""
+    return result.stdout.splitlines()
+
+
+def rows(result: Result) -> list[list[str]]:
+    """표의 데이터 행(첫 토큰이 ID인 줄)의 토큰 목록."""
+    return [tokens(line) for line in lines(result) if tokens(line)[0].isdigit()]
+
+
 def assert_fits(text: str, width: int) -> None:
     """모든 줄이 width 칸 이하인지 확인한다."""
     for line in text.splitlines():

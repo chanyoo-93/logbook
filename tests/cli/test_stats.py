@@ -16,7 +16,7 @@ from logbook.core import services
 from logbook.core.config import DEFAULT_CATEGORIES
 from logbook.core.errors import InvalidInputError
 from logbook.core.weeks import parse_week
-from tests.cli.helpers import OpenDb, assert_fits, assert_rejected, run_ok, tokens
+from tests.cli.helpers import OpenDb, assert_fits, assert_rejected, lines, run_ok, tokens
 
 W40_HEADING = "2026-W40 (09-28 ~ 10-04)   총 35h / 기록 41건"
 MATRIX_HEADER = ["프로젝트", "개발", "코드리뷰", "회의", "행정/기타", "합계"]
@@ -69,10 +69,6 @@ def nine_categories(initialized: Path, open_db: OpenDb, today: date) -> Path:
         services.create_project(s, "payment", "결제 서버")
         add_logs(s, today, tuple(("payment", key, 60, 1) for key in DEFAULT_CATEGORIES))
     return initialized
-
-
-def lines(result: Result) -> list[str]:
-    return result.stdout.splitlines()
 
 
 def table_rows(result: Result) -> list[list[str]]:

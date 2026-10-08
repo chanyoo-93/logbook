@@ -10,7 +10,7 @@ from typer.testing import Result
 from logbook.cli import console
 from logbook.core import services
 from logbook.core.taskstatus import TaskStatus
-from tests.cli.helpers import OpenDb, assert_fits, assert_rejected, run_ok, tokens
+from tests.cli.helpers import OpenDb, assert_fits, assert_rejected, lines, rows, run_ok, tokens
 
 CATEGORY_LIST = "admin, design, dev, docs, meeting, ops, review, study, support"
 HEADER = ["ID", "상태", "프로젝트", "카테고리", "제목", "예상", "실적", "주차", "참조"]
@@ -58,15 +58,6 @@ def seeded(lb: Callable[..., Result], initialized: Path, open_db: OpenDb) -> Pat
     run_ok(lb, "add", "1h", "z", "-t", "3")
     run_ok(lb, "add", "45m", "w", "-t", "4")
     return initialized
-
-
-def lines(result: Result) -> list[str]:
-    return result.stdout.splitlines()
-
-
-def rows(result: Result) -> list[list[str]]:
-    """표의 데이터 행(첫 토큰이 ID인 줄)의 토큰 목록."""
-    return [tokens(line) for line in lines(result) if tokens(line)[0].isdigit()]
 
 
 # ---------- lb task add ----------
