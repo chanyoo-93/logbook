@@ -221,7 +221,7 @@ def weekly_report(
 | `title_format`이 `"보고 {foo}"`, `"{0}"`, `"보고 {"`, `"}"`, `"보고 ({start} ~ {end)"`, `"{start:%m/%d}"`, `"{start!x}"`, `"{start.year}"`, `"{start[a]}"` 각각 | 모두 위 문구(`'{title_format}'` 자리에 그 값), traceback 없음. `{start:%m/%d}`·`{start.year}`는 문자열로 넘겨야 오류가 난다 |
 | 기록 100건 이상 | 데이터를 만든 뒤 `session.expire_all()`을 부르고 `before_cursor_execute` 리스너로 쿼리를 센다(tests/core/test_services_tasks.py의 `_count_queries`와 같은 패턴을 쓰되 그 비공개 함수를 import하지 않는다). 기록 1건일 때와 120건(여러 태스크에 나눠 연결, 연결 안 한 기록 포함)일 때 `weekly_report`의 쿼리 수가 같다. `expire_all`이 없으면 identity map 때문에 N+1이 드러나지 않는다 |
 
-- [ ] RED → GREEN → 커밋 `feat: 주간보고서 데이터 조립 서비스 추가`
+- [x] RED → GREEN → 커밋 `feat: 주간보고서 데이터 조립 서비스 추가`
 
 ---
 

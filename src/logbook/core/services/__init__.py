@@ -14,6 +14,7 @@ from logbook.core.services.projects import (
     is_valid_slug,
     list_projects,
 )
+from logbook.core.services.report import weekly_report
 from logbook.core.services.stats import (
     MatrixResult,
     StatsBy,
@@ -93,4 +94,5 @@ __all__ = [
     "StatsRow",
     "stats_by",
     "stats_matrix",
+    "weekly_report",
 ]
