@@ -9,9 +9,11 @@ from logbook.cli.group import LogbookCommand, LogbookGroup
 from logbook.core.errors import InvalidInputError
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
 
     from rich.text import Text
+
+    from logbook.core.config import Config
 
 task_app = typer.Typer(
     cls=LogbookGroup,
@@ -25,6 +27,15 @@ DEFAULT_LIST_STATUSES = "todo,doing"
 CONFLICT_MESSAGE = "{}와 {}는 함께 쓸 수 없습니다. 하나만 지정하세요."
 NOTHING_TO_CHANGE_MESSAGE = (
     "바꿀 항목을 하나 이상 지정하세요. 예: lb task edit 43 --est 6h --week next"
+)
+
+# (값 옵션, 비우기 옵션, update_task 필드). 충돌 검사와 비우기 매핑이 이 표 하나를 쓴다.
+_CLEARABLE = (
+    ("--category", "--no-category", "category"),
+    ("--est", "--no-est", "estimate_minutes"),
+    ("--week", "--no-week", "planned_week"),
+    ("--ref", "--no-ref", "external_ref"),
+    ("--due", "--no-due", "due_date"),
 )
 
 TaskIdArg = Annotated[str, typer.Argument(metavar="ID", help="태스크 ID (예: 43 또는 '#43')")]
@@ -150,48 +161,24 @@ def edit(
     """태스크를 고칩니다. 지정한 항목만 바꾸며, 프로젝트는 바꿀 수 없습니다."""
     # DB와 설정 없이 끝낼 수 있는 검증을 먼저 한다(실패하면 SQLAlchemy를 로드하지 않는다).
     target_id = runtime.parse_id(task_id, "태스크")
-    pairs = (
-        (category, no_category, "--category", "--no-category"),
-        (estimate, no_estimate, "--est", "--no-est"),
-        (week, no_week, "--week", "--no-week"),
-        (ref, no_ref, "--ref", "--no-ref"),
-        (due, no_due, "--due", "--no-due"),
-    )
-    for value, clear, value_name, clear_name in pairs:
-        if value is not None and clear:
-            raise InvalidInputError(CONFLICT_MESSAGE.format(value_name, clear_name))
-    if title is None and all(value is None and not clear for value, clear, _, _ in pairs):
-        # 빈 문자열(--title "")은 '지정함'이라 여기서 막지 않고 core 검증으로 넘긴다.
-        raise InvalidInputError(NOTHING_TO_CHANGE_MESSAGE)
+    values = {
+        "category": category,
+        "estimate_minutes": estimate,
+        "planned_week": week,
+        "external_ref": ref,
+        "due_date": due,
+    }
+    clears = {
+        "category": no_category,
+        "estimate_minutes": no_estimate,
+        "planned_week": no_week,
+        "external_ref": no_ref,
+        "due_date": no_due,
+    }
+    _reject_bad_flags(title, values, clears)
 
-    from logbook.core.duration import parse_duration
-    from logbook.core.weeks import parse_date, parse_week
-
-    fields: dict[str, object] = {}
-    if title is not None:
-        fields["title"] = title
-    if estimate is not None:
-        fields["estimate_minutes"] = parse_duration(estimate, max_minutes=None)
     cfg = runtime.settings()
-    today = runtime.today()
-    if week is not None:
-        fields["planned_week"] = parse_week(week, today=today, week_start=cfg.week_start)
-    if due is not None:
-        fields["due_date"] = parse_date(due, today=today, week_start=cfg.week_start)
-    if category is not None:
-        fields["category"] = category
-    if ref is not None:
-        fields["external_ref"] = ref
-    # --no-…는 해당 필드를 None으로 비운다(값과 함께 쓴 경우는 위에서 이미 막았다).
-    for clear, field in (
-        (no_category, "category"),
-        (no_estimate, "estimate_minutes"),
-        (no_week, "planned_week"),
-        (no_ref, "external_ref"),
-        (no_due, "due_date"),
-    ):
-        if clear:
-            fields[field] = None
+    fields = _build_fields(title, values, clears, cfg)
 
     # services는 SQLAlchemy를 로드하므로 검증이 끝난 뒤에 import한다.
     from logbook.core import services
@@ -204,6 +191,43 @@ def edit(
     console.print_line(
         render.ok_mark(), " 수정했습니다: ", render.task_line(task), render.task_details(task)
     )
+
+
+def _reject_bad_flags(
+    title: str | None, values: dict[str, str | None], clears: dict[str, bool]
+) -> None:
+    """값과 --no-…를 함께 줬거나 바꿀 항목이 없으면 거부한다(DB·설정을 읽기 전에)."""
+    # update_task(**fields)는 값과 비우기를 구분해 볼 수 없으므로(log edit은 core가 -t와
+    # --no-task를 거부한다) CLI가 직접 충돌을 막는다.
+    for value_flag, clear_flag, field in _CLEARABLE:
+        if values[field] is not None and clears[field]:
+            raise InvalidInputError(CONFLICT_MESSAGE.format(value_flag, clear_flag))
+    # 빈 문자열(--title "")은 '지정함'이라 여기서 막지 않고 core 검증으로 넘긴다.
+    if title is None and all(v is None for v in values.values()) and not any(clears.values()):
+        raise InvalidInputError(NOTHING_TO_CHANGE_MESSAGE)
+
+
+def _build_fields(
+    title: str | None, values: dict[str, str | None], clears: dict[str, bool], cfg: "Config"
+) -> dict[str, object]:
+    """update_task에 넘길 필드. 값은 파싱하고, --no-…는 None으로 비운다."""
+    from logbook.core.duration import parse_duration
+    from logbook.core.weeks import parse_date, parse_week
+
+    today = runtime.today()
+    parsers: dict[str, Callable[[str], object]] = {
+        "estimate_minutes": lambda text: parse_duration(text, max_minutes=None),
+        "planned_week": lambda text: parse_week(text, today=today, week_start=cfg.week_start),
+        "due_date": lambda text: parse_date(text, today=today, week_start=cfg.week_start),
+    }
+    fields: dict[str, object] = {} if title is None else {"title": title}
+    for _, _, field in _CLEARABLE:
+        value = values[field]
+        if value is not None:
+            fields[field] = parsers[field](value) if field in parsers else value
+        elif clears[field]:
+            fields[field] = None
+    return fields
 
 
 def _list_heading(statuses: "Sequence[str]", week_label: str | None, project: str | None) -> "Text":

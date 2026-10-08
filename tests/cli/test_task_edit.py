@@ -113,6 +113,50 @@ def test_clear_week_and_ref(lb: Callable[..., Result], seeded: Path, open_db: Op
     assert snapshot(open_db, 1) == TASK_1._replace(planned_week=None, external_ref=None)
 
 
+@pytest.mark.parametrize(
+    ("flag", "field"),
+    [
+        ("--no-category", "category"),
+        ("--no-est", "estimate_minutes"),
+        ("--no-week", "planned_week"),
+        ("--no-ref", "external_ref"),
+        ("--no-due", "due_date"),
+    ],
+    ids=["category", "est", "week", "ref", "due"],
+)
+def test_each_clear_flag_clears_only_its_field(
+    lb: Callable[..., Result], seeded: Path, open_db: OpenDb, flag: str, field: str
+) -> None:
+    run_ok(lb, "task", "edit", "1", flag)
+
+    assert snapshot(open_db, 1) == TASK_1._replace(**{field: None})
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (["--est", "abc"], "시간 형식이 올바르지 않습니다: 'abc'. 예: 2h, 1.5h, 90m, 1h30m, 1:30"),
+        (
+            ["--week", "2026-W99"],
+            "주차 형식이 올바르지 않습니다: '2026-W99'. 예: this, last, next, 2026-W41",
+        ),
+        (
+            ["--due", "13-45"],
+            "날짜 형식이 올바르지 않습니다: '13-45'. "
+            "예: today, yesterday, mon~sun, 2026-10-01, 10-01",
+        ),
+    ],
+    ids=["est", "week", "due"],
+)
+def test_bad_values_keep_task(
+    lb: Callable[..., Result], seeded: Path, open_db: OpenDb, args: list[str], message: str
+) -> None:
+    result = lb("task", "edit", "1", *args)
+
+    assert_rejected(result, message)
+    assert snapshot(open_db, 1) == TASK_1
+
+
 def test_clear_all(lb: Callable[..., Result], seeded: Path, open_db: OpenDb) -> None:
     result = run_ok(
         lb, "task", "edit", "1", "--no-category", "--no-est", "--no-week", "--no-ref", "--no-due"
