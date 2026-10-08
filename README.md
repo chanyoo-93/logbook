@@ -77,6 +77,91 @@ uv run lb cancel
 | `lb stop` | 타이머를 멈추고 시작한 날짜의 기록으로 저장합니다. `--round 15`로 15분 단위 반올림, `--note`로 메모를 덧붙입니다. 1분 미만이나 24시간 초과는 저장하지 않고 타이머를 남깁니다. |
 | `lb cancel` | 타이머를 보여 주고 `[y/N]`으로 확인한 뒤 기록 없이 버립니다. `--yes`(`-y`)로 확인을 생략합니다. |
 
+### 주간보고서
+
+```
+uv run lb report
+uv run lb report -w last
+uv run lb report -o 주간보고.md
+uv run lb report -w last -o 주간보고.md --yes
+uv run lb report --copy
+```
+
+| 명령 | 하는 일 |
+|---|---|
+| `lb report` | 이번 주 주간업무보고를 Markdown으로 화면(stdout)에 출력합니다. `-w last`, `-w 2026-W40`처럼 주차를 고릅니다. |
+| `lb report -o <파일>` | 보고서를 파일로 저장하고 화면에는 저장한 경로만 보여 줍니다(UTF-8, LF). 파일이 이미 있으면 `덮어쓸까요? [y/N]:`로 확인하고, `--yes`(`-y`)로 확인을 생략합니다. 거절하거나 입력이 없으면 파일을 그대로 두고 종료 코드 1로 끝납니다. |
+| `lb report --copy` | 보고서를 클립보드에 복사합니다. 복사하면 화면에는 보고서를 출력하지 않습니다. 클립보드를 쓸 수 없으면 `주의:` 경고를 내고, `-o`를 함께 줬으면 파일로 저장한 것을 안내하고, 주지 않았으면 보고서를 화면에 출력합니다. |
+
+보고서는 공수 요약 표, 프로젝트별 실적, 특이사항 / 리스크, 다음 주 계획 네 절로 이루어집니다. 특이사항 / 리스크는 `(작성하세요)` 자리표시자이고, 저장 기능은 이후 단계에서 추가합니다. 작성자와 제목은 설정 파일의 `[report]`(`author`, `title_format`)에서 바꿉니다.
+
+PowerShell에서는 `lb report > 주간.md` 대신 `lb report -o 주간.md`를 쓰세요. 리디렉션은 PowerShell 버전과 콘솔 인코딩에 따라 한글이 깨질 수 있습니다.
+
+### 보고서 템플릿
+
+보고서 모양은 템플릿으로 바꿀 수 있습니다. 설정 파일(`config.toml`)과 같은 폴더에 `report.md.j2`를 두면 기본 템플릿 대신 그 파일을 씁니다(기본은 `~/.logbook/report.md.j2`이고 `LOGBOOK_CONFIG`로 설정 위치를 옮겼다면 그 옆입니다). 파일이 없으면 기본 템플릿을 씁니다. 기본 템플릿은 패키지 안의 `logbook/core/templates/report.md.j2`입니다. [Jinja2](https://jinja.palletsprojects.com/) 문법이고 파일은 UTF-8로 저장해야 합니다(BOM은 허용).
+
+기본 템플릿을 복사해서 고치려면 다음처럼 합니다. 저장소 폴더에서 실행합니다.
+
+```
+# PowerShell
+Copy-Item (uv run python -c "import importlib.resources as r; print(r.files('logbook.core').joinpath('templates', 'report.md.j2'))") "$HOME\.logbook\report.md.j2"
+
+# macOS (zsh)
+cp "$(uv run python -c "import importlib.resources as r; print(r.files('logbook.core').joinpath('templates', 'report.md.j2'))")" ~/.logbook/report.md.j2
+```
+
+PowerShell에서는 `Copy-Item`으로만 복사하세요. `>`, `Out-File`, `Set-Content`로 옮기면 PowerShell 5.1에서 UTF-16이나 ANSI로 저장되어 템플릿을 읽을 수 없습니다.
+
+템플릿에는 `data` 하나가 넘어옵니다. 시간과 비율은 `1h 30m`, `54%`처럼 이미 표기가 끝난 문자열입니다. 쓸 수 있는 값은 다음과 같고, 없는 값을 쓰면 오류로 알려 줍니다.
+
+| 값 | 내용 |
+|---|---|
+| `data.title`, `data.author` | 제목, 작성자(설정이 비면 빈 문자열) |
+| `data.week_label`, `data.start`, `data.end` | `2026-W40`, `2026-09-28`, `2026-10-04` |
+| `data.total`, `data.log_count`, `data.done_task_count` | 주 합계 시간, 기록 건수, 그 주에 완료한 태스크 수 |
+| `data.categories` | 표 머리글(카테고리 라벨, 기록이 있는 것만) |
+| `data.matrix` | 표의 행. 각 행: `project`, `cells`(카테고리별 시간), `total`, `percent` |
+| `data.sections` | 프로젝트별 실적. 각 항목: `project`, `total`, `tasks`, `others` |
+| `data.sections[].tasks` | 각 태스크: `status`, `title`, `task_id`, `actual`, `actual_label`(`실제` 또는 `누적`), `estimate`(없으면 `None`) |
+| `data.sections[].others` | 태스크에 연결되지 않은 기록의 (카테고리 라벨, 시간) 쌍 |
+| `data.plan` | 다음 주 계획. 각 항목: `project`, `estimate_total`, `items` |
+| `data.plan[].items` | 각 태스크: `title`, `task_id`, `estimate`(없으면 `None`), `carried`(이번 주에서 넘어온 후보면 참) |
+
+표 칸에 넣을 값은 `{{ 값 | cell }}`로 `|`를 이스케이프합니다. 템플릿에 문법 오류가 있으면 `오류: …` 한 줄로 파일 경로와 줄 번호를 알려 줍니다. 기본 템플릿으로 돌아가려면 파일을 지우거나 이름을 바꾸세요.
+
+### 백업과 복원
+
+```
+uv run lb export
+uv run lb export -o 백업.jsonl
+uv run lb export -o 백업.jsonl --yes
+uv run lb import 백업.jsonl
+```
+
+| 명령 | 하는 일 |
+|---|---|
+| `lb export` | 프로젝트·태스크·기록·타이머를 JSONL 파일 하나로 내보냅니다. `-o`를 생략하면 현재 폴더에 `logbook-export-20261008-153000.jsonl`처럼 만듭니다. 파일이 이미 있으면 `lb report -o`와 같이 덮어쓰기를 확인하고 `--yes`로 생략합니다. |
+| `lb import <파일>` | `lb export`로 만든 파일을 **빈 데이터베이스**(`lb init` 직후)에만 복원합니다. |
+
+`lb export` 파일에는 DB 내용(프로젝트·태스크·기록·타이머)만 들어갑니다. 설정 파일(config.toml)과 보고서 템플릿(report.md.j2)은 따로 복사하세요.
+
+`lb import`는 데이터가 있는 DB에는 쓰지 않습니다. 기록과 태스크가 ID로 서로를 가리키므로 ID를 그대로 복원해야 하고, 이미 있는 데이터와 합치려면 ID가 겹칠 때의 규칙이 필요하기 때문입니다. 데이터가 있는 DB에서 실행하면 새 DB를 쓰라고 안내하고 종료 코드 1로 끝납니다. 다른 PC로 옮기거나 백업에서 되살리는 절차는 다음과 같습니다.
+
+```
+# PowerShell
+$env:LOGBOOK_DB = "$HOME\.logbook\restored.db"
+uv run lb init
+uv run lb import 백업.jsonl
+
+# macOS (zsh)
+export LOGBOOK_DB=~/.logbook/restored.db
+uv run lb init
+uv run lb import 백업.jsonl
+```
+
+복원한 DB를 계속 쓰려면 `LOGBOOK_DB`를 그대로 두거나 설정 파일의 `db_path`를 그 경로로 바꾸세요. 파일을 먼저 전부 검사하고 문제가 없을 때만 한 번에 쓰므로, 검사에 실패하면(예: `오류: 12번째 줄: …`) DB는 바뀌지 않습니다.
+
 ### 셸별 주의
 
 - 메모는 따옴표로 감싼 한 인자입니다. 따옴표 없이 여러 단어를 쓰면 `Got unexpected extra argument` 오류(종료 코드 2)가 납니다.
@@ -91,7 +176,7 @@ uv run lb cancel
 | 코드 | 의미 |
 |---|---|
 | 0 | 성공 |
-| 1 | 입력·데이터 오류(stderr에 `오류: …` 한 줄), 삭제·이월·타이머 취소 확인을 거절했거나 확인 입력이 없음 |
+| 1 | 입력·데이터 오류(stderr에 `오류: …` 한 줄), 삭제·이월·타이머 취소·파일 덮어쓰기 확인을 거절했거나 확인 입력이 없음 |
 | 2 | 명령 문법 오류(없는 옵션, 인자 누락·초과 등). Typer/Click 기본 영어 문구로 안내합니다. |
 | 130 | Ctrl+C로 중단 |
 

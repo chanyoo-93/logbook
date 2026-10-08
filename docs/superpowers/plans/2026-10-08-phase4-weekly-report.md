@@ -638,13 +638,13 @@ pytest.param(["import", "없는파일.jsonl"], 1, "오류: 가져올 파일이 �
 
 **Files:** Modify `README.md`, `docs/SPEC.md`, `docs/ROADMAP.md`, `CLAUDE.md`, `AGENTS.md`
 
-- [ ] **README:**
+- [x] **README:**
   - "주간보고서" 절: `lb report`, `-w last`, `-o 주간보고.md`, `--copy`, 덮어쓰기 확인
   - "주간보고서" 절에 추가: `PowerShell에서는 lb report > 주간.md 대신 lb report -o 주간.md를 쓰세요. 리디렉션은 PowerShell 버전과 콘솔 인코딩에 따라 한글이 깨질 수 있습니다.`
   - "보고서 템플릿" 절: 설정 파일과 같은 폴더의 `report.md.j2`, `data`의 필드 목록(Task 4-1의 데이터 클래스), 기본 템플릿 위치(패키지 안의 `logbook/core/templates/report.md.j2`)를 적는다. 복사해서 고치는 방법도 PowerShell과 zsh 두 가지로 적는다. PowerShell 복사 예시는 `Copy-Item`만 쓰고, `>`·`Out-File`·`Set-Content`로 옮기면 5.1에서 UTF-16이나 ANSI로 저장되니 쓰지 말라고 적는다.
   - "백업과 복원" 절: export/import, 빈 DB에만 복원하는 이유와 절차
   - "백업과 복원" 절에 추가: `lb export 파일에는 DB 내용(프로젝트·태스크·기록·타이머)만 들어갑니다. 설정 파일(config.toml)과 보고서 템플릿(report.md.j2)은 따로 복사하세요.`
-- [ ] **SPEC:**
+- [x] **SPEC:**
   - 5장 "집계 / 보고서"와 "데이터 관리"에 옵션, 덮어쓰기 확인(R4), import 빈 DB 규칙(R3), JSONL 형식(머리글·행), `--copy` 실패 동작을 적는다.
   - 7장 첫 문단: `core/services/report.py`의 `weekly_report()`가 한 주의 기록·태스크로 구조화된 데이터(`core/report.py`의 불변 데이터 클래스 `ReportData`)를 만들고, `core/report.py`의 `render_markdown()`이 Jinja2 템플릿으로 Markdown을 렌더링한다. 템플릿은 설정 파일과 같은 폴더의 `report.md.j2`(기본 `~/.logbook/report.md.j2`, `LOGBOOK_CONFIG`를 따름)로 바꿀 수 있다.
   - 7장 예시 블록: Task 4-2의 기본 템플릿 출력 예시로 바꾸고 부록 줄은 지운다. 부록(커밋 내역)은 git-collect를 구현할 때까지 나오지 않는다(`include_commits`는 아직 쓰지 않는다).
@@ -656,9 +656,9 @@ pytest.param(["import", "없는파일.jsonl"], 1, "오류: 가져올 파일이 �
     - 다음 주 계획 = `planned_week == 다음 주`인 todo·doing 태스크 + `planned_week == 이번 주`인 todo·doing 태스크(끝에 `(이월 후보)`). done·dropped와 보관한 프로젝트의 태스크는 뺀다. 프로젝트 slug 순, 같은 프로젝트 안에서는 다음 주 계획 → 이월 후보, 각각 ID 순이다.
     - 기록이 없는 주는 1절이 `총 0m (기록 0건, 완료 태스크 N건)` 한 줄(표 없음), 2절이 `기록이 없습니다.`다. 계획이 없으면 4절은 `계획된 태스크가 없습니다.`다. `author`가 비면 `작성자:` 줄을 뺀다.
     - 3절은 `(작성하세요)` 자리표시자다(week_notes 저장은 Phase 6).
-- [ ] **종료 코드 표:** SPEC 5장 '오류와 종료 코드'와 README '오류와 종료 코드' 표의 1번 행을 `입력·데이터 오류(stderr에 오류: … 한 줄), 삭제·이월·타이머 취소·파일 덮어쓰기 확인을 거절했거나 확인 입력이 없음`으로 고친다.
-- [ ] **ROADMAP:** Phase 4의 앞 네 항목을 `[x]`로 바꾼다. git-collect 항목은 그대로 두고 `(후속, R1)`을 덧붙인다.
-- [ ] **CLAUDE.md·AGENTS.md(같은 내용):**
+- [x] **종료 코드 표:** SPEC 5장 '오류와 종료 코드'와 README '오류와 종료 코드' 표의 1번 행을 `입력·데이터 오류(stderr에 오류: … 한 줄), 삭제·이월·타이머 취소·파일 덮어쓰기 확인을 거절했거나 확인 입력이 없음`으로 고친다.
+- [x] **ROADMAP:** Phase 4의 앞 네 항목을 `[x]`로 바꾼다. git-collect 항목은 그대로 두고 `(후속, R1)`을 덧붙인다.
+- [x] **CLAUDE.md·AGENTS.md(같은 내용):**
   - `report.py` 설명을 "보고서 데이터 클래스 + Markdown 렌더링(조립은 services/report.py)"으로 고친다.
   - `templates/` 줄을 추가한다.
   - services 목록에 `report`, `backup`을 넣는다.
@@ -670,7 +670,7 @@ pytest.param(["import", "없는파일.jsonl"], 1, "오류: 가져올 파일이 �
   - `lb report --copy` 후 붙여넣기 확인
   - `lb export` → 새 DB에 `lb import`
 - [ ] **전체 검증:** ruff, ruff format, mypy, pytest(전체 80%, core 80%)
-- [ ] 커밋 `docs: Phase 4 완료 표시와 주간보고서·백업 사용 안내 추가`
+- [x] 커밋 `docs: Phase 4 완료 표시와 주간보고서·백업 사용 안내 추가`
 - [ ] 사용자 확인 후 Phase 4 이슈 생성 → push → develop 대상 PR. CI 두 OS가 녹색이어야 한다. macOS 확인 절차는 PR 댓글로 남긴다.
 
 ---
