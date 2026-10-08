@@ -468,7 +468,7 @@ def timer_line(timer: "ActiveTimer") -> "Text"                 # "payment/design
 
 **import 가드 추가(test_entry.py):** `task --help`, `task add --help`, `task list --help`, `task add x --est abc`, `task list -s x`. 마지막 둘은 rc 1이고 오류 문구로 시작해야 한다.
 
-- [ ] RED → GREEN → 커밋 `feat: lb task add·list 명령 추가`
+- [x] RED → GREEN → 커밋 `feat: lb task add·list 명령 추가`
 
 ---
 
