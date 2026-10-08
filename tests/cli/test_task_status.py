@@ -80,8 +80,18 @@ def test_same_state(lb: Callable[..., Result], seeded: Path, open_db: OpenDb) ->
 
     result = run_ok(lb, "task", "start", "1")
 
-    assert result.stdout == "· #1은 이미 doing 상태입니다: payment/design 환불 API 설계\n"
+    assert result.stdout == "· 태스크 #1 상태는 이미 doing입니다: payment/design 환불 API 설계\n"
     assert status_of(open_db, 1) == ("doing", False)
+
+
+def test_same_state_line_has_no_particle_after_id(lb: Callable[..., Result], seeded: Path) -> None:
+    # '#2는'/'#1은'처럼 받침에 따라 달라지는 조사를 숫자 뒤에 붙이지 않는다.
+    run_ok(lb, "task", "add", "문서 정리", "-p", "payment")
+    run_ok(lb, "task", "start", "2")
+
+    result = run_ok(lb, "task", "start", "2")
+
+    assert result.stdout == "· 태스크 #2 상태는 이미 doing입니다: payment 문서 정리\n"
 
 
 def test_same_state_dropped(lb: Callable[..., Result], seeded: Path) -> None:
@@ -89,7 +99,7 @@ def test_same_state_dropped(lb: Callable[..., Result], seeded: Path) -> None:
 
     result = run_ok(lb, "task", "drop", "1")
 
-    assert result.stdout == "· #1은 이미 dropped 상태입니다: payment/design 환불 API 설계\n"
+    assert result.stdout == "· 태스크 #1 상태는 이미 dropped입니다: payment/design 환불 API 설계\n"
 
 
 def test_done_again_keeps_tail(lb: Callable[..., Result], seeded: Path, open_db: OpenDb) -> None:
@@ -99,7 +109,7 @@ def test_done_again_keeps_tail(lb: Callable[..., Result], seeded: Path, open_db:
     result = run_ok(lb, "task", "done", "1")
 
     assert result.stdout == (
-        "· #1은 이미 done 상태입니다: payment/design 환불 API 설계 (실적 2h / 예상 4h)\n"
+        "· 태스크 #1 상태는 이미 done입니다: payment/design 환불 API 설계 (실적 2h / 예상 4h)\n"
     )
     assert status_of(open_db, 1) == ("done", True)
 

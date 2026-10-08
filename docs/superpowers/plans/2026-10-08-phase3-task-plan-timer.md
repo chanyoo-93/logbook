@@ -529,7 +529,7 @@ import 가드: `task edit --help`, `task edit 1`(바꿀 항목 없음, rc 1), `t
 - 바꾸기 전 상태를 읽고 `services.set_task_status`를 부른다. 같은 세션에서 처리한다.
 - 출력:
   - 상태가 바뀌면: `✔ #1 todo → doing: payment/design 환불 API 설계`
-  - 이미 그 상태면: `· #1은 이미 doing 상태입니다: payment/design 환불 API 설계`. exit 0이고, `updated_at`은 서비스 규칙대로 갱신된다.
+  - 이미 그 상태면: `· 태스크 #1 상태는 이미 doing입니다: payment/design 환불 API 설계`. exit 0이고, `updated_at`은 서비스 규칙대로 갱신된다.
   - `done`이면 끝에 ` (실적 5h 30m / 예상 4h)`를 붙인다. 예상이 없으면 ` (실적 5h 30m)`이다.
     - 실적은 `services.task_actual_minutes`로 구한다.
     - 이미 done인 경우에도 붙인다.
@@ -613,7 +613,7 @@ import 가드: `plan --help`, `plan carry --help`, `plan -w x`(rc 1), `plan carr
 - 출력:
   ```
   ✔ 타이머 시작: payment/design — 환불 API 설계 [#1] (09:30)
-  · 태스크 #1을 doing으로 바꿨습니다.          ← task_started일 때만
+  · 태스크 #1 상태를 doing으로 바꿨습니다.          ← task_started일 때만
   ```
 
 **lb status**

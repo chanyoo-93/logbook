@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from rich.text import Text
 
     from logbook.core.config import Config
+    from logbook.core.taskstatus import TaskStatus
 
 task_app = typer.Typer(
     cls=LogbookGroup,
@@ -196,22 +197,28 @@ def edit(
 @task_app.command("start", cls=LogbookCommand)
 def start(task_id: TaskIdArg) -> None:
     """태스크를 진행 중(doing)으로 바꿉니다. 완료·중단된 태스크를 다시 시작할 수도 있습니다."""
-    _change_status(task_id, "doing")
+    from logbook.core.taskstatus import TaskStatus
+
+    _change_status(task_id, TaskStatus.DOING)
 
 
 @task_app.command("done", cls=LogbookCommand)
 def done(task_id: TaskIdArg) -> None:
     """태스크를 완료(done)로 바꾸고 실적을 보여 줍니다."""
-    _change_status(task_id, "done")
+    from logbook.core.taskstatus import TaskStatus
+
+    _change_status(task_id, TaskStatus.DONE)
 
 
 @task_app.command("drop", cls=LogbookCommand)
 def drop(task_id: TaskIdArg) -> None:
     """태스크를 중단(dropped)으로 바꿉니다."""
-    _change_status(task_id, "dropped")
+    from logbook.core.taskstatus import TaskStatus
+
+    _change_status(task_id, TaskStatus.DROPPED)
 
 
-def _change_status(task_id_text: str, status_value: str) -> None:
+def _change_status(task_id_text: str, status: "TaskStatus") -> None:
     """세 상태 명령의 공통 처리. 같은 상태면 안내만 하고 성공(exit 0)한다."""
     target_id = runtime.parse_id(task_id_text, "태스크")
     cfg = runtime.settings()
@@ -220,18 +227,22 @@ def _change_status(task_id_text: str, status_value: str) -> None:
     from logbook.core import services
     from logbook.core.taskstatus import TaskStatus
 
-    status = TaskStatus(status_value)
     with runtime.session(cfg) as s:
         old_status = services.get_task(s, target_id).status
         task = services.set_task_status(s, target_id, status)
-        actual = services.task_actual_minutes(s, target_id) if status == TaskStatus.DONE else None
         scope_title = render.task_scope_title(task)
-        estimate = task.estimate_minutes
+        tail = (
+            _actual_tail(services.task_actual_minutes(s, target_id), task.estimate_minutes)
+            if status == TaskStatus.DONE
+            else ""
+        )
 
-    tail = _actual_tail(actual, estimate) if actual is not None else ""
     if old_status == status:
         console.print_line(
-            render.info_mark(), f" #{target_id}은 이미 {status} 상태입니다: ", scope_title, tail
+            render.info_mark(),
+            f" 태스크 #{target_id} 상태는 이미 {status}입니다: ",
+            scope_title,
+            tail,
         )
     else:
         console.print_line(
