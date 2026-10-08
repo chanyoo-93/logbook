@@ -45,7 +45,8 @@
 | `src/logbook/core/report.py` | 생성 | 보고서 데이터 클래스(`ReportData` 등), `render_markdown()`, 템플릿 경로 결정, 템플릿 오류의 한국어 변환. jinja2는 함수 안에서 import한다 |
 | `src/logbook/core/templates/report.md.j2` | 생성 | 기본 보고서 템플릿 |
 | `src/logbook/core/services/report.py` | 생성 | `weekly_report()`: 한 주의 기록·태스크로 `ReportData`를 조립한다 |
-| `src/logbook/core/services/backup.py` | 생성 | `export_records()`, `import_records()`, `BackupCounts`, JSONL 레코드 형식과 검증 |
+| `src/logbook/core/services/backup.py` | 생성 | `export_records()`, `BackupCounts`, JSONL 레코드 형식, 가져오기·내보내기가 함께 쓰는 공용 상수(`FIELDS`, `TABLE_ORDER` 등) |
+| `src/logbook/core/services/backup_import.py` | 생성 | `import_records()`: 가져오기 검증과 쓰기. 공용 상수는 `backup.py`에서 가져온다 |
 | `src/logbook/core/services/__init__.py` | 수정 | 새 함수 공개 |
 | `src/logbook/cli/runtime.py` | 수정 | `OutOpt`, `prepare_output_path()`, `write_text_file()`(덮어쓰기 확인, UTF-8·LF, 오류 변환) |
 | `src/logbook/cli/console.py` | 수정 | `print_raw()`: 보고서를 줄바꿈 그대로 stdout에 쓴다(마크업 해석·줄 접기 없음) |
@@ -712,3 +713,5 @@ pytest.param(["import", "없는파일.jsonl"], 1, "오류: 가져올 파일이 �
 4. **가져오기 병합:** 요청이 있으면 ID 재배정·slug 충돌 규칙을 정해 추가한다.
 5. **Phase 3 후속 항목:** 그대로 유지한다(동시 타이머 경합, 태스크 삭제, 밀린 태스크, core 문구의 CLI 문법).
 6. **완료 태스크 수의 DST 한계:** 고치려면 `weekly_report`의 `tz`를 `tzinfo | None`으로 바꾸고 None이면 `done_at.astimezone()`(그 시각의 시스템 시간대 규칙, DST 반영)으로 로컬 날짜를 구한다. 요청이 있을 때 다룬다.
+7. **보고서 템플릿 샌드박스:** 사용자 보고서 템플릿을 `jinja2.sandbox.SandboxedEnvironment`로 실행할지 정한다. 템플릿을 공유·배포하게 되면 필요하다.
+8. **휠 포함 테스트의 오프라인 동작:** 휠 포함 테스트가 오프라인에서 skip이 아니라 실패한다(hatchling 내려받기). 네트워크 오류면 skip하거나 별도 마커로 뺄지 정한다.
