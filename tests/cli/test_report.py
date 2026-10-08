@@ -59,7 +59,7 @@ def expected_report(week: str = "this") -> str:
         data = services.weekly_report(
             s,
             the_week,
-            tz=FIXED_NOW.tzinfo,  # type: ignore[arg-type]
+            tz=FIXED_NOW.tzinfo or UTC,
             title_format=cfg.report.title_format,
             author=cfg.report.author,
             category_labels=cfg.categories,

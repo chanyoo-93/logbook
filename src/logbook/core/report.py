@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from logbook.core.errors import InvalidInputError
+
 if TYPE_CHECKING:
     import jinja2
 
@@ -115,8 +117,6 @@ def _default_source() -> str:
 
 
 def _read_user_source(path: Path) -> str:
-    from logbook.core.errors import InvalidInputError
-
     try:
         return path.read_text(encoding="utf-8-sig")
     except UnicodeDecodeError as error:
@@ -143,8 +143,6 @@ def _where(lineno: int | None) -> str:
 
 def _render_user_template(env: "jinja2.Environment", path: Path, data: ReportData) -> str:
     import jinja2
-
-    from logbook.core.errors import InvalidInputError
 
     source = _read_user_source(path)
     try:

@@ -285,6 +285,12 @@ def test_parse_round_limit_matches_core() -> None:
     assert runtime.MAX_ROUND_MINUTES == MAX_ROUND_MINUTES
 
 
+def test_max_id_matches_core_sqlite_integer_limit() -> None:
+    from logbook.core.services.backup_import import MAX_SQLITE_INTEGER
+
+    assert runtime.MAX_ID == MAX_SQLITE_INTEGER
+
+
 def test_now_is_injected_by_fixture() -> None:
     assert runtime.now() == FIXED_NOW
 

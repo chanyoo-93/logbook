@@ -1,5 +1,6 @@
 """lb report: 주간업무보고 Markdown을 stdout, 파일, 클립보드로 내보낸다."""
 
+from datetime import UTC
 from pathlib import Path
 from typing import Annotated
 
@@ -24,11 +25,13 @@ def _build_markdown(week: str | None) -> str:
     # services는 SQLAlchemy를 로드하므로 주차 검증이 끝난 뒤에 import한다.
     from logbook.core import services
 
+    now = runtime.now()
+    tz = now.tzinfo or UTC
     with runtime.session(cfg) as s:
         data = services.weekly_report(
             s,
             the_week,
-            tz=runtime.now().tzinfo,
+            tz=tz,
             title_format=cfg.report.title_format,
             author=cfg.report.author,
             category_labels=cfg.categories,
