@@ -49,7 +49,7 @@ uv run lb stats --by project
 - `#`로 시작하는 값은 따옴표로 감쌉니다(`--color "#4f46e5"`, `-t "#42"`). PowerShell과 bash에서 `#` 뒤는 주석이 됩니다.
 - `-`로 시작하는 메모는 옵션을 먼저 쓰고 `--` 뒤에 씁니다: `lb add 30m -c dev -- "-5% 개선"`
 - PowerShell에서 `$`가 든 메모는 작은따옴표로 감쌉니다: `lb add 1h 'API $limit 조정' -c dev`
-- PowerShell에서 lb 출력을 파이프나 파일로 넘길 때(`lb log | Select-String payment`)는 먼저 `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`을 실행합니다. 프로필에 넣으면 매번 적용됩니다. 설정하지 않으면 PowerShell 5.1 기본값(cp949)에서 한글이 `?`로 바뀝니다.
+- PowerShell에서 lb 출력을 파이프나 파일로 넘길 때(`lb log | Select-String payment`)는 먼저 `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8`을 실행합니다. 프로필에 넣으면 매번 적용됩니다(5.1과 7은 프로필 파일이 따로라 각각 넣어야 합니다). 설정하지 않으면 한국어 Windows 기본값(cp949)에서 한글이 깨지고 `Select-String`도 한글을 찾지 못합니다. PowerShell 5.1과 7 모두 같습니다.
 - 파이프나 파일로 넘긴 `lb log`·`lb stats`는 줄을 접지 않습니다. 기록 한 건이 한 줄이라 줄 단위로 걸러낼 수 있습니다.
 
 ### 오류와 종료 코드
