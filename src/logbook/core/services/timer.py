@@ -28,7 +28,7 @@ MAX_ROUND_MINUTES = 60
 
 _TIMER_ID = 1
 _ONE_SECOND = timedelta(seconds=1)
-_NO_TIMER_MESSAGE = "진행 중인 타이머가 없습니다. 'lb start \"메모\"'로 시작하세요."
+NO_TIMER_MESSAGE = "진행 중인 타이머가 없습니다. 'lb start \"메모\"'로 시작하세요."
 
 
 class StartedTimer(NamedTuple):
@@ -158,7 +158,7 @@ def cancel_timer(s: Session) -> ActiveTimer:
 def _require_timer(s: Session) -> ActiveTimer:
     timer = get_timer(s)
     if timer is None:
-        raise NotFoundError(_NO_TIMER_MESSAGE)
+        raise NotFoundError(NO_TIMER_MESSAGE)
     return timer
 
 

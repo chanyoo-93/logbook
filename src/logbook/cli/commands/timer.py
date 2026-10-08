@@ -7,14 +7,13 @@ import typer
 
 from logbook.cli import console, render, runtime
 from logbook.cli.group import EXIT_ERROR, LogbookCommand
-from logbook.core.errors import InvalidInputError
+from logbook.core.errors import NotFoundError
 
 if TYPE_CHECKING:
     from logbook.core.models import ActiveTimer
 
+# lb status 안내. 오류 문구는 core의 services.NO_TIMER_MESSAGE를 쓴다.
 NO_TIMER_MESSAGE = "진행 중인 타이머가 없습니다."
-# core(services/timer.py)의 '타이머 없음' 문구와 같다. cancel은 확인 전에 CLI에서 먼저 검사한다.
-NO_TIMER_TO_CANCEL_MESSAGE = "진행 중인 타이머가 없습니다. 'lb start \"메모\"'로 시작하세요."
 CANCEL_DECLINED_MESSAGE = "취소하지 않았습니다. 타이머는 계속 진행됩니다."
 CANCEL_NO_INPUT_MESSAGE = (
     "확인 입력을 받지 못해 버리지 않았습니다. 확인 없이 버리려면 --yes를 붙이세요."
@@ -163,7 +162,8 @@ def cancel(yes: runtime.YesOpt = False) -> None:
     with runtime.session(cfg) as s:
         timer = services.get_timer(s)
     if timer is None:
-        raise InvalidInputError(NO_TIMER_TO_CANCEL_MESSAGE)
+        # 확인 프롬프트를 띄우기 전에 core(cancel_timer)와 같은 오류로 끝낸다.
+        raise NotFoundError(services.NO_TIMER_MESSAGE)
     line = render.timer_line(timer)
     started_at = timer.started_at
     elapsed = _elapsed_text(timer, now)

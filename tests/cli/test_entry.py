@@ -3,6 +3,7 @@
 import io
 import subprocess
 import sys
+import time
 from collections.abc import Callable
 from datetime import date
 from pathlib import Path
@@ -28,6 +29,8 @@ from tests.cli.helpers import (
 
 # 파이프 버퍼(수십 KB)를 넘겨 읽는 쪽이 닫힌 뒤에도 쓰기가 이어지게 하는 기록 수
 PIPE_TEST_LOG_COUNT = 2000
+# 타이머 왕복 테스트: 이 시간이 지나면 경과가 1분으로 반올림되어 stop이 성공할 수 있다
+SLOW_RUNNER_SECONDS = 30
 
 
 def _run_in_process(monkeypatch: pytest.MonkeyPatch, *args: str) -> tuple[int | str | None, str]:
@@ -203,6 +206,7 @@ def test_timer_round_trip_with_real_clock(tmp_path: Path) -> None:
     assert run_lb(["init"], env=env, cwd=tmp_path).returncode == 0
 
     started = run_lb(["start", "한글 타이머", "-c", "dev"], env=env, cwd=tmp_path)
+    t0 = time.monotonic()
     assert started.returncode == 0, started.stderr
     assert started.stdout.startswith("✔ 타이머 시작: common/dev — 한글 타이머 (")
 
@@ -211,6 +215,9 @@ def test_timer_round_trip_with_real_clock(tmp_path: Path) -> None:
     assert shown.stdout.startswith("진행 중: common/dev — 한글 타이머\n")
 
     stopped = run_lb(["stop"], env=env, cwd=tmp_path)
+    if stopped.returncode == 0 and time.monotonic() - t0 >= SLOW_RUNNER_SECONDS:
+        # 경과가 30초를 넘으면 1분으로 반올림되어 stop이 저장에 성공한다.
+        pytest.skip("느린 러너: 30초 경과")
     assert stopped.returncode == 1
     assert stopped.stderr.startswith("오류: 1분이 지나지 않아"), stopped.stderr
 

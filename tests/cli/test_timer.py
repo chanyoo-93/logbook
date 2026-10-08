@@ -235,12 +235,14 @@ def test_stop_appends_note(
     )
 
 
+@pytest.mark.parametrize("note", ["", "  "], ids=["empty", "spaces"])
 def test_stop_blank_note_keeps_timer(
-    lb: Callable[..., Result], running: Path, open_db: OpenDb, clock: Clock
+    lb: Callable[..., Result], running: Path, open_db: OpenDb, clock: Clock, note: str
 ) -> None:
     clock.advance(minutes=30)
 
-    result = lb("stop", "-n", "  ")
+    # 빈 문자열도 None(옵션 생략)이 아니라 빈 메모로 서비스에 전달된다.
+    result = lb("stop", "-n", note)
 
     assert_rejected(
         result, "덧붙일 메모가 비어 있습니다. 메모를 덧붙이지 않으려면 --note를 빼세요."
@@ -430,6 +432,22 @@ def test_cancel_timer_stopped_while_confirming(
     assert result.exit_code == 1
     assert result.stderr == CANCEL_CHANGED
     assert log_count(open_db) == 1
+
+
+def test_cancel_markup_like_note_is_verbatim(
+    lb: Callable[..., Result], initialized: Path, open_db: OpenDb, clock: Clock
+) -> None:
+    run_ok(lb, "start", "[bold]x[/bold] :smile:", "-c", "dev")
+    clock.advance(minutes=5)
+
+    result = lb("cancel", input="y\n")
+
+    assert result.exit_code == 0, result.stderr
+    assert result.stderr == (
+        "버릴 타이머: common/dev — [bold]x[/bold] :smile: (시작 09:30 · 경과 5m)\n버릴까요? [y/N]: "
+    )
+    assert result.stdout == "✔ 타이머를 버렸습니다: common/dev — [bold]x[/bold] :smile: (경과 5m)\n"
+    assert not has_timer(open_db)
 
 
 def test_cancel_without_timer(lb: Callable[..., Result], initialized: Path) -> None:
