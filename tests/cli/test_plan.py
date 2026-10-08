@@ -25,9 +25,11 @@ CANDIDATES = (
     "#1 doing payment/design 환불 API 설계\n"
     "#2 todo payment/dev 결제 재시도\n"
 )
-PROMPT = "다음 주로 옮길까요? [y/N]: "
+PROMPT = "옮길까요? [y/N]: "
 MOVED = (
-    "✔ 2건을 2026-W41로 옮겼습니다.\n#1 payment/design 환불 API 설계\n#2 payment/dev 결제 재시도\n"
+    "✔ 2건을 옮겼습니다: 2026-W40 → 2026-W41\n"
+    "#1 payment/design 환불 API 설계\n"
+    "#2 payment/dev 결제 재시도\n"
 )
 CANCELLED = "이월을 취소했습니다.\n"
 NO_INPUT = "확인 입력을 받지 못해 옮기지 않았습니다. 확인 없이 옮기려면 --yes를 붙이세요.\n"
@@ -254,7 +256,7 @@ def test_carry_last_week(lb: Callable[..., Result], seeded: Path, open_db: OpenD
 
     result = run_ok(lb, "plan", "carry", "-w", "last", "--yes")
 
-    assert result.stdout == "✔ 1건을 2026-W40로 옮겼습니다.\n#7 admin 지난주 작업\n"
+    assert result.stdout == "✔ 1건을 옮겼습니다: 2026-W39 → 2026-W40\n#7 admin 지난주 작업\n"
     assert weeks_of(open_db) == {**INITIAL_WEEKS, 7: "2026-W40"}
 
 
@@ -276,7 +278,7 @@ def test_carry_skips_task_changed_while_confirming(
 ) -> None:
     # 확인하는 동안 다른 터미널이 #2를 완료한 상황
     def confirm_after_done(question: str) -> bool:
-        assert question == "다음 주로 옮길까요?"
+        assert question == "옮길까요?"
         with open_db() as s:
             services.set_task_status(s, 2, TaskStatus.DONE)
         return True
@@ -286,7 +288,10 @@ def test_carry_skips_task_changed_while_confirming(
     result = lb("plan", "carry")
 
     assert result.exit_code == 0, result.stderr
-    assert result.stdout == "✔ 1건을 2026-W41로 옮겼습니다.\n#1 payment/design 환불 API 설계\n"
+    assert (
+        result.stdout
+        == "✔ 1건을 옮겼습니다: 2026-W40 → 2026-W41\n#1 payment/design 환불 API 설계\n"
+    )
     assert result.stderr == (CANDIDATES + "주의: 1건은 확인하는 동안 바뀌어 옮기지 않았습니다.\n")
     assert weeks_of(open_db) == {**INITIAL_WEEKS, 1: "2026-W41"}
     os.replace(seeded, seeded.with_name("moved.db"))
@@ -298,3 +303,17 @@ def test_carry_before_init(lb: Callable[..., Result], tmp_home: Path) -> None:
     result = lb("plan", "carry", "--yes")
 
     assert_rejected(result, f"데이터베이스가 없습니다: {db_path}. 먼저 'lb init'을 실행하세요.")
+
+
+def test_markup_like_title_is_printed_verbatim(
+    lb: Callable[..., Result], initialized: Path
+) -> None:
+    run_ok(lb, "task", "add", "[red]x[/red] :smile:", "-w", "this", "-e", "1h")
+
+    plan = run_ok(lb, "plan")
+    carry = lb("plan", "carry", input="n\n")
+
+    row = ["1", "todo", "common", "[red]x[/red] :smile:", "1h", "-"]
+    assert tokens(plan.stdout.splitlines()[2]) == row
+    assert carry.exit_code == 1
+    assert carry.stderr.splitlines()[1] == "#1 todo common [red]x[/red] :smile:"

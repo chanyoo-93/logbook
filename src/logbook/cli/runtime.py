@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Annotated
 import typer
 
 from logbook.cli import console
+from logbook.cli.group import EXIT_ERROR
 from logbook.core.errors import InvalidInputError
 
 if TYPE_CHECKING:
@@ -123,3 +124,15 @@ def confirm(question: str) -> bool | None:
         console.print_notice("")
         return None
     return answer.strip().lower() in _YES_ANSWERS
+
+
+def require_confirmation(question: str, *, cancelled: str, no_input: str) -> None:
+    """confirm(question)이 '예'면 돌아온다. 아니면 안내를 stderr에 쓰고 exit 1로 끝낸다.
+
+    거절하면 cancelled, 입력이 없으면(EOF) no_input을 쓴다.
+    """
+    answer = confirm(question)
+    if answer:
+        return
+    console.print_notice(no_input if answer is None else cancelled)
+    raise typer.Exit(EXIT_ERROR)

@@ -573,10 +573,10 @@ import 가드: `task edit --help`, `task edit 1`(바꿀 항목 없음, rc 1), `t
   - 비었으면 `이월할 태스크가 없습니다 ({src.label}의 todo·doing 태스크).`를 출력하고 exit 0으로 끝낸다.
 - 확인(`--yes`가 없을 때):
   - stderr에 `이월할 태스크 ({src.label} → {dst.label}):`과 후보 줄(`render.task_line` + 상태)을 쓴다.
-  - 이어서 `runtime.confirm("다음 주로 옮길까요?")`를 부른다.
+  - 이어서 `runtime.require_confirmation("옮길까요?", cancelled=…, no_input=…)`를 부른다. 미리보기 머리줄에 `src → dst`가 있으므로 질문에는 주를 적지 않는다.
   - 거절하면 `이월을 취소했습니다.`, 입력이 없으면 `확인 입력을 받지 못해 옮기지 않았습니다. 확인 없이 옮기려면 --yes를 붙이세요.`를 낸다. 둘 다 exit 1이다.
 - 2단계 변경 세션: `moved = services.carry_tasks(s, src, [후보 id])`
-- 출력: `✔ {len(moved)}건을 {dst.label}로 옮겼습니다.` 다음에 옮긴 태스크 줄을 하나씩 출력한다.
+- 출력: `✔ {len(moved)}건을 옮겼습니다: {src.label} → {dst.label}` 다음에 옮긴 태스크 줄을 하나씩 출력한다.
   - 후보 중 그 사이 상태가 바뀌어 빠진 것이 있으면 stderr에 `주의: {n}건은 확인하는 동안 바뀌어 옮기지 않았습니다.`를 쓴다.
 
 **테스트 케이스: test_plan.py**
@@ -661,8 +661,8 @@ import 가드: `start --help`, `status --help`, `start x -t abc`(rc 1).
 
 **lb cancel [--yes/-y]**
 - 조회 세션: `get_timer`. 없으면 core와 같은 문구로 `InvalidInputError`를 낸다(exit 1).
-- 확인(`--yes`가 없을 때): `runtime.confirm(f"버릴 타이머: {timer_line} (시작 {시각} · 경과 {경과})\n버릴까요?")`
-  - 거절하면 `취소하지 않았습니다. 타이머는 계속 진행됩니다.`, 입력이 없으면 `확인 입력을 받지 못해 버리지 않았습니다. 확인 없이 버리려면 --yes를 붙이세요.`를 낸다. 둘 다 exit 1이다.
+- 확인(`--yes`가 없을 때): `runtime.require_confirmation(f"버릴 타이머: {timer_line} (시작 {시각} · 경과 {경과})\n버릴까요?", cancelled=…, no_input=…)`(lb log rm, lb plan carry와 같은 공용 도우미)
+  - 거절하면 `취소하지 않았습니다. 타이머는 계속 진행됩니다.`, 입력이 없으면 `확인 입력을 받지 못해 버리지 않았습니다. 확인 없이 버리려면 --yes를 붙이세요.`를 낸다(각각 `cancelled`, `no_input`). 둘 다 exit 1이다.
 - 변경 세션: 다시 `get_timer`로 읽는다.
   - `started_at`이나 요약 줄이 확인한 것과 다르면 `확인하는 동안 타이머가 바뀌어 버리지 않았습니다. 다시 실행하세요.`를 내고 exit 1로 끝낸다(lb log rm과 같은 방식).
   - 같으면 `services.cancel_timer(s)`를 부른다.

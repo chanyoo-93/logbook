@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import typer
 
 from logbook.cli import console, render, runtime
-from logbook.cli.group import EXIT_ERROR, LogbookCommand, LogbookGroup
+from logbook.cli.group import LogbookCommand, LogbookGroup
 from logbook.core.errors import InvalidInputError
 
 if TYPE_CHECKING:
@@ -29,7 +29,7 @@ WEEK_WITH_SUBCOMMAND_MESSAGE = (
     "이월할 주는 'lb plan carry -w last'처럼 하위 명령 뒤에 쓰세요."
 )
 EMPTY_PLAN_MESSAGE = "이 주에 계획된 태스크가 없습니다."
-CARRY_QUESTION = "다음 주로 옮길까요?"
+CARRY_QUESTION = "옮길까요?"
 CARRY_CANCELLED_MESSAGE = "이월을 취소했습니다."
 NO_CONFIRM_INPUT_MESSAGE = (
     "확인 입력을 받지 못해 옮기지 않았습니다. 확인 없이 옮기려면 --yes를 붙이세요."
@@ -119,6 +119,13 @@ def _print_estimates_by_project(tasks: "Sequence[Task]") -> None:
         console.print_line(f"예상이 없는 태스크 {missing}건")
 
 
+def _print_carry_preview(src: "Week", dst: "Week", candidates: "Sequence[Task]") -> None:
+    """stderr에 이월 미리보기: '이월할 태스크 (W40 → W41):'와 '#1 doing payment/design 제목' 줄."""
+    console.print_notice(f"이월할 태스크 ({src.label} {render.arrow()} {dst.label}):")
+    for task in candidates:
+        console.print_notice(f"#{task.id} {task.status} ", render.task_scope_title(task))
+
+
 @plan_app.command("carry", cls=LogbookCommand)
 def carry(week: runtime.WeekOpt = None, yes: runtime.YesOpt = False) -> None:
     """주(기본 이번 주)에 계획된 todo·doing 태스크를 다음 주로 옮깁니다.
@@ -142,22 +149,19 @@ def carry(week: runtime.WeekOpt = None, yes: runtime.YesOpt = False) -> None:
         return
 
     if not yes:
-        console.print_notice(f"이월할 태스크 ({src.label} {render.arrow()} {dst.label}):")
-        for task in candidates:
-            console.print_notice(f"#{task.id} {task.status} ", render.task_scope_title(task))
-        answer = runtime.confirm(CARRY_QUESTION)
-        if answer is None:
-            console.print_notice(NO_CONFIRM_INPUT_MESSAGE)
-            raise typer.Exit(EXIT_ERROR)
-        if not answer:
-            console.print_notice(CARRY_CANCELLED_MESSAGE)
-            raise typer.Exit(EXIT_ERROR)
+        _print_carry_preview(src, dst, candidates)
+        runtime.require_confirmation(
+            CARRY_QUESTION, cancelled=CARRY_CANCELLED_MESSAGE, no_input=NO_CONFIRM_INPUT_MESSAGE
+        )
 
     with runtime.session(cfg) as s:
         # 확인하는 동안 상태·주차가 바뀐 후보는 서비스가 건너뛴다.
         moved = services.carry_tasks(s, src, [task.id for task in candidates])
 
-    console.print_line(render.ok_mark(), f" {len(moved)}건을 {dst.label}로 옮겼습니다.")
+    # 주차 뒤에 조사를 붙이지 않는다(W40은 '으로', W41은 '로'라 하나로 맞출 수 없다).
+    console.print_line(
+        render.ok_mark(), f" {len(moved)}건을 옮겼습니다: {src.label} {render.arrow()} {dst.label}"
+    )
     for task in moved:
         console.print_line(render.task_line(task))
     skipped = len(candidates) - len(moved)

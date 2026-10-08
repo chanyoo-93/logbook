@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pytest
+import typer
 from sqlalchemy.orm import Session
 
 from logbook.cli import runtime
@@ -101,6 +102,45 @@ def test_confirm_prompts_on_stderr(
 
     captured = capsys.readouterr()
     assert captured.err == "질문 [y/N]: "
+    assert captured.out == ""
+
+
+def _require(monkeypatch: pytest.MonkeyPatch, stdin: str) -> None:
+    monkeypatch.setattr(sys, "stdin", io.StringIO(stdin))
+    runtime.require_confirmation("옮길까요?", cancelled="취소했습니다.", no_input="입력 없음.")
+
+
+def test_require_confirmation_returns_on_yes(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _require(monkeypatch, "y\n")
+
+    captured = capsys.readouterr()
+    assert captured.err == "옮길까요? [y/N]: "
+    assert captured.out == ""
+
+
+def test_require_confirmation_exits_on_no(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(typer.Exit) as exc_info:
+        _require(monkeypatch, "n\n")
+
+    assert exc_info.value.exit_code == 1
+    captured = capsys.readouterr()
+    assert captured.err == "옮길까요? [y/N]: 취소했습니다.\n"
+    assert captured.out == ""
+
+
+def test_require_confirmation_exits_on_eof(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    with pytest.raises(typer.Exit) as exc_info:
+        _require(monkeypatch, "")
+
+    assert exc_info.value.exit_code == 1
+    captured = capsys.readouterr()
+    assert captured.err == "옮길까요? [y/N]: \n입력 없음.\n"
     assert captured.out == ""
 
 
