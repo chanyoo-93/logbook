@@ -474,7 +474,7 @@ def export_records(s: Session, *, now: datetime) -> tuple[list[str], BackupCount
   - 필드 목록 고정: 테이블마다 필드 튜플 집합이 `Model.__table__.columns.keys()` 집합과 같고, `set(TABLE_ORDER) == set(Base.metadata.tables) - {"schema_version"}`이다. 실패하면 형식을 의도적으로 바꾸고 `FORMAT_VERSION`을 올린다(tests/cli/test_runtime.py:282의 `MAX_ROUND_MINUTES` 일치 테스트와 같은 방식).
   - 마이크로초 보존: 마이크로초가 있는 시각(예: UTC 03:00:00.123456)이 `"2026-10-08T03:00:00.123456+00:00"`로 나온다. Task 4-5 왕복 테스트에서는 가져온 행의 시각이 원본과 마이크로초까지 같다(export→import→export 바이트 비교만으로는 마이크로초를 자르는 구현을 잡지 못한다).
 
-- [ ] RED → GREEN → 커밋 `feat: 전체 데이터 JSONL 내보내기 서비스 추가`
+- [x] RED → GREEN → 커밋 `feat: 전체 데이터 JSONL 내보내기 서비스 추가`
 
 ---
 

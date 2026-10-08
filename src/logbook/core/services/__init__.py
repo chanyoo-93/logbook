@@ -3,6 +3,12 @@
 사용 예: from logbook.core import services; services.create_project(s, ...)
 """
 
+from logbook.core.services.backup import (
+    FORMAT_VERSION,
+    TABLE_ORDER,
+    BackupCounts,
+    export_records,
+)
 from logbook.core.services.projects import (
     COMMON_SLUG,
     SLUG_PATTERN,
@@ -55,6 +61,10 @@ from logbook.core.services.worklogs import (
 )
 
 __all__ = [
+    "FORMAT_VERSION",
+    "TABLE_ORDER",
+    "BackupCounts",
+    "export_records",
     "COMMON_SLUG",
     "SLUG_PATTERN",
     "archive_project",
