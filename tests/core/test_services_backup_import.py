@@ -154,7 +154,7 @@ def _rejects(fresh: Session, lines: list[str], message: str) -> None:
 # --- 성공 경로와 왕복 ---
 
 
-def test_정상_파일을_가져오고_개수를_돌려준다(fresh: Session) -> None:
+def test_imports_valid_file_and_returns_counts(fresh: Session) -> None:
     counts = services.import_records(fresh, _valid())
 
     assert counts == services.BackupCounts(projects=2, tasks=1, worklogs=1, timers=1)
@@ -170,13 +170,13 @@ def test_정상_파일을_가져오고_개수를_돌려준다(fresh: Session) ->
     assert fresh.scalars(select(ActiveTimer)).one().note == "타이머"
 
 
-def test_common만_있는_DB와_프로젝트가_없는_DB는_허용한다(session: Session) -> None:
+def test_allows_db_with_only_common_or_no_projects(session: Session) -> None:
     counts = services.import_records(session, [HEADER, COMMON])
 
     assert counts == services.BackupCounts(projects=1, tasks=0, worklogs=0, timers=0)
 
 
-def test_줄_끝_줄바꿈과_CRLF를_허용한다(fresh: Session) -> None:
+def test_allows_trailing_newlines_and_crlf(fresh: Session) -> None:
     lines = [line + "\r\n" for line in _valid()]
 
     counts = services.import_records(fresh, lines)
@@ -184,7 +184,7 @@ def test_줄_끝_줄바꿈과_CRLF를_허용한다(fresh: Session) -> None:
     assert counts.projects == 2
 
 
-def test_이스케이프하지_않은_줄_구분_문자가_든_줄도_가져온다(fresh: Session) -> None:
+def test_imports_lines_with_unescaped_line_separators(fresh: Session) -> None:
     note = f"앞{LS}가운데{PS}가운데{NEL}뒤"
     lines = [HEADER, COMMON, PAY, TASK, _line("worklogs", note=note)]
     assert note in lines[-1]
@@ -253,7 +253,7 @@ def _populate(s: Session) -> None:
     s.flush()
 
 
-def test_내보내기_가져오기_내보내기는_머리글_시각을_빼고_바이트까지_같다(
+def test_export_import_export_is_byte_identical_except_header_time(
     session: Session, tmp_path: Path
 ) -> None:
     _populate(session)
@@ -283,7 +283,7 @@ def test_내보내기_가져오기_내보내기는_머리글_시각을_빼고_�
     }
 
 
-def test_파일의_common_id가_3이어도_가져오고_새_id는_최대값_다음이다(fresh: Session) -> None:
+def test_imports_common_with_id_3_and_new_ids_follow_max(fresh: Session) -> None:
     lines = [
         HEADER,
         _line("projects", id=3),
@@ -337,7 +337,7 @@ def _add_project(s: Session) -> None:
 
 
 @pytest.mark.parametrize("add", [_add_task, _add_worklog, _add_timer, _add_project])
-def test_데이터가_있는_DB는_거부하고_아무것도_바꾸지_않는다(fresh: Session, add: Any) -> None:
+def test_rejects_db_with_data_and_changes_nothing(fresh: Session, add: Any) -> None:
     add(fresh)
     fresh.flush()
     before = [p.slug for p in fresh.scalars(select(Project).order_by(Project.id))]
@@ -395,24 +395,24 @@ def _header_cases() -> Iterator[Any]:
 
 
 @pytest.mark.parametrize(("lines", "message"), list(_header_cases()))
-def test_머리글_오류(fresh: Session, lines: list[str], message: str) -> None:
+def test_header_errors(fresh: Session, lines: list[str], message: str) -> None:
     _rejects(fresh, lines, message)
 
 
-def test_머리글만_있으면_common_없음_오류(fresh: Session) -> None:
+def test_header_only_reports_missing_common(fresh: Session) -> None:
     _rejects(fresh, [HEADER], NO_COMMON_MESSAGE)
 
 
-def test_머리글_다음_빈_줄만_있어도_common_없음_오류(fresh: Session) -> None:
+def test_header_then_blank_lines_reports_missing_common(fresh: Session) -> None:
     _rejects(fresh, [HEADER, "", " "], NO_COMMON_MESSAGE)
 
 
-def test_common_없이_다른_프로젝트만_있으면_오류(fresh: Session) -> None:
+def test_other_projects_without_common_is_error(fresh: Session) -> None:
     _rejects(fresh, [HEADER, PAY], NO_COMMON_MESSAGE)
 
 
 @pytest.mark.parametrize("count", [1, 2])
-def test_첫_줄_앞의_BOM을_지운다(fresh: Session, count: int) -> None:
+def test_strips_bom_at_start_of_first_line(fresh: Session, count: int) -> None:
     lines = [BOM * count + HEADER, COMMON]
 
     counts = services.import_records(fresh, lines)
@@ -420,19 +420,19 @@ def test_첫_줄_앞의_BOM을_지운다(fresh: Session, count: int) -> None:
     assert counts.projects == 1
 
 
-def test_BOM만_있는_첫_줄은_빈_줄로_센다(fresh: Session) -> None:
+def test_first_line_with_only_bom_counts_as_blank(fresh: Session) -> None:
     lines = [BOM, HEADER, "not json"]
 
     _rejects(fresh, lines, "3번째 줄: JSON 형식이 올바르지 않습니다.")
 
 
-def test_머리글_앞의_빈_줄은_건너뛴다(fresh: Session) -> None:
+def test_skips_blank_lines_before_header(fresh: Session) -> None:
     counts = services.import_records(fresh, ["", "  ", HEADER, COMMON])
 
     assert counts.projects == 1
 
 
-def test_오류_줄_번호는_빈_줄도_센다(fresh: Session) -> None:
+def test_error_line_numbers_count_blank_lines(fresh: Session) -> None:
     lines = ["", HEADER, "", "  ", COMMON, "", "not json"]
 
     _rejects(fresh, lines, "7번째 줄: JSON 형식이 올바르지 않습니다.")
@@ -494,7 +494,7 @@ def _value_cases() -> Iterator[Any]:
 
 
 @pytest.mark.parametrize(("table", "bad", "suffix"), list(_value_cases()))
-def test_필드_값_오류(fresh: Session, table: str, bad: str, suffix: str) -> None:
+def test_field_value_errors(fresh: Session, table: str, bad: str, suffix: str) -> None:
     lines = [*PREFIX[table], bad]
 
     _rejects(fresh, lines, f"{len(lines)}번째 줄: {suffix}")
@@ -530,7 +530,7 @@ def _raw_text_cases() -> Iterator[Any]:
 
 
 @pytest.mark.parametrize(("table", "bad", "suffix"), list(_raw_text_cases()))
-def test_형식_오류(fresh: Session, table: str, bad: str, suffix: str) -> None:
+def test_format_errors(fresh: Session, table: str, bad: str, suffix: str) -> None:
     lines = [*PREFIX[table], bad]
 
     _rejects(fresh, lines, f"{len(lines)}번째 줄: {suffix}")
@@ -559,7 +559,7 @@ def test_형식_오류(fresh: Session, table: str, bad: str, suffix: str) -> Non
         ),
     ],
 )
-def test_테이블_순서_위반(fresh: Session, lines: list[str], message: str) -> None:
+def test_table_order_violation(fresh: Session, lines: list[str], message: str) -> None:
     _rejects(fresh, lines, message)
 
 
@@ -600,13 +600,13 @@ def _field_name_cases() -> Iterator[Any]:
 
 
 @pytest.mark.parametrize(("bad", "suffix"), list(_field_name_cases()))
-def test_필드_이름_오류(fresh: Session, bad: str, suffix: str) -> None:
+def test_field_name_errors(fresh: Session, bad: str, suffix: str) -> None:
     lines = [*PREFIX["tasks"], bad]
 
     _rejects(fresh, lines, f"{len(lines)}번째 줄: {suffix}")
 
 
-def test_값_오류는_필드_튜플_순서로_처음_틀린_것을_알린다(fresh: Session) -> None:
+def test_value_error_reports_first_invalid_field_in_tuple_order(fresh: Session) -> None:
     bad = _line("tasks", title=3, id=0)
     lines = [*PREFIX["tasks"], bad]
 
@@ -644,7 +644,7 @@ def _duplicate_cases() -> Iterator[Any]:
 
 
 @pytest.mark.parametrize(("lines", "message"), list(_duplicate_cases()))
-def test_중복_오류(fresh: Session, lines: list[str], message: str) -> None:
+def test_duplicate_errors(fresh: Session, lines: list[str], message: str) -> None:
     _rejects(fresh, lines, message)
 
 
@@ -679,7 +679,7 @@ def _reference_cases() -> Iterator[Any]:
 
 
 @pytest.mark.parametrize(("table", "bad", "suffix"), list(_reference_cases()))
-def test_존재하지_않는_참조(fresh: Session, table: str, bad: str, suffix: str) -> None:
+def test_missing_references(fresh: Session, table: str, bad: str, suffix: str) -> None:
     lines = [*PREFIX[table], bad]
 
     _rejects(fresh, lines, f"{len(lines)}번째 줄: {suffix}")
@@ -715,13 +715,13 @@ def _invariant_cases() -> Iterator[Any]:
 
 
 @pytest.mark.parametrize(("table", "bad", "suffix"), list(_invariant_cases()))
-def test_불변식_오류(fresh: Session, table: str, bad: str, suffix: str) -> None:
+def test_invariant_errors(fresh: Session, table: str, bad: str, suffix: str) -> None:
     lines = [*PREFIX[table], bad]
 
     _rejects(fresh, lines, f"{len(lines)}번째 줄: {suffix}")
 
 
-def test_보관된_common_프로젝트는_거부한다(fresh: Session) -> None:
+def test_rejects_archived_common_project(fresh: Session) -> None:
     lines = [HEADER, _line("projects", archived=True)]
 
     _rejects(
@@ -732,13 +732,13 @@ def test_보관된_common_프로젝트는_거부한다(fresh: Session) -> None:
     )
 
 
-def test_보관된_다른_프로젝트는_허용한다(fresh: Session) -> None:
+def test_allows_other_archived_projects(fresh: Session) -> None:
     lines = [HEADER, COMMON, _line("projects", id=2, slug="old", archived=True)]
 
     assert services.import_records(fresh, lines).projects == 2
 
 
-def test_task_id가_null인_기록과_타이머는_프로젝트가_달라도_허용한다(fresh: Session) -> None:
+def test_allows_null_task_id_rows_in_any_project(fresh: Session) -> None:
     lines = [*PREFIX["active_timer"], _line("worklogs", id=2, project_id=1, task_id=None)]
 
     assert services.import_records(fresh, lines).worklogs == 2
@@ -763,7 +763,7 @@ def _fail_inserts(engine: Engine, error: Exception) -> None:
     event.listen(engine, "before_cursor_execute", raise_on_insert)
 
 
-def test_flush의_IntegrityError는_가져오기_오류로_바뀐다(fresh: Session, engine: Engine) -> None:
+def test_flush_integrity_error_becomes_import_error(fresh: Session, engine: Engine) -> None:
     error = IntegrityError("INSERT ...", None, Exception("UNIQUE constraint failed: x"))
     _fail_inserts(engine, error)
 
@@ -776,7 +776,7 @@ def test_flush의_IntegrityError는_가져오기_오류로_바뀐다(fresh: Sess
     )
 
 
-def test_flush의_OperationalError는_번역하지_않아_DatabaseBusyError가_된다(
+def test_flush_operational_error_is_not_translated(
     engine: Engine,
 ) -> None:
     with db.session_scope(engine) as setup:
@@ -793,7 +793,7 @@ def test_flush의_OperationalError는_번역하지_않아_DatabaseBusyError가_�
         assert [p.slug for p in check.scalars(select(Project))] == ["common"]
 
 
-def test_검증_표의_종류_키는_서로_빠짐없이_맞는다() -> None:
+def test_validation_kind_tables_are_consistent() -> None:
     assert tuple(backup_import._KINDS) == backup.TABLE_ORDER
     assert set(backup_import._REFERENCES) == set(backup.TABLE_ORDER)
     used_kinds = set()

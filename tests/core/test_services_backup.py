@@ -102,7 +102,7 @@ def _populate(s: Session) -> None:
     s.flush()
 
 
-def test_빈_DB는_common_프로젝트만_내보낸다(session: Session) -> None:
+def test_empty_db_exports_only_common_project(session: Session) -> None:
     services.ensure_common_project(session)
     session.flush()
 
@@ -115,7 +115,7 @@ def test_빈_DB는_common_프로젝트만_내보낸다(session: Session) -> None
     assert counts == services.BackupCounts(projects=1, tasks=0, worklogs=0, timers=0)
 
 
-def test_모든_테이블과_필드를_null까지_내보낸다(session: Session) -> None:
+def test_exports_all_tables_and_fields_including_nulls(session: Session) -> None:
     _populate(session)
 
     lines, counts = services.export_records(session, now=NOW)
@@ -173,7 +173,7 @@ def test_모든_테이블과_필드를_null까지_내보낸다(session: Session)
     }
 
 
-def test_한글_따옴표_줄바꿈_메모는_JSON으로_이스케이프된다(session: Session) -> None:
+def test_korean_quotes_and_newlines_in_note_are_json_escaped(session: Session) -> None:
     common = services.ensure_common_project(session)
     note = '한글 "따옴표"\n둘째 줄\t탭\\'
     session.add(
@@ -196,7 +196,7 @@ def test_한글_따옴표_줄바꿈_메모는_JSON으로_이스케이프된다(s
     assert json.loads(worklog_line)["row"]["note"] == note
 
 
-def test_줄_순서는_테이블_순서와_id_순이다(session: Session) -> None:
+def test_lines_follow_table_order_then_id(session: Session) -> None:
     _populate(session)
     other = Project(id=2, slug="aaa", name="앞", created_at=NOW)
     session.add(other)
@@ -213,7 +213,7 @@ def test_줄_순서는_테이블_순서와_id_순이다(session: Session) -> Non
     assert [r["row"]["id"] for r in records if r["table"] == "projects"] == [1, 2, 5]
 
 
-def test_시각은_UTC로_표기된다(session: Session) -> None:
+def test_timestamps_are_written_in_utc(session: Session) -> None:
     common = services.ensure_common_project(session)
     session.add(
         WorkLog(
@@ -234,7 +234,7 @@ def test_시각은_UTC로_표기된다(session: Session) -> None:
     assert json.loads(lines[-1])["row"]["started_at"] == "2026-10-08T03:00:00+00:00"
 
 
-def test_마이크로초가_보존된다(session: Session) -> None:
+def test_microseconds_are_preserved(session: Session) -> None:
     common = services.ensure_common_project(session)
     stamp = datetime(2026, 10, 8, 3, 0, 0, 123456, tzinfo=UTC)
     session.add(
@@ -258,7 +258,7 @@ def test_마이크로초가_보존된다(session: Session) -> None:
     assert row["created_at"] == "2026-10-08T03:00:00.123456+00:00"
 
 
-def test_모든_줄은_splitlines로_한_줄이다(session: Session) -> None:
+def test_every_line_is_one_line_for_splitlines(session: Session) -> None:
     _populate(session)
 
     lines, _ = services.export_records(session, now=NOW)
@@ -267,7 +267,7 @@ def test_모든_줄은_splitlines로_한_줄이다(session: Session) -> None:
         assert line.splitlines() == [line]
 
 
-def test_키는_이름순으로_정렬된다(session: Session) -> None:
+def test_keys_are_sorted_by_name(session: Session) -> None:
     _populate(session)
 
     lines, _ = services.export_records(session, now=NOW)
@@ -280,7 +280,7 @@ def test_키는_이름순으로_정렬된다(session: Session) -> None:
         assert line.startswith('{"row": {')
 
 
-def test_줄_구분_문자는_이스케이프되고_값은_보존된다(session: Session) -> None:
+def test_line_separators_are_escaped_and_values_preserved(session: Session) -> None:
     common = services.ensure_common_project(session)
     mixed = f"앞{LS}가운데{PS}가운데{NEL}뒤"
     task = Task(
@@ -323,7 +323,7 @@ def test_줄_구분_문자는_이스케이프되고_값은_보존된다(session:
     assert "\\u0085" in joined
 
 
-def test_필드_목록은_모델_컬럼과_같다() -> None:
+def test_field_tuples_match_model_columns() -> None:
     models = {
         "projects": Project,
         "tasks": Task,
@@ -338,7 +338,7 @@ def test_필드_목록은_모델_컬럼과_같다() -> None:
     assert backup.FORMAT_VERSION == 1
 
 
-def test_구분자_이스케이프_표는_세_문자만_바꾼다() -> None:
+def test_separator_escapes_cover_exactly_three_characters() -> None:
     assert backup.SEPARATOR_ESCAPES == {
         0x2028: "\\u2028",
         0x2029: "\\u2029",
@@ -346,7 +346,7 @@ def test_구분자_이스케이프_표는_세_문자만_바꾼다() -> None:
     }
 
 
-def test_모델_대응표는_테이블_순서와_같다() -> None:
+def test_models_mapping_follows_table_order() -> None:
     assert tuple(backup.MODELS) == backup.TABLE_ORDER
     assert backup.MODELS["projects"] is Project
     assert backup.MODELS["tasks"] is Task
@@ -354,12 +354,12 @@ def test_모델_대응표는_테이블_순서와_같다() -> None:
     assert backup.MODELS["active_timer"] is ActiveTimer
 
 
-def test_상수_표는_읽기_전용이다() -> None:
+def test_constant_tables_are_read_only() -> None:
     for table in (backup.FIELDS, backup.SEPARATOR_ESCAPES, backup.MODELS):
         assert isinstance(table, MappingProxyType)
 
 
-def test_naive_now는_프로그래밍_오류로_거부한다(session: Session) -> None:
+def test_naive_now_is_rejected_as_programming_error(session: Session) -> None:
     services.ensure_common_project(session)
     session.flush()
 
@@ -370,6 +370,6 @@ def test_naive_now는_프로그래밍_오류로_거부한다(session: Session) -
 @pytest.mark.parametrize(
     "name", ["export_records", "import_records", "BackupCounts", "FORMAT_VERSION", "TABLE_ORDER"]
 )
-def test_공개_이름이_services에서_보인다(name: str) -> None:
+def test_public_names_are_exported_from_services(name: str) -> None:
     assert name in services.__all__
     assert hasattr(services, name)
