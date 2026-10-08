@@ -161,20 +161,28 @@ def _decode(data: bytes) -> str:
 
 
 def run_lb(
-    args: Sequence[str], *, env: dict[str, str], cwd: Path, input: str | None = None
+    args: Sequence[str],
+    *,
+    env: dict[str, str],
+    cwd: Path,
+    input: str | None = None,
+    input_bytes: bytes | None = None,
 ) -> Proc:
     """설치된 lb 실행 파일을 실행한다. 출력은 UTF-8 strict로 디코드하고 줄바꿈을 \\n으로 맞춘다.
 
     input은 자식 프로세스가 stdin을 읽는 인코딩(PYTHONIOENCODING)으로 인코딩한다.
+    input_bytes는 인코딩 없이 그대로 stdin에 쓴다(BOM 같은 원시 바이트 시험용).
     """
     if LAUNCHER is None:
         pytest.fail("lb 실행 파일이 없습니다. 'uv sync'를 다시 실행하세요.")
     # input이 없으면 stdin을 devnull로 준다(부모의 stdin을 물려받아 확인 프롬프트가 멈추지 않게).
-    stdin_kwargs: dict[str, Any] = (
-        {"stdin": subprocess.DEVNULL}
-        if input is None
-        else {"input": input.encode(env.get("PYTHONIOENCODING") or "utf-8")}
-    )
+    stdin_kwargs: dict[str, Any]
+    if input_bytes is not None:
+        stdin_kwargs = {"input": input_bytes}
+    elif input is not None:
+        stdin_kwargs = {"input": input.encode(env.get("PYTHONIOENCODING") or "utf-8")}
+    else:
+        stdin_kwargs = {"stdin": subprocess.DEVNULL}
     completed = subprocess.run(
         [LAUNCHER, *args],
         shell=False,

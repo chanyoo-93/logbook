@@ -74,6 +74,19 @@ def test_confirm_accepts_yes(monkeypatch: pytest.MonkeyPatch, answer: str) -> No
     assert runtime.confirm("삭제할까요?") is True
 
 
+@pytest.mark.parametrize("answer", ["\ufeffy\n", "\ufeffyes\n", "\ufeffㅛ\n"])
+def test_confirm_ignores_leading_bom(monkeypatch: pytest.MonkeyPatch, answer: str) -> None:
+    monkeypatch.setattr(sys, "stdin", io.StringIO(answer))
+
+    assert runtime.confirm("삭제할까요?") is True
+
+
+def test_confirm_rejects_no_after_bom(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "stdin", io.StringIO("\ufeffn\n"))
+
+    assert runtime.confirm("삭제할까요?") is False
+
+
 @pytest.mark.parametrize("answer", ["n\n", "\n", "maybe\n"])
 def test_confirm_rejects_other_answers(monkeypatch: pytest.MonkeyPatch, answer: str) -> None:
     monkeypatch.setattr(sys, "stdin", io.StringIO(answer))

@@ -123,7 +123,9 @@ def confirm(question: str) -> bool | None:
     if answer == "":
         console.print_notice("")
         return None
-    return answer.strip().lower() in _YES_ANSWERS
+    # Windows PowerShell 5.1은 파이프 입력 앞에 UTF-8 BOM(U+FEFF)을 붙이고,
+    # strip()은 이를 지우지 않는다.
+    return answer.lstrip("\ufeff").strip().lower() in _YES_ANSWERS
 
 
 def require_confirmation(question: str, *, cancelled: str, no_input: str) -> None:

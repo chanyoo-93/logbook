@@ -227,6 +227,20 @@ def test_timer_round_trip_with_real_clock(tmp_path: Path) -> None:
 
 
 @pytest.mark.subprocess
+def test_log_rm_accepts_bom_prefixed_pipe_input(tmp_path: Path) -> None:
+    # Windows PowerShell 5.1의 `"y" | lb log rm 1`은 EF BB BF 'y' CR LF를 보낸다.
+    env = lb_env(tmp_path, "utf-8")
+    assert run_lb(["init"], env=env, cwd=tmp_path).returncode == 0
+    assert run_lb(["add", "1h", "지울 기록", "-c", "dev"], env=env, cwd=tmp_path).returncode == 0
+
+    proc = run_lb(["log", "rm", "1"], env=env, cwd=tmp_path, input_bytes=b"\xef\xbb\xbfy\r\n")
+
+    assert proc.returncode == 0, proc.stderr
+    assert proc.stdout.startswith("✔ 삭제했습니다: #1 ")
+    assert "#1 " not in run_lb(["log"], env=env, cwd=tmp_path).stdout
+
+
+@pytest.mark.subprocess
 def test_add_does_not_expand_windows_args(tmp_path: Path) -> None:
     # Click의 Windows 인자 펼침이 켜져 있으면 %USERNAME%, ~, glob이 'lbtest~a1'로 바뀐다.
     # 시간 파싱 오류가 DB보다 먼저 나므로 lb init이 필요 없다.

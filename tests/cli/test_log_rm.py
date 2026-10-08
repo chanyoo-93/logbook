@@ -57,6 +57,18 @@ def test_confirmed_delete(
     os.replace(seeded, seeded.with_name("moved.db"))
 
 
+def test_confirmed_delete_with_leading_bom(
+    lb: Callable[..., Result], seeded: Path, open_db: OpenDb
+) -> None:
+    # Windows PowerShell 5.1은 파이프 입력 앞에 UTF-8 BOM을 붙일 수 있다.
+    result = lb("log", "rm", "1", input="\ufeffy\n")
+
+    assert result.exit_code == 0, result.stderr
+    assert result.stdout == DELETED
+    assert log_ids(open_db) == [2]
+    os.replace(seeded, seeded.with_name("moved.db"))
+
+
 @pytest.mark.parametrize("answer", ["n\n", "\n", "maybe\n", "no\n"])
 def test_declined_delete(
     lb: Callable[..., Result], seeded: Path, open_db: OpenDb, answer: str
