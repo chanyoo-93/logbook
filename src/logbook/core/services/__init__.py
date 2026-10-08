@@ -8,6 +8,7 @@ from logbook.core.services.backup import (
     TABLE_ORDER,
     BackupCounts,
     export_records,
+    import_records,
 )
 from logbook.core.services.projects import (
     COMMON_SLUG,
@@ -65,6 +66,7 @@ __all__ = [
     "TABLE_ORDER",
     "BackupCounts",
     "export_records",
+    "import_records",
     "COMMON_SLUG",
     "SLUG_PATTERN",
     "archive_project",

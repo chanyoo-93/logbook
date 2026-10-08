@@ -368,7 +368,7 @@ def test_naive_now는_프로그래밍_오류로_거부한다(session: Session) -
 
 
 @pytest.mark.parametrize(
-    "name", ["export_records", "BackupCounts", "FORMAT_VERSION", "TABLE_ORDER"]
+    "name", ["export_records", "import_records", "BackupCounts", "FORMAT_VERSION", "TABLE_ORDER"]
 )
 def test_공개_이름이_services에서_보인다(name: str) -> None:
     assert name in services.__all__

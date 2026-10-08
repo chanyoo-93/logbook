@@ -567,7 +567,7 @@ def import_records(s: Session, lines: Iterable[str]) -> BackupCounts
 - 검증 실패 뒤 DB가 그대로인지(common만 남음)
 - 가져온 뒤 새 기록의 id가 기존 최대 id 다음인지
 
-- [ ] RED → GREEN → 커밋 `feat: JSONL 가져오기 서비스 추가 (빈 데이터베이스에만 복원)`
+- [x] RED → GREEN → 커밋 `feat: JSONL 가져오기 서비스 추가 (빈 데이터베이스에만 복원)`
 
 ---
 
