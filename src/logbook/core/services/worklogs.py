@@ -8,15 +8,20 @@ from sqlalchemy.orm import Session, joinedload
 
 from logbook.core.duration import MAX_MINUTES
 from logbook.core.errors import InvalidInputError, NotFoundError
-from logbook.core.models import Project, Task, WorkLog
+from logbook.core.models import Task, WorkLog
+from logbook.core.services._resolve import (
+    clean_note,
+    pick_slug,
+    resolve_category,
+    target_project,
+)
 from logbook.core.services._shared import (
-    MISSING_CATEGORY_MESSAGE,
     check_category,
     check_date,
     check_positive_minutes,
     load_task,
 )
-from logbook.core.services.projects import COMMON_SLUG, get_active_project, get_project
+from logbook.core.services.projects import COMMON_SLUG, get_project
 from logbook.core.weeks import Week
 
 # CLI는 세션이 닫힌 뒤 결과를 출력하므로 다대일 관계를 함께 로드한다.
@@ -41,11 +46,11 @@ def add_worklog(
 ) -> WorkLog:
     """업무 기록을 추가한다. 프로젝트·카테고리는 명시 인자 > 태스크 값 > 기본값 순으로 정한다."""
     checked_minutes = _checked_minutes(minutes)
-    clean_note = _clean_note(note)
+    checked_note = clean_note(note)
     task = load_task(s, task_id) if task_id is not None else None
-    slug = _pick_slug(project_slug, task, default_project)
-    project = _target_project(s, slug, task, current=None)
-    resolved_category = _resolve_category(category, task, allowed_categories)
+    slug = pick_slug(project_slug, task, default_project)
+    project = target_project(s, slug, task, current=None)
+    resolved_category = resolve_category(category, task, allowed_categories)
     if work_date is None:
         work_date = today if today is not None else date.today()
     checked_date = _checked_work_date(work_date)
@@ -55,7 +60,7 @@ def add_worklog(
         category=resolved_category,
         date=checked_date,
         minutes=checked_minutes,
-        note=clean_note,
+        note=checked_note,
     )
     s.add(log)
     s.flush()
@@ -116,15 +121,15 @@ def update_worklog(
         )
     log = get_worklog(s, log_id)
     new_minutes = log.minutes if minutes is None else _checked_minutes(minutes)
-    new_note = log.note if note is None else _clean_note(note)
+    new_note = log.note if note is None else clean_note(note)
     new_date = log.date if work_date is None else _checked_work_date(work_date)
     new_category = log.category
     if category is not None and category.strip() != log.category:
         new_category = check_category(category, allowed_categories)
     new_task = load_task(s, task_id) if task_id is not None else None
     task = None if clear_task else (new_task if new_task is not None else log.task)
-    slug = _pick_slug(project_slug, new_task, log.project.slug)
-    project = _target_project(s, slug, task, current=log.project, task_is_new=new_task is not None)
+    slug = pick_slug(project_slug, new_task, log.project.slug)
+    project = target_project(s, slug, task, current=log.project, task_is_new=new_task is not None)
     # 모든 검증을 통과한 뒤에만 바꾼다.
     log.minutes, log.note, log.category = new_minutes, new_note, new_category
     log.project, log.task, log.date = project, task, new_date
@@ -155,65 +160,3 @@ def _checked_minutes(minutes: int) -> int:
 
 def _checked_work_date(work_date: date) -> date:
     return check_date(work_date, "작업 날짜는")
-
-
-def _clean_note(note: str) -> str:
-    clean = note.strip()
-    if not clean:
-        raise InvalidInputError("메모를 입력하세요. 무엇을 했는지 한 줄로 적어 주세요.")
-    return clean
-
-
-def _resolve_category(
-    category: str | None, task: Task | None, allowed: Collection[str] | None
-) -> str:
-    """명시한 카테고리 > 태스크의 카테고리. 둘 다 없으면 InvalidInputError."""
-    resolved = task.category if category is None and task is not None else category
-    if resolved is None:
-        raise InvalidInputError(MISSING_CATEGORY_MESSAGE)
-    return check_category(resolved, allowed)
-
-
-def _pick_slug(explicit: str | None, task: Task | None, fallback: str) -> str:
-    """명시한 slug > 태스크의 프로젝트 > fallback."""
-    if explicit is not None:
-        return explicit
-    return task.project.slug if task is not None else fallback
-
-
-def _target_project(
-    s: Session,
-    slug: str,
-    task: Task | None,
-    *,
-    current: Project | None,
-    task_is_new: bool = True,
-) -> Project:
-    """기록이 속할 프로젝트. 연결된 태스크와 프로젝트가 같아야 한다.
-
-    current가 None이면 추가 경로, 아니면 수정 경로다. task_is_new는 task가 이번에 새로
-    지정한 태스크인지(False면 기록에 이미 연결된 태스크) 나타낸다.
-    프로젝트가 current와 같으면 보관 여부를 다시 확인하지 않는다 (보관된 프로젝트의
-    옛 기록도 시간·메모는 고칠 수 있다).
-    """
-    if task is not None and task.project.slug != slug:
-        owner = task.project.slug
-        if not task_is_new:
-            raise InvalidInputError(
-                f"연결된 태스크 #{task.id}의 프로젝트('{owner}')와 다른 프로젝트로 옮길 수 "
-                "없습니다. 태스크 연결을 해제하거나 같은 프로젝트를 지정하세요."
-            )
-        raise InvalidInputError(
-            f"태스크 #{task.id}는 '{owner}' 프로젝트에 속합니다. "
-            f"프로젝트를 빼거나 '{owner}'로 지정하세요."
-        )
-    if current is None:
-        return get_active_project(s, slug)
-    if current.slug == slug:
-        return current
-    project = get_project(s, slug)
-    if project.archived:
-        raise InvalidInputError(
-            f"보관된 프로젝트로는 기록을 옮길 수 없습니다: '{slug}'. 다른 프로젝트를 지정하세요."
-        )
-    return project
