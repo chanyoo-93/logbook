@@ -110,6 +110,9 @@ def test_confirm_reads_bytes_ignoring_bom_and_codec(
     monkeypatch: pytest.MonkeyPatch, data: bytes
 ) -> None:
     monkeypatch.setattr(sys, "stdin", _byte_stdin(data))
+    # UTF-8로 읽히지 않는 입력은 로캘 인코딩으로 읽는다.
+    # CI 러너 로캘(utf-8 등)과 상관없이 한국어 Windows(cp949)를 재현한다.
+    monkeypatch.setattr(runtime.locale, "getpreferredencoding", lambda do_setlocale=True: "cp949")
 
     assert runtime.confirm("삭제할까요?") is True
 
