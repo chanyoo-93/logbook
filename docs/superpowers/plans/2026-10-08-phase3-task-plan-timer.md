@@ -723,13 +723,13 @@ import 가드: `stop --help`, `cancel --help`, `stop --round abc`(rc 1).
   - 디렉터리 구조의 `core/`에 `taskstatus.py # 태스크 상태와 상태 목록 파서 (SQLAlchemy 없음)`를 추가한다.
   - `services/` 설명에 `timer`를 더한다.
   - `commands/` 설명의 예시를 `(init, project, add, log, stats, task, plan, timer)`로 바꾼다.
-- [ ] **수동 확인(이 PC, PowerShell 5.1과 7):** 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`로 다음을 실행한다.
+- [x] **수동 확인(이 PC, PowerShell 5.1과 7):** 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`로 다음을 실행한다.
   - `lb task add "한글 태스크" --est 2h --week this --ref "#1"`
   - `lb task list`, `lb plan`
   - `lb start -t 1`, `lb status`, `lb stop --round 15`, `lb plan carry`(n 응답)
   - 확인 내용: 한글·✔·—·· 출력과 프롬프트 동작
   - macOS는 PR 댓글로 확인 절차를 남긴다(Phase 2와 같은 방식).
-- [ ] **전체 검증:**
+- [x] **전체 검증:**
   - `uv run ruff check .`
   - `uv run ruff format --check .`
   - `uv run mypy src/logbook/core`
