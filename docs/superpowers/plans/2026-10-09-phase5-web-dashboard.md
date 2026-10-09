@@ -20,7 +20,7 @@
 **Tech Stack:**
 - 기존: Python 3.11+(CI 3.12), uv, Typer, Rich, SQLAlchemy 2.1, Jinja2 3.1
 - 새 런타임 의존성(결정 W1): FastAPI 0.143, uvicorn 0.54, python-multipart 0.0.32. Starlette 1.7, pydantic 2.14 등은 전이 의존성이다.
-- 새 dev 의존성: httpx2 2.13. FastAPI `TestClient`(Starlette 1.7)는 httpx2를 먼저 찾는다. httpx를 쓰면 deprecation 경고를 낸다. W1 보완 사항이라 이슈 게이트에서 확인한다.
+- 새 dev 의존성: httpx2 2.13. FastAPI `TestClient`(Starlette 1.7)는 httpx2를 먼저 찾고, httpx를 쓰면 deprecation 경고를 낸다(W1 보완, 2026-10-09 이슈 게이트에서 확정).
 - 정적 파일: htmx 2.0.11(0BSD), Chart.js 4.5.1(MIT)
 - 테스트·검사: pytest, ruff, mypy(strict는 core만)
 
@@ -1107,7 +1107,8 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
 
 ## 사용자 결정 (2026-10-09 승인 게이트에서 확정)
 
-- **W1. 의존성:** fastapi·uvicorn·python-multipart는 필수 의존성, httpx는 dev 의존성이다. CLI는 `lb serve`에서만 지연 import한다(가드 테스트로 강제).
+- **W1. 의존성:** fastapi·uvicorn·python-multipart는 필수 의존성이다. CLI는 `lb serve`에서만 지연 import한다(가드 테스트로 강제).
+  - dev 의존성은 처음에 httpx로 정했다. 계획 검토에서 Starlette 1.7 TestClient가 httpx2를 권장하고 httpx에는 경고를 내는 것을 확인해, 이슈 게이트에서 httpx2로 바꿨다.
 - **W2. API 범위:** SPEC 6장의 JSON API를 모두 만든다(logs·tasks·stats·report·timer). Phase 6은 화면에 집중한다.
 - **W3. 정적 파일:** htmx 2.0.11과 Chart.js 4.5.1을 라이선스와 함께 패키지에 넣는다(CDN 아님).
 - **W4. 화면 방향:** 기록 우선 업무 도구(Swiss 계열)다.
