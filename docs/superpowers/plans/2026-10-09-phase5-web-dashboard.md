@@ -506,7 +506,7 @@ def stats_json(result: StatsResult) -> dict[str, object]
 | `?by=x` / `?week=2026-W99` | 400 core 집계 기준 문구 / 400 주차 문구 |
 | POST `/api/logs`에 Origin `http://evil.example` | 403, DB 변화 없음 |
 
-- [ ] RED → GREEN → 커밋 `feat: 기록·집계 JSON API 추가`
+- [x] RED → GREEN → 커밋 `feat: 기록·집계 JSON API 추가`
 
 ---
 
