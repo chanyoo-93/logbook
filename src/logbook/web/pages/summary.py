@@ -78,6 +78,7 @@ def build_summary(s: Session, ctx: WebContext, week: Week, now: datetime) -> Sum
         "daily": {
             "labels": [day_label(day) for day in daily.days],
             "target": cfg.daily_target_minutes,
+            "totals": [daily.day_totals[day] for day in daily.days],
             "datasets": [
                 {
                     "label": slug,

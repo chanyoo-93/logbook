@@ -48,15 +48,14 @@
             <tbody>
 {% for label in daily["labels"] %}
 {% set day_index = loop.index0 %}
-{% set day = namespace(total=0) %}
               <tr>
                 <th scope="row">{{ label }}</th>
 {% for dataset in daily["datasets"] %}
 {% set minutes = dataset["data"][day_index] %}
-{% set day.total = day.total + minutes %}
                 <td class="num">{% if minutes %}{{ minutes|duration }}{% else %}-{% endif %}</td>
 {% endfor %}
-                <td class="num">{% if day.total %}{{ day.total|duration }}{% else %}-{% endif %}</td>
+                {% set total = daily["totals"][day_index] %}
+                <td class="num">{% if total %}{{ total|duration }}{% else %}-{% endif %}</td>
               </tr>
 {% endfor %}
             </tbody>

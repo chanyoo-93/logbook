@@ -149,6 +149,11 @@ a {
   border-bottom-color: var(--ink-muted);
 }
 
+.masthead__nav a:active {
+  border-bottom-color: var(--ink);
+  transform: translateY(1px);
+}
+
 .masthead__nav a[aria-current="page"] {
   border-bottom-color: var(--ink);
   font-weight: 700;
@@ -158,6 +163,11 @@ a {
   margin-left: auto;
   color: var(--ink-muted);
   font-size: var(--text-sm);
+}
+
+/* skip link가 포커스를 옮기는 대상이라 큰 윤곽선은 그리지 않는다. */
+main:focus-visible {
+  outline: none;
 }
 
 main {
@@ -315,6 +325,21 @@ main {
   width: fit-content;
   color: var(--accent);
   cursor: pointer;
+}
+
+.chart__table > summary:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.chart__table > summary:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.chart__table > summary:active {
+  color: var(--ink);
 }
 
 /* 표: 행 높이 36px, 가는 가로 괘선만 쓴다. */

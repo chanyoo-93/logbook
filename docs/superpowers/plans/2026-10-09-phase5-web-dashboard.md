@@ -764,7 +764,7 @@ def project_colors(slugs: Sequence[str], explicit: Mapping[str, str | None]) -> 
 
 ```json
 {
-  "daily": {"labels": ["09-28 (월)", "…"], "target": 480,
+  "daily": {"labels": ["09-28 (월)", "…"], "target": 480, "totals": [60, 0, 30, 120, 0, 0, 0],
             "datasets": [{"label": "payment", "color": "#4f46e5", "data": [60, 0, 0, 120, 0, 0, 0]}]},
   "projects": {"labels": ["payment", "common"], "colors": ["#4f46e5", "#e8590c"], "data": [180, 30]},
   "categories": {"labels": ["개발", "회의"], "colors": ["#2f6fde", "#2b8a3e"], "data": [180, 30]}

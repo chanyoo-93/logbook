@@ -42,12 +42,19 @@
     }, 0);
   }
 
-  function replaceChart(canvas, config) {
-    var previous = Chart.getChart(canvas);
-    if (previous) {
-      previous.destroy();
-    }
-    new Chart(canvas, config);
+  // 지금 그려 둔 차트. OOB로 #summary가 통째로 바뀌면 새 canvas가 생겨 Chart.getChart(canvas)로는
+  // 옛 인스턴스를 찾을 수 없으므로, 우리가 만든 인스턴스를 직접 들고 있다가 다시 그리기 전에 모두 없앤다.
+  var charts = [];
+
+  function destroyCharts() {
+    charts.forEach(function (chart) {
+      chart.destroy();
+    });
+    charts = [];
+  }
+
+  function addChart(canvas, config) {
+    charts.push(new Chart(canvas, config));
   }
 
   function baseOptions() {
@@ -64,13 +71,7 @@
 
   function dailyConfig(daily) {
     var labels = daily.labels;
-    var dayTotals = labels.map(function (_, index) {
-      return sum(
-        daily.datasets.map(function (dataset) {
-          return dataset.data[index];
-        })
-      );
-    });
+    var dayTotals = daily.totals;
     var bars = daily.datasets.map(function (dataset) {
       return {
         type: "bar",
@@ -163,13 +164,19 @@
     try {
       return JSON.parse(summary.getAttribute("data-chart") || "");
     } catch (error) {
+      console.error("data-chart를 읽을 수 없습니다:", error);
       return null;
     }
   }
 
   function drawCharts() {
+    if (typeof Chart === "undefined") {
+      return;
+    }
+    // 새 요약에 차트가 없어도(기록 없는 주) 이전 차트는 반드시 정리한다.
+    destroyCharts();
     var summary = document.getElementById("summary");
-    if (!summary || typeof Chart === "undefined") {
+    if (!summary) {
       return;
     }
     var data = readChartData(summary);
@@ -181,9 +188,9 @@
     }
     Chart.defaults.font.family = cssVariable("--font-sans");
     Chart.defaults.color = cssVariable("--ink-muted");
-    replaceChart(daily, dailyConfig(data.daily));
-    replaceChart(projects, doughnutConfig(data.projects));
-    replaceChart(categories, doughnutConfig(data.categories));
+    addChart(daily, dailyConfig(data.daily));
+    addChart(projects, doughnutConfig(data.projects));
+    addChart(categories, doughnutConfig(data.categories));
   }
 
   // 요약이 htmx로 바뀌면(OOB 교체 포함) 새 요소에 이전 차트가 남지 않게 다시 그린다.

@@ -49,6 +49,7 @@ EXPECTED_CHART = {
             "10-04 (일)",
         ],
         "target": 480,
+        "totals": [60, 0, 30, 120, 0, 0, 0],
         "datasets": [
             {"label": "payment", "color": INDIGO, "data": [60, 0, 0, 120, 0, 0, 0]},
             {"label": "common", "color": PALETTE_ORANGE, "data": [0, 0, 30, 0, 0, 0, 0]},
@@ -119,7 +120,9 @@ def test_dashboard_header_shows_this_week(client: TestClient) -> None:
 def test_dashboard_page_skeleton(client: TestClient) -> None:
     html = _get(client)
 
-    assert by_id(html, "main").tag == "main"
+    main = by_id(html, "main")
+    assert main.tag == "main"
+    assert main.attrs.get("tabindex") == "-1"  # skip link의 이동 대상이 포커스를 받는다
     flash = by_id(html, "flash")
     assert flash.attrs["role"] == "status"
     assert flash.attrs["aria-live"] == "polite"
