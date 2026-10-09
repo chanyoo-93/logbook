@@ -1,4 +1,4 @@
-"""화면 렌더링 도우미: Jinja2 환경, render(). is_htmx는 web.htmx에서 가져와 다시 내보낸다.
+"""화면 렌더링 도우미: Jinja2 환경, render(), render_error().
 
 환경은 항상 자동 이스케이프(`.html` 포함 모든 템플릿)와 StrictUndefined를 쓴다.
 Starlette 기본 환경의 select_autoescape()는 `.j2`를 이스케이프하지 않으므로 쓰지 않는다.
@@ -14,9 +14,10 @@ from starlette.responses import HTMLResponse
 from starlette.templating import Jinja2Templates
 
 from logbook.core.duration import format_duration
+from logbook.core.errors import LogbookError
 from logbook.core.weeks import week_heading, week_of
 from logbook.web.context import get_context
-from logbook.web.htmx import HTMX_HISTORY_RESTORE_HEADER, HTMX_REQUEST_HEADER, is_htmx
+from logbook.web.errors import classify
 
 
 def _environment() -> jinja2.Environment:
@@ -56,4 +57,13 @@ def render(
     )
 
 
-__all__ = ["HTMX_HISTORY_RESTORE_HEADER", "HTMX_REQUEST_HEADER", "TEMPLATES", "is_htmx", "render"]
+def render_error(
+    request: Request,
+    error: LogbookError,
+    name: str,
+    context: Mapping[str, Any],
+    *,
+    headers: Mapping[str, str] | None = None,
+) -> HTMLResponse:
+    """핸들러가 처리한 오류를 화면 조각으로 다시 그린다. 상태 코드는 classify가 정한다."""
+    return render(request, name, context, status_code=classify(error).status, headers=headers)

@@ -5,16 +5,38 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from logbook.core import services
-from logbook.core.weeks import week_of
+from logbook.core.duration import format_duration
+from logbook.core.weeks import total_label, week_of
 from logbook.web.pages.summary import build_summary
-from logbook.web.pages.views import RECENT_LIMIT, QuickFormValues, log_row, quick_form_options
+from logbook.web.pages.views import (
+    RECENT_LIMIT,
+    QuickFormValues,
+    log_row,
+    quick_form_options,
+    record_text,
+)
 
 if TYPE_CHECKING:
-    from datetime import datetime
+    from datetime import date, datetime
 
     from sqlalchemy.orm import Session
 
+    from logbook.core.models import WorkLog
     from logbook.web.context import WebContext
+
+RESULT_MARK = "✔"
+
+
+def result_line(s: Session, log: WorkLog, today: date) -> str:
+    """기록 직후의 결과 줄: '✔ #128 payment/dev 2h — 메모 (오늘 누적 5h 30m)'.
+
+    기록이 s에 flush된 뒤 부른다(누적에 이 기록이 들어가야 한다).
+    """
+    day_total = services.day_total_minutes(s, log.date)
+    return (
+        f"{RESULT_MARK} {record_text(log, with_date=False)} "
+        f"({total_label(log.date, today)} 누적 {format_duration(day_total)})"
+    )
 
 
 def refreshed_panels(s: Session, ctx: WebContext, now: datetime) -> dict[str, Any]:

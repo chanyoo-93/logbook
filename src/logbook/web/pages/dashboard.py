@@ -9,22 +9,15 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 from logbook.core import services
-from logbook.core.duration import format_duration, parse_duration
+from logbook.core.duration import parse_duration
 from logbook.core.errors import InvalidInputError, LogbookError
 from logbook.core.ids import parse_id
-from logbook.core.weeks import total_label, week_of
+from logbook.core.weeks import week_of
 from logbook.web.context import WebContext, get_context
-from logbook.web.errors import classify
-from logbook.web.pages.panels import quick_form_context, refreshed_panels
+from logbook.web.pages.panels import quick_form_context, refreshed_panels, result_line
 from logbook.web.pages.summary import build_summary
-from logbook.web.pages.templating import render
-from logbook.web.pages.views import (
-    RECENT_LIMIT,
-    QuickFormValues,
-    log_row,
-    record_text,
-    timer_view,
-)
+from logbook.web.pages.templating import render, render_error
+from logbook.web.pages.views import RECENT_LIMIT, QuickFormValues, log_row, timer_view
 
 router = APIRouter()
 
@@ -32,9 +25,8 @@ QUICK_FORM_TEMPLATE = "partials/quick_form_response.html"
 DURATION_REQUIRED = "시간을 입력하세요. 예: 2h, 90m, 1:30"
 CATEGORY_REQUIRED = "카테고리를 고르세요. 태스크를 고르면 태스크의 카테고리를 씁니다."
 TASK_LABEL = "태스크"
-RESULT_MARK = "✔"
 
-Field = Annotated[str, Form()]
+FormText = Annotated[str, Form()]
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -83,11 +75,7 @@ def _add_log(ctx: WebContext, values: QuickFormValues) -> dict[str, object]:
             allowed_categories=tuple(ctx.cfg.categories),
         )
         s.flush()
-        day_total = services.day_total_minutes(s, log.date)
-        message = (
-            f"{RESULT_MARK} {record_text(log, with_date=False)} "
-            f"({total_label(log.date, today)} 누적 {format_duration(day_total)})"
-        )
+        message = result_line(s, log, today)
         kept = QuickFormValues(project=values.project, category=values.category, task=values.task)
         return {
             **refreshed_panels(s, ctx, now),
@@ -99,11 +87,11 @@ def _add_log(ctx: WebContext, values: QuickFormValues) -> dict[str, object]:
 def add_log(
     request: Request,
     ctx: Annotated[WebContext, Depends(get_context)],
-    duration: Field = "",
-    note: Field = "",
-    project: Field = "",
-    category: Field = "",
-    task: Field = "",
+    duration: FormText = "",
+    note: FormText = "",
+    project: FormText = "",
+    category: FormText = "",
+    task: FormText = "",
 ) -> HTMLResponse:
     values = QuickFormValues(duration, note, project, category, task)
     try:
@@ -111,5 +99,5 @@ def add_log(
     except LogbookError as error:
         with ctx.session() as s:
             form = quick_form_context(s, ctx, values, message=str(error), is_error=True)
-        return render(request, QUICK_FORM_TEMPLATE, form, status_code=classify(error).status)
+        return render_error(request, error, QUICK_FORM_TEMPLATE, form)
     return render(request, QUICK_FORM_TEMPLATE, page)

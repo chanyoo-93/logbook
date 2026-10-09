@@ -466,6 +466,7 @@ main {
 .timer {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-4);
   padding: var(--space-3) var(--space-4);
   color: var(--ink-muted);
@@ -482,10 +483,6 @@ main {
 
 .timer .form-message {
   margin-top: 0;
-}
-
-.timer {
-  flex-wrap: wrap;
 }
 
 .timer__dot {

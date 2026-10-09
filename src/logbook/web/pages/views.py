@@ -117,9 +117,8 @@ class Choice:
 class QuickFormOptions:
     projects: tuple[Choice, ...]  # 보관하지 않은 프로젝트: Choice('payment', 'payment — 결제 서버')
     categories: tuple[Choice, ...]  # 설정 순서: Choice('dev', 'dev — 개발')
-    tasks: tuple[
-        Choice, ...
-    ]  # 보관하지 않은 프로젝트의 todo·doing: Choice('42', '#42 payment · 제목')
+    # 보관하지 않은 프로젝트의 todo·doing: Choice('42', '#42 payment · 제목')
+    tasks: tuple[Choice, ...]
 
 
 @dataclass(frozen=True)

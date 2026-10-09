@@ -9,21 +9,17 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 from logbook.core import services
-from logbook.core.duration import format_duration
 from logbook.core.errors import LogbookError
-from logbook.core.weeks import total_label
 from logbook.web.context import WebContext, get_context
-from logbook.web.errors import classify
-from logbook.web.pages.panels import refreshed_panels
-from logbook.web.pages.templating import render
-from logbook.web.pages.views import TimerView, record_text, timer_view
+from logbook.web.pages.panels import refreshed_panels, result_line
+from logbook.web.pages.templating import render, render_error
+from logbook.web.pages.views import TimerView, timer_view
 
 router = APIRouter()
 
 PANEL_TEMPLATE = "partials/timer.html"
 STOP_TEMPLATE = "partials/timer_stop_response.html"
 ELAPSED_TEMPLATE = "partials/timer_elapsed.html"
-RESULT_MARK = "✔"
 # 경과 갱신 중 타이머가 사라졌을 때(CLI에서 정지 등) 요소 대신 패널 전체를 바꾼다.
 PANEL_RETARGET = {"HX-Retarget": "#timer", "HX-Reswap": "outerHTML"}
 
@@ -56,11 +52,7 @@ def stop_timer(request: Request, ctx: Ctx) -> HTMLResponse:
     try:
         with ctx.session() as s:
             stopped = services.stop_timer(s, now=now)
-            day_total = services.day_total_minutes(s, stopped.log.date)
-            message = (
-                f"{RESULT_MARK} {record_text(stopped.log, with_date=False)} "
-                f"({total_label(stopped.log.date, now.date())} 누적 {format_duration(day_total)})"
-            )
+            message = result_line(s, stopped.log, now.date())
             page = {
                 **refreshed_panels(s, ctx, now),
                 "timer": None,
@@ -74,5 +66,5 @@ def stop_timer(request: Request, ctx: Ctx) -> HTMLResponse:
             "timer_message": str(error),
             "timer_error": True,
         }
-        return render(request, PANEL_TEMPLATE, context, status_code=classify(error).status)
+        return render_error(request, error, PANEL_TEMPLATE, context)
     return render(request, STOP_TEMPLATE, page)
