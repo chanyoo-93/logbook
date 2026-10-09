@@ -1062,7 +1062,7 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
   - 디렉터리 구조의 `web/`를 실제 구성으로 고친다(context, security, errors, app, server, api/, pages/, templates/, static/vendor).
   - 허용 목록에 `core.ids`를 더한다.
   - "web은 cli를 import하지 않는다"를 더한다.
-- [ ] **자동 확인(이 PC, 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`):**
+- [x] **자동 확인(이 PC, 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`):**
   - PowerShell 5.1과 7에서 `lb serve --port abc`, 설정 `host = "0.0.0.0"`, init 전 실행이 각각 한국어 한 줄과 exit 1인지
   - 서버 동작은 Task 5-5의 스레드·서브프로세스 테스트로 확인한다.
 - [ ] **브라우저 확인(사용자, 절차는 PR 댓글):**
@@ -1078,7 +1078,7 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
     - 개발자 도구 콘솔에 CSP 위반이 없는지
     - Ctrl+C로 끈 뒤 종료 문구와 exit 0
   - macOS Safari·Chrome: 위와 같다(나중에).
-- [ ] **전체 검증:**
+- [x] **전체 검증:**
   - ruff, ruff format, mypy(core strict, `uv run mypy src/logbook` 전체도 오류 없음)
   - pytest(전체 80%, core 80%)
 - [x] 커밋 `docs: Phase 5 완료 표시와 웹 대시보드·API 사용 안내 추가`
