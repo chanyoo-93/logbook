@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 from typing import TYPE_CHECKING, Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from starlette.responses import JSONResponse
 
 from logbook.core import services
@@ -14,18 +14,17 @@ from logbook.core.errors import InvalidInputError
 from logbook.core.ids import parse_id
 from logbook.core.taskstatus import OPEN_STATUSES, TaskStatus, parse_statuses
 from logbook.core.weeks import parse_date, parse_week
+from logbook.web.api.deps import TASK_LABEL, Ctx
 from logbook.web.api.envelope import ok
 from logbook.web.api.schemas import TaskCreate, TaskPatch, changed_fields, optional_text
 from logbook.web.api.serialize import task_json
-from logbook.web.context import WebContext, get_context
+from logbook.web.context import WebContext
 
 if TYPE_CHECKING:
     from logbook.core.weeks import Week, WeekStart
 
 router = APIRouter()
 
-Ctx = Annotated[WebContext, Depends(get_context)]
-TASK_LABEL = "태스크"
 DEFAULT_STATUSES = ",".join(status.value for status in OPEN_STATUSES)
 NOTHING_TO_CHANGE = (
     "바꿀 항목을 하나 이상 지정하세요: title, category, estimate, week, due, ref, "

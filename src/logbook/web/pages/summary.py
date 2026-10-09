@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from logbook.core import services
 from logbook.core.duration import format_duration
@@ -31,13 +31,44 @@ CHART_PALETTE = (
 )
 
 
+class DailyDataset(TypedDict):
+    """막대 차트의 프로젝트 하나(요일별 분)."""
+
+    label: str
+    color: str
+    data: list[int]
+
+
+class DailyChart(TypedDict):
+    labels: list[str]
+    target: int
+    totals: list[int]
+    datasets: list[DailyDataset]
+
+
+class DonutChart(TypedDict):
+    """도넛 차트(프로젝트별, 카테고리별 분)."""
+
+    labels: list[str]
+    colors: list[str]
+    data: list[int]
+
+
+class ChartData(TypedDict):
+    """대시보드 차트 데이터. data-chart 속성에 JSON으로 들어간다."""
+
+    daily: DailyChart
+    projects: DonutChart
+    categories: DonutChart
+
+
 @dataclass(frozen=True)
 class SummaryView:
     heading: str  # week_heading
     total: str  # format_duration, 0이면 '0m'
     count: int
     done_count: int
-    chart: dict[str, object]
+    chart: ChartData
     has_logs: bool
 
 
@@ -74,7 +105,7 @@ def build_summary(s: Session, ctx: WebContext, week: Week, now: datetime) -> Sum
     colors = project_colors(daily.projects, explicit)
     project_minutes = {row.key: row.minutes for row in by_project.rows}
     category_color = category_colors([row.key for row in by_category.rows], tuple(cfg.categories))
-    chart: dict[str, object] = {
+    chart: ChartData = {
         "daily": {
             "labels": [day_label(day) for day in daily.days],
             "target": cfg.daily_target_minutes,

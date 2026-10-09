@@ -2,22 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from starlette.responses import JSONResponse
 
 from logbook.core import services
 from logbook.core.ids import check_id
+from logbook.web.api.deps import TASK_LABEL, Ctx
 from logbook.web.api.envelope import ok
 from logbook.web.api.schemas import TimerStart, TimerStop
 from logbook.web.api.serialize import timer_json, worklog_json
-from logbook.web.context import WebContext, get_context
 
 router = APIRouter()
-
-Ctx = Annotated[WebContext, Depends(get_context)]
-TASK_LABEL = "태스크"
 
 
 @router.post("/timer/start")

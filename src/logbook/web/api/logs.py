@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from starlette.responses import JSONResponse
 
 from logbook.core import services
@@ -12,15 +12,13 @@ from logbook.core.duration import parse_duration
 from logbook.core.errors import InvalidInputError
 from logbook.core.ids import check_id, parse_id
 from logbook.core.weeks import parse_date, parse_week
+from logbook.web.api.deps import TASK_LABEL, Ctx
 from logbook.web.api.envelope import ok
 from logbook.web.api.schemas import LogCreate, LogPatch, changed_fields, optional_text
 from logbook.web.api.serialize import week_meta, worklog_json
-from logbook.web.context import WebContext, get_context
 
 router = APIRouter()
 
-Ctx = Annotated[WebContext, Depends(get_context)]
-TASK_LABEL = "태스크"
 NOTHING_TO_CHANGE = (
     "바꿀 항목을 하나 이상 지정하세요: duration, note, category, project, date, task_id"
 )
