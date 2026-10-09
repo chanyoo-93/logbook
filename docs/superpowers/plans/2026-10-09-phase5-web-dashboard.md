@@ -1033,7 +1033,7 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
 
 ## Task 5-9: 문서 마무리와 Phase 5 완료
 
-- [ ] **README:**
+- [x] **README:**
   - "웹 대시보드" 절 추가
     - 실행: `uv run lb serve`, `--port`, `--open`
     - 화면: 대시보드, 기록
@@ -1044,7 +1044,7 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
     - 응답 봉투, 엔드포인트 표
     - 예시는 curl(`-H "Content-Type: application/json"`)과 PowerShell `Invoke-RestMethod`를 함께 적는다.
     - PowerShell 예시는 한글이 깨지지 않게 본문을 UTF-8 바이트로 보낸다: `-ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($json))`. Windows PowerShell 5.1은 문자열 본문을 UTF-8로 보내지 않는다.
-- [ ] **SPEC:**
+- [x] **SPEC:**
   - 3장: `[web].host` 허용 값
   - 5장 데이터 관리: `lb serve` 출력·오류. 종료 코드 표에 "`lb serve`는 Ctrl+C가 정상 종료라 0"
   - 6장:
@@ -1054,8 +1054,8 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
     - JSON API 계약: 봉투, 상태 코드 표, 필드, 요청 본문, PATCH 규칙
     - Phase 6에 남은 것(태스크·보고서·설정 화면, week_notes, 다크모드)
   - 8장: "CLI에서 FastAPI를 import하지 않는다" → "`lb serve`를 실행할 때만 FastAPI·uvicorn을 import한다(서브프로세스 테스트로 강제)"
-- [ ] **ROADMAP:** Phase 5 네 항목을 `[x]`로 바꾼다.
-- [ ] **CLAUDE.md·AGENTS.md(같은 내용):**
+- [x] **ROADMAP:** Phase 5 네 항목을 `[x]`로 바꾼다.
+- [x] **CLAUDE.md·AGENTS.md(같은 내용):**
   - 디렉터리 구조의 `web/`를 실제 구성으로 고친다(context, security, errors, app, server, api/, pages/, templates/, static/vendor).
   - 허용 목록에 `core.ids`를 더한다.
   - "web은 cli를 import하지 않는다"를 더한다.
@@ -1131,3 +1131,6 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
 5. **설정 자동 반영:** 지금은 설정을 바꾸면 서버를 다시 시작해야 한다.
 6. **LAN 공개:** 인증이 필요하므로 비목표다(SPEC 1).
 7. **Phase 4 후속 항목:** 그대로 유지한다(git-collect, LLM, 가져오기 병합, DST, 템플릿 샌드박스, 오프라인 휠 테스트).
+8. **버전 확인과 UPDATE의 경쟁 구간:** 기록 수정·삭제의 버전 확인과 변경 사이에 밀리초 단위 구간이 있다(pysqlite 레거시 모드는 SELECT 앞에서 BEGIN을 내지 않는다). 막으려면 core에 `session_scope(…, immediate=True)`를 두거나 `UPDATE … WHERE`에 버전 조건을 넣는다.
+9. **정적 파일 캐시 무효화:** 정적 파일에 Cache-Control이 없어 CSS·JS를 바꾼 뒤 Ctrl+F5가 필요할 수 있다. 필요하면 `?v=버전`을 붙인다.
+10. **차트 색 구분:** 프로젝트와 카테고리가 같은 팔레트를 같은 순서로 쓴다. 브라우저 확인 결과에 따라 카테고리 팔레트를 나눈다.

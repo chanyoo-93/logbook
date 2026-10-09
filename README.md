@@ -162,6 +162,105 @@ uv run lb import 백업.jsonl
 
 복원한 DB를 계속 쓰려면 `LOGBOOK_DB`를 그대로 두거나 설정 파일의 `db_path`를 그 경로로 바꾸세요. 파일을 먼저 전부 검사하고 문제가 없을 때만 한 번에 쓰므로, 검사에 실패하면(예: `오류: 12번째 줄: …`) DB는 바뀌지 않습니다.
 
+### 웹 대시보드
+
+```
+uv run lb serve
+uv run lb serve --port 9000
+uv run lb serve --open
+```
+
+`lb serve`는 로컬 웹 대시보드를 실행하고 `✔ 웹 대시보드: http://127.0.0.1:8765 (끄려면 Ctrl+C)`를 보여 줍니다. 브라우저에서 그 주소를 엽니다. `--open`을 주면 브라우저를 자동으로 엽니다. 포트는 `--port`나 설정 파일의 `[web].port`(기본 8765)로 정합니다. Ctrl+C로 끄면 `웹 대시보드를 종료했습니다.`를 보여 주고 종료 코드 0으로 끝납니다. 서버가 도는 동안에도 다른 터미널에서 `lb add` 등을 그대로 쓸 수 있습니다.
+
+| 화면 | 주소 | 하는 일 |
+|---|---|---|
+| 대시보드 | `/` | 이번 주 공수·기록 건수·완료 태스크 카드, 요일별 막대 차트(일일 목표선), 프로젝트별·카테고리별 도넛 차트, 최근 기록 10건, 진행 중 타이머와 정지 버튼, 빠른 기록 폼 |
+| 기록 | `/logs` | 주차·프로젝트·카테고리 필터, 행 안에서 바로 수정, 삭제(확인 창) |
+
+- 빠른 기록은 시간(`2h`, `90m`, `1:30`)과 메모를 입력하고 Enter를 누르면 저장합니다. 프로젝트와 카테고리를 `자동`으로 두면 태스크 또는 설정의 `default_project`를 쓰고, 태스크도 카테고리도 없으면 카테고리를 고르라고 안내합니다. 날짜는 항상 오늘이고, 다른 날짜는 기록 페이지에서 고칩니다.
+- 기록 페이지에서 그사이 다른 곳(CLI 등)에서 바뀐 기록을 수정·삭제하려 하면 거부하고 목록을 새로 고치라고 안내합니다.
+- 타이머 시작·취소는 CLI(`lb start`, `lb cancel`)로 합니다. 화면에서는 정지만 합니다.
+- 태스크·보고서·설정 화면은 아직 없습니다(Phase 6). 태스크와 보고서는 CLI를 쓰세요.
+- 인터넷 연결이 필요 없습니다(htmx와 Chart.js는 패키지에 들어 있습니다).
+
+이 컴퓨터에서만 열립니다. 서버는 `127.0.0.1`에만 연결하므로 다른 PC에서는 접속할 수 없고, 인증이 없어서 공개하지 않습니다. `localhost`나 `127.0.0.1` 이외의 주소(PC 이름, 다른 도메인)로 열면 `허용되지 않은 Host 헤더입니다` 오류(403)가 납니다. 다른 사이트에서 보낸 변경 요청도 거부합니다.
+
+설정 파일의 `[web]`:
+
+```toml
+[web]
+host = "127.0.0.1"   # 127.0.0.1 또는 localhost (표시용 주소). 다른 값은 오류
+port = 8765
+```
+
+설정은 시작할 때 한 번 읽습니다. 설정을 바꾸면 Ctrl+C로 끄고 `lb serve`를 다시 실행하세요.
+
+오류는 `오류: …` 한 줄과 종료 코드 1입니다(잘못된 `--port`, `lb init` 전, 이미 쓰는 포트 등). 포트가 사용 중이면 `--port`로 다른 포트를 지정하세요.
+
+### JSON API
+
+대시보드와 같은 서버가 JSON API(`/api/*`)도 제공합니다. 스크립트나 다른 도구에서 기록을 읽고 쓸 때 씁니다. `lb serve`를 먼저 실행해 두세요. 계약의 자세한 내용은 [docs/SPEC.md](docs/SPEC.md) 6장에 있습니다.
+
+모든 응답은 같은 봉투입니다. 실패하면 `ok`가 `false`이고 `error.message`에 한국어 문구가 있습니다.
+
+```json
+{"ok": true, "data": {...}, "error": null}
+{"ok": false, "data": null, "error": {"code": "invalid_input", "message": "소요 시간은 1분 이상이어야 합니다: '0m'. 예: 30m, 1h"}}
+```
+
+| 엔드포인트 | 하는 일 |
+|---|---|
+| `GET /api/logs?week=&project=&category=` | 기록 목록(기본 이번 주)과 합계 |
+| `POST /api/logs` | 기록 추가 (`duration`, `note` 필수. `project`, `category`, `date`, `task_id`) |
+| `PATCH /api/logs/{id}` | 보낸 항목만 수정 (`task_id`에 `null`이면 태스크 연결 해제) |
+| `DELETE /api/logs/{id}` | 기록 삭제 |
+| `GET /api/tasks?status=&week=&project=` | 태스크 목록(기본 todo, doing)과 실적 시간 |
+| `POST /api/tasks` | 태스크 추가 (`title` 필수. `project`, `category`, `estimate`, `week`, `due`, `ref`, `description`) |
+| `PATCH /api/tasks/{id}` | 보낸 항목만 수정 (`status` 포함, 비울 수 있는 항목은 `null`) |
+| `GET /api/stats?week=&by=project\|category\|day` | 주간 공수 집계 |
+| `GET /api/report?week=&format=md\|json` | 주간보고서(Markdown 문자열 또는 구조화 데이터) |
+| `POST /api/timer/start` | 타이머 시작 (`note`, `project`, `category`, `task_id`) |
+| `POST /api/timer/stop` | 타이머 정지 (`note`, `round`) |
+
+본문은 `Content-Type: application/json`의 UTF-8 JSON 객체입니다. 시간(`"1h30m"`)·날짜(`"yesterday"`)·주차(`"last"`)는 CLI와 같은 문자열을 받습니다. 모르는 키는 400으로 거부합니다.
+
+```
+# macOS (zsh)
+curl -s http://127.0.0.1:8765/api/logs
+curl -s -X POST http://127.0.0.1:8765/api/logs \
+  -H "Content-Type: application/json" \
+  -d '{"duration": "1h30m", "note": "결제 재시도 정리", "project": "payment", "category": "dev"}'
+curl -s -X PATCH http://127.0.0.1:8765/api/logs/128 \
+  -H "Content-Type: application/json" -d '{"duration": "90m"}'
+```
+
+PowerShell에서는 `curl`이 `Invoke-WebRequest`의 별칭이라 `Invoke-RestMethod`를 씁니다. 본문은 UTF-8 바이트로 보내야 한글이 깨지지 않습니다. Windows PowerShell 5.1은 문자열 본문을 UTF-8로 보내지 않습니다.
+
+```
+# PowerShell
+Invoke-RestMethod http://127.0.0.1:8765/api/logs
+
+$json = '{"duration": "1h30m", "note": "결제 재시도 정리", "project": "payment", "category": "dev"}'
+Invoke-RestMethod -Method Post -Uri http://127.0.0.1:8765/api/logs `
+  -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($json))
+```
+
+연습할 때는 임시 DB를 쓰면 실제 기록이 섞이지 않습니다. 같은 터미널에서 `lb init`부터 `lb serve`까지 실행하세요.
+
+```
+# PowerShell
+$env:LOGBOOK_DB = "$HOME\.logbook\try.db"
+$env:LOGBOOK_CONFIG = "$HOME\.logbook\try-config.toml"
+uv run lb init
+uv run lb serve
+
+# macOS (zsh)
+export LOGBOOK_DB=~/.logbook/try.db
+export LOGBOOK_CONFIG=~/.logbook/try-config.toml
+uv run lb init
+uv run lb serve
+```
+
 ### 셸별 주의
 
 - 메모는 따옴표로 감싼 한 인자입니다. 따옴표 없이 여러 단어를 쓰면 `Got unexpected extra argument` 오류(종료 코드 2)가 납니다.
@@ -178,7 +277,7 @@ uv run lb import 백업.jsonl
 | 0 | 성공 |
 | 1 | 입력·데이터 오류(stderr에 `오류: …` 한 줄), 삭제·이월·타이머 취소·파일 덮어쓰기 확인을 거절했거나 확인 입력이 없음 |
 | 2 | 명령 문법 오류(없는 옵션, 인자 누락·초과 등). Typer/Click 기본 영어 문구로 안내합니다. |
-| 130 | Ctrl+C로 중단 |
+| 130 | Ctrl+C로 중단 (`lb serve`는 Ctrl+C가 서버를 끄는 정상 방법이라 0) |
 
 ## 개발
 

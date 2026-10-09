@@ -108,9 +108,12 @@ project = "admin"
 path = "~/work/admin-web"
 
 [web]
-host = "127.0.0.1"
+host = "127.0.0.1"             # 127.0.0.1 | localhost (표시용 주소)
 port = 8765
 ```
+
+- `[web].host`는 `127.0.0.1`과 `localhost`만 받는다. 다른 값(`0.0.0.0` 등)은 설정 오류(종료 코드 1)다. 서버는 값과 무관하게 항상 127.0.0.1에만 열리고, 이 값은 시작 문구와 `--open`이 여는 주소에만 쓴다.
+- 설정은 서버를 시작할 때 한 번 읽는다. 바꾸면 `lb serve`를 다시 시작한다.
 
 ---
 
@@ -249,6 +252,11 @@ lb serve [--port 8765] [--open]          # 웹 대시보드 실행
 - `lb import <파일>`(R3): `lb export`로 만든 파일을 **빈 DB**(`lb init` 직후, `common` 프로젝트만 있음)에만 원래 id 그대로 복원한다. 기록·태스크가 id로 서로를 가리키므로 id를 바꾸지 않고, 병합은 id 충돌 규칙이 필요해 하지 않는다. 데이터가 있는 DB에는 가져오지 않고 새 DB를 쓰라고 안내한다(종료 코드 1). 복원 절차: `LOGBOOK_DB`를 새 경로로 바꾸고 `lb init` 후 `lb import`.
   - 파일 전체를 먼저 검증하고(머리글 형식·버전, 필드 이름·값, 참조 무결성 등) 통과했을 때만 한 번에 쓴다. 검증에 실패하면 `오류: N번째 줄: …` 한 줄로 알리고 DB는 바뀌지 않는다. 더 새로운 스키마로 내보낸 파일은 거부한다. 성공 출력: `✔ 가져왔습니다: 경로 (프로젝트 2 · 태스크 5 · 기록 41 · 타이머 0)`.
   - 가져오기는 줄을 LF로만 나눈다. 파일 앞의 BOM은 허용한다.
+- `lb serve`: 웹 대시보드(6장)를 실행한다. `--port`(기본은 설정 `web.port`, 8765)는 1~65535의 ASCII 숫자만 받는다. 값은 설정·DB를 읽기 전에 검사한다.
+  - 시작: `✔ 웹 대시보드: http://127.0.0.1:8765 (끄려면 Ctrl+C)`. `--open`이면 `webbrowser.open()`으로 브라우저를 연다. 열지 못하면 `주의: 브라우저를 열지 못했습니다. 주소를 직접 여세요: 주소` 경고만 내고 서버는 계속 돈다.
+  - 종료: Ctrl+C로 `웹 대시보드를 종료했습니다.`를 출력하고 종료 코드 0으로 끝난다.
+  - 오류(`오류: …` 한 줄, 종료 코드 1): 잘못된 `--port`, 설정 `host`가 허용 값이 아님, `lb init` 전(DB가 없거나 초기화되지 않음, `lb init`을 안내), 포트를 열 수 없음(이미 사용 중 등, `--port`로 다른 포트를 안내). DB를 연 뒤 포트 소켓을 먼저 열고 나서 서버를 띄우므로, 실패하면 서버는 뜨지 않는다.
+  - 서버를 돌리는 동안에도 CLI(`lb add` 등)를 함께 쓸 수 있다. 화면은 요청할 때마다 DB를 읽는다.
 
 ### 오류와 종료 코드
 | 코드 | 의미 |
@@ -264,25 +272,51 @@ lb serve [--port 8765] [--open]          # 웹 대시보드 실행
 
 ## 6. 웹 대시보드 명세 (`lb serve`)
 
-FastAPI + Jinja2 서버 렌더링, 상호작용은 HTMX, 차트는 Chart.js. 로컬 전용(127.0.0.1 바인딩), 인증 없음.
+FastAPI + Jinja2 서버 렌더링, 상호작용은 HTMX, 차트는 Chart.js. 로컬 전용(127.0.0.1 바인딩), 인증 없음. htmx·Chart.js는 `static/vendor/`의 로컬 파일이라 인터넷 없이 동작한다.
+
+Phase 5에서 구현한 것은 대시보드(`/`)와 기록(`/logs`) 화면, JSON API 전부다. 태스크·보고서·설정 화면은 Phase 6이다.
+
+### 실행과 보안
+- 서버는 항상 127.0.0.1에만 연다. `[web].host`는 표시용 주소이고 `127.0.0.1`, `localhost`만 받는다(3장). 같은 PC의 다른 사용자나 다른 PC에서는 접속할 수 없다. 인증이 없으므로 LAN에 공개하지 않는다.
+- 설정은 시작할 때 한 번 읽는다. 설정을 바꾸면 서버를 다시 시작한다.
+- **Host 검사:** `Host` 헤더가 하나이고 호스트 이름이 `127.0.0.1` 또는 `localhost`(대소문자 무시)일 때만 받는다. 포트가 있으면 ASCII 숫자여야 한다(`127.0.0.1:`, `localhost:abc`는 거부). 헤더가 없거나 여러 개이면 거부한다. 다른 사이트의 도메인이 127.0.0.1로 연결되는 DNS 리바인딩을 막는다. `[::1]` 같은 IPv6 주소는 받지 않는다. 거부하면 403이다.
+- **교차 출처 쓰기 차단:** GET·HEAD·OPTIONS가 아닌 요청은 다음 규칙으로 가린다. 어긋나면 403이다.
+  1. `Sec-Fetch-Site`가 있으면 `same-origin`이나 `none`일 때만 받는다.
+  2. 없고 `Origin`이 있으면 `http`이고 `host:port`가 `Host`와 같을 때만 받는다(`null`은 거부, `Origin`이 여러 개여도 거부).
+  3. 둘 다 없으면 브라우저가 아닌 클라이언트(curl, 스크립트)로 보고 받는다.
+- **보안 헤더(모든 응답):** `Content-Security-Policy`(모든 출처를 `'self'`로 좁힘, 인라인 스크립트·스타일 없음, `frame-ancestors 'none'`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`. `/static/`이 아닌 응답에는 `Cache-Control: no-store`도 붙인다.
+- `/docs`, `/redoc`, `/openapi.json`은 열지 않는다(CDN 스크립트가 CSP와 맞지 않는다). API 계약은 이 문서가 기준이다.
+
+### 화면 동작 (Phase 5)
+- **공통:** 모든 오류는 한국어 문구로 보여 준다(core 오류 문구를 그대로 쓴다). 서버 내부 오류는 화면에 상세를 내지 않고 `lb serve`를 실행한 터미널을 안내한다.
+- **빠른 기록:** 시간, 메모, 프로젝트, 카테고리, 태스크를 입력하고 Enter 또는 `기록` 버튼으로 저장한다. 저장하면 요약 카드·차트·최근 기록을 함께 갱신하고 결과 줄(`✔ #128 payment/dev 2h — 메모 (오늘 누적 5h 30m)`)을 보여 준다. 저장 뒤에는 시간·메모만 비우고 프로젝트·카테고리·태스크 선택은 유지한다. 처리하는 동안 버튼을 잠그고 같은 폼의 중복 요청은 버려서 Enter를 빠르게 두 번 눌러도 한 건만 저장한다.
+  - 날짜는 항상 오늘이다. 다른 날짜는 기록 페이지에서 고친다.
+  - '자동' 규칙은 `lb add`와 같다. 프로젝트를 비우면 태스크의 프로젝트, 태스크도 없으면 설정의 `default_project`를 쓴다. 카테고리를 비우면 태스크의 카테고리를 쓴다. 태스크도 카테고리도 없으면 `카테고리를 고르세요. …` 오류다. 태스크 후보는 보관하지 않은 프로젝트의 todo·doing 태스크다.
+  - 오류는 폼 아래 알림에 보여 주고 입력한 값은 그대로 둔다.
+- **타이머:** 진행 중인 타이머(`payment/design`, 메모, 태스크, 시작 시각, 경과)와 `정지` 버튼을 보여 준다. 경과는 60초마다 갱신한다. `정지`는 `lb stop`과 같이 저장하고(반올림 없음, 메모 덧붙이지 않음), 요약·최근 기록을 갱신한다. 시작·취소는 화면에 없고 CLI로 한다(`lb start`, `lb cancel`). CLI에서 타이머가 이미 멈췄으면 다음 갱신에서 패널이 비워진다.
+- **기록 페이지(`/logs`):** 주차(기본 이번 주)·프로젝트·카테고리 필터를 바꾸면 표만 다시 그리고 주소(`?week=&project=&category=`)를 갱신한다. 합계와 건수를 함께 보여 준다. 잘못된 주차·없는 프로젝트는 알림으로 알린다.
+- **인라인 수정:** 행의 `수정`을 누르면 그 행이 시간·메모·날짜·프로젝트·카테고리·태스크 입력으로 바뀌고 시간 입력에 포커스가 간다. 저장하면 바뀐 항목만 반영한다(`lb log edit`과 같다). 바뀐 것이 없으면 `바뀐 내용이 없습니다.`를 알린다. 날짜를 다른 주로 옮겨도 표는 보고 있던 주 그대로 남고 그 기록만 빠진다. 입력 오류는 그 행에 오류 줄로 보여 주고 편집 상태를 유지한다.
+- **삭제:** 브라우저 확인 창에 연도를 포함한 기록 한 줄을 보여 주고 `확인`해야 삭제한다.
+- **버전 확인:** 화면의 각 행은 기록 버전(id·날짜·시간·메모·프로젝트·카테고리·태스크·생성 시각의 해시)을 들고 있고 수정·삭제 요청에 함께 보낸다. 그사이 CLI 등으로 기록이 바뀌었으면 409(`다른 곳에서 기록이 바뀌었습니다: #128. 목록을 새로 고친 뒤 다시 시도하세요.`)로 거부한다. 수정은 그 행에, 삭제는 알림에 오류를 보여 준다. 검사와 변경 사이의 밀리초 단위 경쟁 구간은 막지 않는다(로컬 단일 사용자라 허용, 후속 항목).
+- 화면 라우트(HTMX 조각 포함)는 브라우저용이고 계약이 아니다. 연동에는 아래 JSON API를 쓴다.
 
 ### 페이지
-1. **대시보드** (`/`)
+1. **대시보드** (`/`) — Phase 5
    - 이번 주 총 공수, 기록 건수, 완료 태스크 수 카드
    - 요일별 누적 막대 차트 (프로젝트별 색상 스택) + 일일 목표선
    - 프로젝트별·카테고리별 도넛 차트
    - 최근 기록 10건, 진행 중 타이머 표시(정지 버튼)
    - 상단 **빠른 기록 폼**: 시간 / 메모 / 프로젝트 / 카테고리 / Task (Enter로 저장, HTMX로 목록 갱신)
-2. **기록** (`/logs`)
+2. **기록** (`/logs`) — Phase 5
    - 주차·프로젝트·카테고리 필터, 인라인 수정·삭제
-3. **태스크·계획** (`/tasks`)
+3. **태스크·계획** (`/tasks`) — Phase 6
    - 칸반 뷰 (todo / doing / done), 프로젝트 필터
    - "다음 주 계획" 패널: 계획 태스크와 예상 공수 합계, 이월 버튼
    - 태스크별 예상 대비 실제 공수(연결된 WorkLog 합계) 표시
-4. **보고서** (`/report?week=2026-W40`)
+4. **보고서** (`/report?week=2026-W40`) — Phase 6
    - 주차 선택, Markdown 미리보기, 원문 복사 버튼, `.md` 다운로드
    - 보고서 하단 "특이사항/리스크" 입력란 (해당 주차에 저장)
-5. **설정** (`/settings`): 프로젝트 관리(추가·보관·색상), 카테고리 확인
+5. **설정** (`/settings`): 프로젝트 관리(추가·보관·색상), 카테고리 확인 — Phase 6
 
 ### JSON API (CLI 이외의 연동·테스트용)
 ```
@@ -298,8 +332,73 @@ GET    /api/report?week=&format=md|json
 POST   /api/timer/start | /api/timer/stop
 ```
 
+Phase 5에서 모두 구현했다. 화면과 같은 서비스를 부르므로 CLI와 규칙이 같다(보안 규칙도 같다).
+
+**응답 봉투:** 모든 응답은 JSON이고 UTF-8이다(한글은 이스케이프하지 않는다).
+```json
+{"ok": true,  "data": {...}, "error": null}
+{"ok": false, "data": null,  "error": {"code": "invalid_input", "message": "한국어 문구"}}
+```
+- 목록 응답(`GET /api/logs`, `GET /api/tasks`)은 최상위에 `meta`를 더한다. `/api/logs`는 `{week, start, end, count, total_minutes}`, `/api/tasks`는 `{count}`다.
+- `message`는 사용자에게 보여 줄 한국어 문구다. 분기는 `code`로 한다.
+
+**상태 코드와 `error.code`:**
+
+| 상태 | code | 때문에 |
+|---|---|---|
+| 200 / 201 | | 성공 (추가는 201: `POST /api/logs`, `/api/tasks`, `/api/timer/start`) |
+| 400 | `invalid_input` | 입력 값 오류(시간·날짜·주차 형식, 없는 키, 타입 오류, 본문이 JSON 객체가 아님, 이미 진행 중인 타이머 등) |
+| 400 | `error` | 위로 분류되지 않는 도메인 오류 |
+| 403 | `forbidden` | Host 검사·교차 출처 쓰기 차단에 걸림 |
+| 404 | `not_found` | 없는 기록·태스크·프로젝트 ID나 slug, 진행 중인 타이머가 없을 때의 정지, 없는 API 주소 |
+| 405 | `method_not_allowed` | 그 주소가 받지 않는 메서드 |
+| 503 | `busy` | DB가 다른 프로세스에 잠겨 있음(잠시 후 다시 시도) |
+| 503 | `not_initialized` | DB가 없거나 초기화되지 않음(`lb init`) |
+| 500 | `internal` | 예상하지 못한 서버 오류(상세는 `lb serve`를 실행한 터미널에 남는다) |
+
+409 `conflict`(기록 버전 불일치)는 화면의 수정·삭제 요청에만 쓴다. API의 PATCH·DELETE는 버전을 보지 않는다.
+
+**쿼리(GET):** 값은 앞뒤 공백을 지우고, 비어 있으면 생략한 것으로 본다.
+
+| 엔드포인트 | 쿼리 | 기본값·규칙 |
+|---|---|---|
+| `GET /api/logs` | `week`, `project`(slug), `category` | `week`는 `this`(4장 주차 규칙). 없는 프로젝트는 404 |
+| `GET /api/tasks` | `status`, `week`, `project` | `status`는 쉼표로 여러 개나 `all`(기본 `todo,doing`). `week`를 생략하면 주차로 거르지 않는다 |
+| `GET /api/stats` | `week`, `by` | `by`는 `project`(기본)·`category`·`day`. `lb stats --by`와 같다 |
+| `GET /api/report` | `week`, `format` | `format`은 `md`(기본)·`json` |
+
+**요청 본문(POST·PATCH):** `Content-Type: application/json`의 UTF-8 JSON 객체. 정해진 필드만 받는다(알 수 없는 키는 400). 타입을 바꿔 받지 않는다(숫자 `2`를 문자열 시간으로 받지 않음). 시간·날짜·주차는 CLI와 같은 문자열 규칙(4장)이다.
+
+| 엔드포인트 | 필드 (필수는 굵게) |
+|---|---|
+| `POST /api/logs` | **`duration`**, **`note`**, `project`, `category`, `date`, `task_id`. `project`·`category`를 생략하면 `lb add`와 같이 태스크 또는 설정 값을 쓴다. `date` 기본은 오늘 |
+| `PATCH /api/logs/{id}` | `duration`, `note`, `category`, `project`, `date`, `task_id` |
+| `POST /api/tasks` | **`title`**, `project`(기본 `default_project`), `category`, `estimate`(24시간 상한 없음), `week`, `due`, `ref`, `description` |
+| `PATCH /api/tasks/{id}` | `title`, `category`, `estimate`, `week`, `due`, `ref`, `description`, `status`(`todo`·`doing`·`done`·`dropped`) |
+| `POST /api/timer/start` | `note`, `project`, `category`, `task_id` (본문 전체를 생략할 수 있다. `-t`처럼 `task_id`로 메모를 생략할 수 있다) |
+| `POST /api/timer/stop` | `note`(` — `로 덧붙임), `round`(1~60, 15분 단위 반올림) (본문 전체를 생략할 수 있다) |
+
+**PATCH 규칙:**
+- 보낸 키만 바꾼다. 하나도 보내지 않으면 400(`바꿀 항목을 하나 이상 지정하세요: …`).
+- `null`은 값을 비우는 뜻이다. 비울 수 있는 필드는 기록의 `task_id`(태스크 연결 해제), 태스크의 `category`·`estimate`·`week`·`due`·`ref`·`description`뿐이다. 그 밖의 필드에 `null`을 보내면 400이다(`'duration' 값은 비울 수 없습니다.`).
+- 태스크의 `status`를 보내면 `lb task start|done|drop`과 같이 `done_at`도 갱신한다. 프로젝트는 바꿀 수 없다(태스크 PATCH에 `project` 없음).
+
+**응답 `data`:**
+- 기록: `{id, date, minutes, duration, note, project, category, task_id, started_at, ended_at, created_at}`. `minutes`는 정수 분, `duration`은 `1h 30m` 표기, 시각은 UTC ISO 8601이다.
+  - `POST /api/logs`는 `{log, day_total_minutes}`, `PATCH`는 `{log}`, `DELETE`는 `{id}`, `GET`은 기록의 배열이다.
+- 태스크: `{id, project, title, description, status, category, estimate_minutes, planned_week, due_date, external_ref, created_at, updated_at, done_at, actual_minutes}`. `actual_minutes`는 연결된 기록의 합계다. `POST`·`PATCH`는 태스크 하나, `GET`은 배열이다.
+- 타이머: `POST /api/timer/start`는 `{timer: {project, category, note, task_id, started_at, elapsed_minutes}, task_started}`(`task_started`는 todo 태스크가 doing으로 바뀌었는지)다. `POST /api/timer/stop`은 `{log, elapsed_minutes, day_total_minutes}`다.
+- 통계: `{week, start, end, by, total_minutes, count, rows: [{key, label, minutes, count}]}`.
+- 보고서: `format=md`는 `{week, markdown}`, `format=json`은 보고서 데이터(7장의 `ReportData`를 그대로 직렬화한 구조)다.
+
 ### 추가 데이터
-보고서의 "특이사항/리스크"를 저장하기 위해 `week_notes(week text PK, risks text, notes text, updated_at)` 테이블을 추가한다.
+보고서의 "특이사항/리스크"를 저장하기 위해 `week_notes(week text PK, risks text, notes text, updated_at)` 테이블을 추가한다(Phase 6).
+
+### Phase 6에 남은 것
+- `/tasks` 칸반과 다음 주 계획 패널, `/report` 미리보기·복사·다운로드와 `week_notes`, `/settings` 화면
+- 다크모드
+- 웹에서의 타이머 시작·취소(API에도 상태 조회·취소가 없다)
+- 설정 변경 자동 반영(지금은 서버 재시작)
 
 ---
 
@@ -366,6 +465,6 @@ POST   /api/timer/start | /api/timer/stop
 - `core` 테스트 커버리지 80% 이상 (duration, weeks, services 집계, report 조립은 필수)
 - Windows·macOS 양쪽 CI에서 전체 테스트 통과 (경로, 인코딩, 한글 출력, 클립보드 실패 처리 테스트 포함)
 - 한글 메모·프로젝트명이 Windows Terminal, PowerShell, macOS Terminal/iTerm2에서 깨지지 않을 것
-- `--help`, `--version`, 사용법 오류, 입력 형식 오류는 SQLAlchemy와 웹 스택을 로드하지 않는다(서브프로세스 테스트로 강제). `lb add` 응답 시간은 CI 보고서(`scripts/bench_cli.py`)로 추적한다(파이썬 내부 처리 시간 참고값: Windows 약 500 ms, macOS 약 350 ms). CLI에서 FastAPI를 import하지 않는다.
+- `--help`, `--version`, 사용법 오류, 입력 형식 오류는 SQLAlchemy와 웹 스택을 로드하지 않는다(서브프로세스 테스트로 강제). `lb add` 응답 시간은 CI 보고서(`scripts/bench_cli.py`)로 추적한다(파이썬 내부 처리 시간 참고값: Windows 약 500 ms, macOS 약 350 ms). `lb serve`를 실행할 때만 FastAPI·uvicorn을 import한다(서브프로세스 테스트로 강제).
 - 모든 에러 메시지는 한국어로, 다음 행동을 안내 (예: "프로젝트를 찾을 수 없습니다: 'paymnt'. `lb project list`로 확인하세요.") 단, 명령 문법 오류(없는 옵션, 인자 누락 등, 종료 코드 2)와 --help의 틀(Usage, Options 등)은 Typer/Click 기본 영어 문구를 쓴다.
 - 데이터 손실 방지: 삭제 명령은 확인 프롬프트(`--yes`로 생략), `export`로 언제든 전체 백업 가능
