@@ -14,6 +14,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 
+from logbook.core.duration import echo_input
 from logbook.core.errors import (
     DatabaseBusyError,
     DatabaseNotInitializedError,
@@ -124,7 +125,7 @@ def validation_message(error: RequestValidationError) -> str:
     if location == _WHOLE_BODY:
         return BODY_NOT_OBJECT
     template = BODY_FIELD_INVALID if location[:1] == _WHOLE_BODY else VALUE_INVALID
-    field = ".".join(str(part) for part in location[1:])
+    field = echo_input(".".join(str(part) for part in location[1:]))
     reason = _REASONS.get(first["type"], _DEFAULT_REASON)
     return template.format(field=field, reason=reason)
 
@@ -133,6 +134,7 @@ def _http_kind_and_message(
     request: Request, error: StarletteHTTPException
 ) -> tuple[ErrorKind, str]:
     path = request.url.path
+    shown_path = echo_input(path)  # 긴 경로는 문구에서 40자로 자른다(Host 문구와 같다)
     method = request.method
     status = error.status_code
     if status == 400:
@@ -140,11 +142,11 @@ def _http_kind_and_message(
         return ErrorKind(400, "invalid_input"), BODY_NOT_JSON
     if status == 404:
         template = API_NOT_FOUND if is_api_path(path) else PAGE_NOT_FOUND
-        return ErrorKind(404, "not_found"), template.format(method=method, path=path)
+        return ErrorKind(404, "not_found"), template.format(method=method, path=shown_path)
     if status == 405:
         return (
             ErrorKind(405, "method_not_allowed"),
-            METHOD_NOT_ALLOWED.format(method=method, path=path),
+            METHOD_NOT_ALLOWED.format(method=method, path=shown_path),
         )
     return ErrorKind(status, "error"), HTTP_ERROR.format(status=status)
 

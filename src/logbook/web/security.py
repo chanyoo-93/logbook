@@ -59,12 +59,17 @@ def security_headers(path: str) -> tuple[tuple[str, str], ...]:
 def host_allowed(host_header: str | None) -> bool:
     """Host 헤더의 호스트 이름(포트 제외)이 루프백 이름이면 True. 헤더가 없으면 False.
 
-    대괄호 IPv6('[::1]:8765')는 '[::1]' 그대로 비교하므로 거부된다. 서버는 IPv4에만 열린다.
+    포트가 있으면 ASCII 숫자여야 한다('127.0.0.1:', 'localhost:evil'은 거부).
+    대괄호 IPv6('[::1]:8765')는 호스트 이름이 '[::1]'이라 거부된다. 서버는 IPv4에만 열린다.
     """
     if not host_header:
         return False
-    hostname, _, _ = host_header.rpartition(":")
-    return (hostname or host_header).lower() in ALLOWED_HOSTNAMES
+    hostname, separator, port = host_header.rpartition(":")
+    if not separator:
+        return host_header.lower() in ALLOWED_HOSTNAMES
+    if not (port.isascii() and port.isdigit()):
+        return False
+    return hostname.lower() in ALLOWED_HOSTNAMES
 
 
 def cross_site_write(method: str, *, host: str, origin: str | None, fetch_site: str | None) -> bool:
@@ -104,6 +109,8 @@ class LocalOnlyMiddleware:
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
+            # 주의: websocket(과 lifespan)은 Host·Origin 검사 없이 통과한다.
+            # 지금은 websocket 라우트가 없다. 더하면 같은 Host·Origin 검사가 필요하다.
             await self.app(scope, receive, send)
             return
 
@@ -126,13 +133,17 @@ class LocalOnlyMiddleware:
 def _rejection(scope: Scope, path: str) -> Response | None:
     """요청을 거부해야 하면 403 응답을, 통과시키면 None을 돌려준다."""
     headers = Headers(scope=scope)
-    host = headers.get("host")
-    if not host_allowed(host):
-        return _forbidden(path, HOST_REJECTED.format(host=echo_input(host or "")))
-    if cross_site_write(
-        scope["method"],
+    hosts = headers.getlist("host")
+    host = hosts[0] if hosts else None
+    # 같은 헤더가 여럿이면 서버와 프록시가 다른 값을 고를 수 있어 거부한다.
+    if len(hosts) > 1 or not host_allowed(host):
+        return _forbidden(path, HOST_REJECTED.format(host=echo_input(", ".join(hosts))))
+    origins = headers.getlist("origin")
+    method = scope["method"]
+    if (method not in SAFE_METHODS and len(origins) > 1) or cross_site_write(
+        method,
         host=host or "",
-        origin=headers.get("origin"),
+        origin=origins[0] if origins else None,
         fetch_site=headers.get("sec-fetch-site"),
     ):
         return _forbidden(path, CROSS_SITE_REJECTED)

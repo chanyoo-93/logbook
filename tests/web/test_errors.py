@@ -151,6 +151,23 @@ def test_unknown_paths_say_what_was_requested(probe_client: TestClient) -> None:
     assert page_message(page.text) == "페이지를 찾을 수 없습니다: /nope"
 
 
+def test_long_paths_are_limited_in_not_found_messages(probe_client: TestClient) -> None:
+    path = "/" + "a" * 100
+    api = probe_client.get("/api" + path)
+    page = probe_client.get(path)
+
+    assert api_error(api.json())["message"] == "요청한 API가 없습니다: GET /api/" + "a" * 35 + "..."
+    assert page_message(page.text) == "페이지를 찾을 수 없습니다: /" + "a" * 39 + "..."
+
+
+def test_long_field_names_are_limited_in_validation_messages(probe_client: TestClient) -> None:
+    response = probe_client.post("/api/echo", json={"n": 1, "x" * 100: 2})
+
+    assert api_error(response.json())["message"] == (
+        f"요청 본문이 올바르지 않습니다: '{'x' * 40}...' (알 수 없는 항목입니다)."
+    )
+
+
 @pytest.mark.parametrize("prefix", ["/api", ""])
 def test_method_not_allowed(probe_client: TestClient, prefix: str) -> None:
     response = probe_client.delete(f"{prefix}/get-only")

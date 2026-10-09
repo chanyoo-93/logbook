@@ -45,9 +45,10 @@ def build_server(app: FastAPI) -> uvicorn.Server:
 
 
 def _open_browser(url: str, on_browser_failed: Callable[[str], None]) -> None:
+    # 브라우저 열기는 부가 기능이라 실패해도 서버 시작을 막지 않는다(실행 파일이 없으면 OSError).
     try:
         opened = webbrowser.open(url)
-    except webbrowser.Error:
+    except (webbrowser.Error, OSError):
         opened = False
     if not opened:
         on_browser_failed(url)

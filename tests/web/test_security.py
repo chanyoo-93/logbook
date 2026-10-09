@@ -38,8 +38,26 @@ def test_host_allowed_accepts_loopback_names(host: str) -> None:
 
 @pytest.mark.parametrize(
     "host",
-    ["evil.example:8765", "127.0.0.1.evil.example", "", None, "[::1]:8765"],
-    ids=["other-host", "suffix-trick", "empty", "missing", "ipv6"],
+    [
+        "evil.example:8765",
+        "127.0.0.1.evil.example",
+        "",
+        None,
+        "[::1]:8765",
+        "127.0.0.1:",
+        "localhost:evil",
+        "127.0.0.1:80a",
+    ],
+    ids=[
+        "other-host",
+        "suffix-trick",
+        "empty",
+        "missing",
+        "ipv6",
+        "empty-port",
+        "alpha-port",
+        "mixed-port",
+    ],
 )
 def test_host_allowed_rejects_other_names(host: str | None) -> None:
     assert host_allowed(host) is False
@@ -213,3 +231,38 @@ def test_headers_on_server_error(probe_client: TestClient, path: str) -> None:
 def test_docs_are_disabled_so_csp_is_never_needed_for_cdn(probe_client: TestClient) -> None:
     for path in ("/docs", "/redoc", "/openapi.json"):
         assert probe_client.get(path).status_code == 404
+
+
+def test_duplicate_host_headers_are_rejected(probe_client: TestClient) -> None:
+    response = probe_client.get("/x", headers=[("Host", "127.0.0.1:8765"), ("Host", "localhost")])
+
+    assert response.status_code == 403
+    assert response.text.startswith("허용되지 않은 Host 헤더입니다:")
+
+
+def test_duplicate_origin_headers_are_rejected_on_writes(
+    probe_client: TestClient, probe_calls: list[str]
+) -> None:
+    response = probe_client.post(
+        "/api/x", headers=[("Origin", LOCAL_ORIGIN), ("Origin", LOCAL_ORIGIN)]
+    )
+
+    assert response.status_code == 403
+    assert response.json()["error"]["message"] == security.CROSS_SITE_REJECTED
+    assert probe_calls == []
+
+
+def test_empty_origin_header_is_treated_as_absent(
+    probe_client: TestClient, probe_calls: list[str]
+) -> None:
+    response = probe_client.post("/api/x", headers={"Origin": ""})
+
+    assert response.status_code == 200
+    assert probe_calls == ["write"]
+
+
+@pytest.mark.parametrize("path", ["/api/x", "/x"])
+def test_headers_on_head_requests(probe_client: TestClient, path: str) -> None:
+    response = probe_client.head(path)
+
+    assert_security_headers(response, no_store=True)

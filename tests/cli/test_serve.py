@@ -207,6 +207,26 @@ def test_serve_open_warns_when_browser_raises(
     assert result.stderr == browser_warning(port)
 
 
+def test_serve_open_warns_when_browser_raises_os_error(
+    lb: Callable[..., Result],
+    initialized: Path,
+    fake_server: FakeServer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    port = free_port()
+
+    def fail(url: str, *args: Any, **kwargs: Any) -> bool:
+        raise OSError("xdg-open을 실행할 수 없습니다")
+
+    monkeypatch.setattr("webbrowser.open", fail)
+
+    result = lb("serve", "--port", str(port), "--open")
+
+    assert result.exit_code == 0
+    assert result.stderr == browser_warning(port)
+    assert result.stdout == start_line(port) + STOP_LINE
+
+
 def test_serve_reports_port_in_use(
     lb: Callable[..., Result], initialized: Path, fake_server: FakeServer, tmp_path: Path
 ) -> None:
