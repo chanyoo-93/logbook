@@ -270,7 +270,7 @@ def test_unexpected_exception_in_htmx_is_flash_with_headers(probe_client: TestCl
 
 def test_api_path_ignores_htmx_header(probe_client: TestClient) -> None:
     response = probe_client.get("/api/raise/invalid", headers={"HX-Request": "true"})
-    assert response.headers["content-type"] == "application/json"
+    assert response.headers["content-type"] == "application/json; charset=utf-8"
     assert "HX-Retarget" not in response.headers
 
 

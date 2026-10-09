@@ -15,7 +15,7 @@ from starlette.responses import HTMLResponse
 
 from logbook.core import services
 from logbook.core.duration import parse_duration
-from logbook.core.errors import InvalidInputError, LogbookError
+from logbook.core.errors import InvalidInputError, LogbookError, NotFoundError
 from logbook.core.ids import parse_id
 from logbook.core.weeks import Week, parse_date, parse_week
 from logbook.web.context import WebContext, get_context
@@ -112,7 +112,7 @@ def logs_page(
         parsed = _parse_week(ctx, values)
         with ctx.session() as s:
             page = _table_page(s, ctx, parsed, values)
-    except InvalidInputError as error:
+    except (InvalidInputError, NotFoundError) as error:
         if is_htmx(request):
             raise  # 알림 영역에 쓴다 (공통 오류 처리)
         with ctx.session() as s:

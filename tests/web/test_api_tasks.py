@@ -186,6 +186,21 @@ def test_create_task_rejects_bad_input(
     assert _count_tasks(web_engine) == 0
 
 
+def test_huge_estimate_is_invalid_input_on_create_and_patch(
+    client: TestClient, web_engine: Engine
+) -> None:
+    huge = "99999999999999999999h"
+    created = client.post("/api/tasks", json={"title": "T", "estimate": huge})
+    assert created.status_code == 400
+    assert _error(created.json())["code"] == "invalid_input"
+    assert _count_tasks(web_engine) == 0
+
+    task_id = add_task(web_engine, title="t", estimate=60)
+    patched = client.patch(f"/api/tasks/{task_id}", json={"estimate": huge})
+    assert patched.status_code == 400
+    assert _error(patched.json())["code"] == "invalid_input"
+
+
 def test_patch_clears_estimate_and_changes_week(client: TestClient, web_engine: Engine) -> None:
     task_id = add_task(web_engine, title="t", week=THIS_WEEK, estimate=120)
     before = client.get("/api/tasks").json()["data"][0]

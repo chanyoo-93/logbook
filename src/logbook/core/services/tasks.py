@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from logbook.core.errors import InvalidInputError
+from logbook.core.ids import MAX_ID
 from logbook.core.models import Project, Task, TaskStatus, WorkLog, utcnow
 from logbook.core.services._shared import (
     check_category,
@@ -213,10 +214,13 @@ def _checked_category(category: str | None, allowed: Collection[str] | None) -> 
 
 
 def _checked_estimate(estimate_minutes: int | None) -> int | None:
-    # 태스크는 여러 날에 걸칠 수 있으므로 상한은 두지 않는다.
+    # 태스크는 여러 날에 걸칠 수 있어 하루 상한은 없다. SQLite INTEGER를 넘는 값만 막는다.
     if estimate_minutes is None:
         return None
-    return check_positive_minutes(estimate_minutes, "예상 공수는")
+    minutes = check_positive_minutes(estimate_minutes, "예상 공수는")
+    if minutes > MAX_ID:
+        raise InvalidInputError("예상 공수가 너무 큽니다. 더 작은 값으로 입력하세요.")
+    return minutes
 
 
 def _week_label(week: Week | None) -> str | None:

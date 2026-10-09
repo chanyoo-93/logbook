@@ -221,14 +221,33 @@ def test_bad_week_htmx_writes_to_flash(client: TestClient) -> None:
     assert "<html" not in response.text
 
 
-def test_unknown_project_filter_is_404(client: TestClient, web_engine: Engine) -> None:
+def _unknown_project_message(web_engine: Engine) -> str:
     with db.session_scope(web_engine) as s, pytest.raises(NotFoundError) as caught:
         services.get_project(s, "nope")
+    return str(caught.value)
 
+
+def test_unknown_project_full_page_shows_filters_and_error(
+    client: TestClient, web_engine: Engine
+) -> None:
     response = client.get("/logs?project=nope")
 
     assert response.status_code == 404
-    assert str(caught.value) in unescape(response.text)
+    html = response.text
+    assert "<html" in html
+    assert by_id(html, "log-filters").tag == "form"
+    alerts = [e.text for e in parse_html(html) if e.attrs.get("role") == "alert"]
+    assert alerts == [_unknown_project_message(web_engine)]
+    assert row_ids(html) == []
+
+
+def test_unknown_project_htmx_writes_to_flash(client: TestClient, web_engine: Engine) -> None:
+    response = client.get("/logs?project=nope", headers=HTMX)
+
+    assert response.status_code == 404
+    assert response.headers["HX-Retarget"] == "#flash"
+    assert _unknown_project_message(web_engine) in unescape(response.text)
+    assert "<html" not in response.text
 
 
 def test_row_buttons_carry_confirm_text_and_version(client: TestClient, web_engine: Engine) -> None:

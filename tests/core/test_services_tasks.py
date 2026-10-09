@@ -102,6 +102,27 @@ def test_create_invalid_estimate_rejected(seeded: Session, estimate: object) -> 
         _create(seeded, estimate_minutes=estimate)
 
 
+TOO_LARGE_ESTIMATE = 2**63
+
+
+def test_create_estimate_over_sqlite_integer_rejected(seeded: Session) -> None:
+    with pytest.raises(InvalidInputError, match="예상 공수가 너무 큽니다"):
+        _create(seeded, estimate_minutes=TOO_LARGE_ESTIMATE)
+
+
+def test_update_estimate_over_sqlite_integer_rejected(seeded: Session) -> None:
+    task = _create(seeded, estimate_minutes=60)
+
+    with pytest.raises(InvalidInputError, match="예상 공수가 너무 큽니다"):
+        services.update_task(seeded, task.id, estimate_minutes=TOO_LARGE_ESTIMATE)
+
+    assert task.estimate_minutes == 60
+
+
+def test_estimate_accepts_sqlite_integer_maximum(seeded: Session) -> None:
+    assert _create(seeded, estimate_minutes=2**63 - 1).estimate_minutes == 2**63 - 1
+
+
 def test_create_estimate_has_no_upper_limit(seeded: Session) -> None:
     assert _create(seeded, estimate_minutes=3 * 1440).estimate_minutes == 3 * 1440
 
