@@ -31,7 +31,10 @@
   // - 2xx: 빠른 기록 폼은 다음 기록을 바로 입력하도록 시간 칸, 편집 행(is-editing)도 시간 칸.
   //   표 수정·삭제가 성공하면 눌렀던 버튼이 사라지므로 표 제목(tabindex=-1)으로 옮긴다.
   // - 4xx: 편집 행 오류는 시간 칸으로 돌려 고치게 한다. 그 밖의 오류는 입력 중이던 자리를 그대로 둔다.
-  document.addEventListener("htmx:afterSwap", function (event) {
+  // afterSwap이 아니라 afterSettle에서 본다. htmx는 id가 같은 요소를 교체하면 settle 전까지
+  // 이전 요소의 속성(class 등)을 새 요소에 입혀 둔다. 그래서 표시 행(log-N)이 편집 행으로 바뀐
+  // 직후에는 아직 is-editing class가 없다.
+  document.addEventListener("htmx:afterSettle", function (event) {
     var target = event.target;
     var detail = event.detail || {};
     var xhr = detail.xhr;
