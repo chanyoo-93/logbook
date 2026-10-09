@@ -1,0 +1,6 @@
+{# 정지 응답: 타이머 패널은 hx-target이 받는 본문이라 OOB가 아니고, 요약과 최근 기록만 OOB다. #}
+{% with oob = false %}
+{% include "partials/timer.html" %}
+{% endwith %}
+{% include "partials/summary.html" %}
+{% include "partials/recent.html" %}

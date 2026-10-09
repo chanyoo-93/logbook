@@ -507,3 +507,32 @@ def test_write_text_file_os_error_without_strerror(
         runtime.write_text_file(target, "x", yes=False)
 
     assert str(exc_info.value) == f"파일을 저장하지 못했습니다: {target} (x)."
+
+
+def port_error(text: str) -> str:
+    return (
+        f"포트가 올바르지 않습니다: '{text}'. 1~65535 사이의 숫자로 입력하세요 (예: --port 8765)."
+    )
+
+
+@pytest.mark.parametrize(("text", "expected"), [("8765", 8765), ("1", 1), ("65535", 65535)])
+def test_parse_port_accepts_valid_ports(text: str, expected: int) -> None:
+    assert runtime.parse_port(text) == expected
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["0", "65536", "abc", " 80", "８０", "123456", "", "-1"],
+    ids=["zero", "over", "letters", "space", "fullwidth", "six-digits", "empty", "negative"],
+)
+def test_parse_port_rejects_invalid(text: str) -> None:
+    with pytest.raises(InvalidInputError) as exc_info:
+        runtime.parse_port(text)
+
+    assert str(exc_info.value) == port_error(text)
+
+
+def test_max_port_matches_config() -> None:
+    from logbook.core import config
+
+    assert runtime.MAX_PORT == config.MAX_PORT

@@ -326,3 +326,66 @@ def test_matrix_mappings_are_read_only(seeded: Session) -> None:
         result.row_totals["payment"] = 0  # type: ignore[index]
     with pytest.raises(TypeError):
         result.col_totals["dev"] = 0  # type: ignore[index]
+
+
+# --- daily_project_minutes ---
+
+
+def test_daily_project_minutes_builds_day_by_project_grid(seeded: Session) -> None:
+    _log(seeded, "payment", "dev", 60, MON)
+    _log(seeded, "common", "meeting", 30, MON)
+    _log(seeded, "payment", "dev", 120, THU)
+    _log(seeded, "payment", "dev", 999, SUN_BEFORE)
+
+    result = services.daily_project_minutes(seeded, W40)
+
+    assert isinstance(result, services.DailyProjectResult)
+    assert result.week == W40
+    assert result.days == tuple(W40.days())
+    assert len(result.days) == 7
+    assert result.projects == ("payment", "common")
+    assert dict(result.cells) == {(MON, "payment"): 60, (MON, "common"): 30, (THU, "payment"): 120}
+    assert result.day_totals[TUE] == 0
+    assert result.day_totals[MON] == 90
+    assert set(result.day_totals) == set(W40.days())
+    assert result.total_minutes == 210
+
+
+def test_daily_project_minutes_orders_ties_by_slug(seeded: Session) -> None:
+    _log(seeded, "search", "dev", 60, MON)
+    _log(seeded, "payment", "dev", 60, TUE)
+
+    result = services.daily_project_minutes(seeded, W40)
+
+    assert result.projects == ("payment", "search")
+
+
+def test_daily_project_minutes_empty_week(seeded: Session) -> None:
+    result = services.daily_project_minutes(seeded, W40)
+
+    assert result.projects == ()
+    assert dict(result.cells) == {}
+    assert result.total_minutes == 0
+    assert list(result.day_totals.values()) == [0] * 7
+
+
+def test_daily_project_minutes_respects_sunday_week(seeded: Session) -> None:
+    _log(seeded, "payment", "dev", 60, SUN_BEFORE)
+    _log(seeded, "payment", "dev", 30, SAT)
+    _log(seeded, "payment", "dev", 999, SUN)
+
+    result = services.daily_project_minutes(seeded, W40_SUNDAY)
+
+    assert result.days[0] == SUN_BEFORE
+    assert result.days[-1] == SAT
+    assert result.total_minutes == 90
+
+
+def test_daily_project_minutes_includes_archived_project(seeded: Session) -> None:
+    _log(seeded, "search", "dev", 45, MON)
+    services.archive_project(seeded, "search")
+
+    result = services.daily_project_minutes(seeded, W40)
+
+    assert result.projects == ("search",)
+    assert result.total_minutes == 45

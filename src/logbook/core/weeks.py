@@ -5,7 +5,7 @@
 
 import re
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal, get_args
 
 from logbook.core.errors import InvalidInputError
@@ -109,6 +109,29 @@ def _month_day(d: date) -> str:
 def day_label(d: date) -> str:
     """'09-28 (월)' 형식의 날짜·요일 표기."""
     return f"{_month_day(d)} ({_WEEKDAY_INITIALS[d.weekday()]})"
+
+
+def full_day(d: date) -> str:
+    """연도를 붙인 날짜·요일 표기: '2026-10-01 (목)'."""
+    return f"{d.year:04d}-{day_label(d)}"
+
+
+def total_label(day: date, today: date) -> str:
+    """누적 합계의 날짜 표기: 오늘이면 '오늘', 아니면 'MM-DD'(예: '09-30')."""
+    if day == today:
+        return "오늘"
+    return f"{day.month:02d}-{day.day:02d}"
+
+
+def clock_label(moment: datetime, today: date) -> str:
+    """표시 시각: 오늘이면 '09:30', 아니면 '09-30 (수) 22:10'.
+
+    moment는 호출자가 이미 로컬 시간대로 바꾼 값이다(x.astimezone(now.tzinfo)).
+    """
+    time_text = f"{moment.hour:02d}:{moment.minute:02d}"
+    if moment.date() == today:
+        return time_text
+    return f"{day_label(moment.date())} {time_text}"
 
 
 def week_heading(week: Week) -> str:

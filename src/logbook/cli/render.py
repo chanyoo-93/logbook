@@ -3,10 +3,12 @@
 rich와 core 모델은 CLI 시작 시간을 줄이려고 함수 안이나 TYPE_CHECKING에서만 import한다.
 """
 
-from datetime import date, datetime
 from typing import TYPE_CHECKING
 
 from logbook.core.platform import symbol
+from logbook.core.weeks import clock_label as clock_label
+from logbook.core.weeks import full_day as full_day
+from logbook.core.weeks import total_label as total_label
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -72,13 +74,6 @@ def worklog_line(log: "WorkLog") -> "Text":
     return _summary(log)
 
 
-def full_day(d: date) -> str:
-    """연도를 붙인 날짜·요일 표기: '2026-10-01 (목)'."""
-    from logbook.core.weeks import day_label
-
-    return f"{d.year:04d}-{day_label(d)}"
-
-
 def worklog_record(log: "WorkLog") -> "Text":
     """연도를 붙인 기록 한 줄 요약.
 
@@ -135,13 +130,6 @@ def worklog_lines(logs: "Sequence[WorkLog]") -> "list[Text]":
         )
         for log in logs
     ]
-
-
-def total_label(day: date, today: date) -> str:
-    """누적 합계의 날짜 표기: 오늘이면 '오늘', 아니면 'MM-DD'(예: '09-30')."""
-    if day == today:
-        return "오늘"
-    return f"{day.month:02d}-{day.day:02d}"
 
 
 def new_table() -> "Table":
@@ -264,19 +252,6 @@ def by_table(result: "StatsResult") -> "Table":
             percent(row.minutes, result.total_minutes),
         )
     return table
-
-
-def clock_label(moment: datetime, today: date) -> str:
-    """표시 시각: 오늘이면 '09:30', 아니면 '09-30 (수) 22:10'.
-
-    moment는 호출자가 이미 로컬 시간대로 바꾼 값이다(x.astimezone(now.tzinfo)).
-    """
-    from logbook.core.weeks import day_label
-
-    time_text = f"{moment.hour:02d}:{moment.minute:02d}"
-    if moment.date() == today:
-        return time_text
-    return f"{day_label(moment.date())} {time_text}"
 
 
 def _scope(slug: str, category: str | None) -> "Text":

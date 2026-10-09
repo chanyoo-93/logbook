@@ -1,13 +1,14 @@
 """태스크(할 일) 생성·조회·목록·수정·상태 변경과 실제 공수 집계 유스케이스."""
 
 from collections.abc import Callable, Collection
-from datetime import date
+from datetime import date, datetime, time, timedelta, tzinfo
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 
 from logbook.core.errors import InvalidInputError
+from logbook.core.ids import MAX_ID
 from logbook.core.models import Project, Task, TaskStatus, WorkLog, utcnow
 from logbook.core.services._shared import (
     check_category,
@@ -213,10 +214,13 @@ def _checked_category(category: str | None, allowed: Collection[str] | None) -> 
 
 
 def _checked_estimate(estimate_minutes: int | None) -> int | None:
-    # 태스크는 여러 날에 걸칠 수 있으므로 상한은 두지 않는다.
+    # 태스크는 여러 날에 걸칠 수 있어 하루 상한은 없다. SQLite INTEGER를 넘는 값만 막는다.
     if estimate_minutes is None:
         return None
-    return check_positive_minutes(estimate_minutes, "예상 공수는")
+    minutes = check_positive_minutes(estimate_minutes, "예상 공수는")
+    if minutes > MAX_ID:
+        raise InvalidInputError("예상 공수가 너무 큽니다. 더 작은 값으로 입력하세요.")
+    return minutes
 
 
 def _week_label(week: Week | None) -> str | None:
@@ -229,3 +233,19 @@ def _week_label(week: Week | None) -> str | None:
 
 def _checked_due_date(due_date: date | None) -> date | None:
     return None if due_date is None else check_date(due_date, "마감일은")
+
+
+def _local_midnight(day: date, tz: tzinfo) -> datetime:
+    return datetime.combine(day, time.min, tzinfo=tz)
+
+
+def count_done_tasks(s: Session, week: Week, *, tz: tzinfo) -> int:
+    """완료 시각의 로컬 날짜(tz 기준)가 주 범위 안인 완료 태스크 수(보관 프로젝트 포함)."""
+    first = _local_midnight(week.start, tz)
+    after = _local_midnight(week.end + timedelta(days=1), tz)
+    count = s.scalar(
+        select(func.count(Task.id)).where(
+            Task.status == TaskStatus.DONE, Task.done_at >= first, Task.done_at < after
+        )
+    )
+    return count or 0

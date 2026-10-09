@@ -1,0 +1,36 @@
+<section id="recent" class="panel" aria-labelledby="recent-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+  <div class="panel__head">
+    <h2 id="recent-title" class="panel__title">최근 기록</h2>
+    <a class="panel__link" href="/logs">전체 기록 보기</a>
+  </div>
+{% if rows %}
+  <div class="table-wrap">
+    <table class="grid grid--logs">
+      <thead>
+        <tr>
+          <th scope="col" class="num">ID</th>
+          <th scope="col">날짜</th>
+          <th scope="col">프로젝트/카테고리</th>
+          <th scope="col" class="num">시간</th>
+          <th scope="col">메모</th>
+          <th scope="col">태스크</th>
+        </tr>
+      </thead>
+      <tbody>
+{% for row in rows %}
+        <tr id="log-{{ row.id }}">
+          <td class="num">{{ row.id }}</td>
+          <td class="nowrap">{{ row.day }}</td>
+          <td class="nowrap">{{ row.project }}/{{ row.category }}</td>
+          <td class="num nowrap">{{ row.duration }}</td>
+          <td class="grid__note">{{ row.note }}</td>
+          <td class="nowrap">{{ row.task }}</td>
+        </tr>
+{% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p class="empty">기록이 없습니다.</p>
+{% endif %}
+</section>

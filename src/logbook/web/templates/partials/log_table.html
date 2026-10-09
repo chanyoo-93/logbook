@@ -1,0 +1,38 @@
+<section id="log-table" class="panel" aria-labelledby="log-table-title">
+  <div class="panel__head">
+    <h2 id="log-table-title" class="panel__title" tabindex="-1">{{ table.heading }}</h2>
+  </div>
+{% if table.message %}
+  <p id="log-result" class="form-message{% if table.is_error %} form-message--error{% endif %}" role="{{ 'alert' if table.is_error else 'status' }}">{{ table.message }}</p>
+{% endif %}
+{% if table.rows %}
+  <div class="table-wrap">
+    <table class="grid grid--logs grid--records">
+      <thead>
+        <tr>
+          <th scope="col" class="num">ID</th>
+          <th scope="col">날짜</th>
+          <th scope="col">프로젝트</th>
+          <th scope="col">카테고리</th>
+          <th scope="col" class="num">시간</th>
+          <th scope="col">메모</th>
+          <th scope="col">태스크</th>
+          <th scope="col">동작</th>
+        </tr>
+      </thead>
+      <tbody>
+{% for row in table.rows %}
+{% include "partials/log_row.html" %}
+{% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <td id="log-total" colspan="8">합계 {{ table.total }} / 기록 {{ table.count }}건</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+{% else %}
+  <p class="empty">기록이 없습니다.</p>
+{% endif %}
+</section>

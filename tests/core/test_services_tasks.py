@@ -1,6 +1,6 @@
 """logbook.core.services.tasks 단위 테스트."""
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta, timezone
 from typing import Any
 
 import pytest
@@ -100,6 +100,27 @@ def test_create_blank_title_rejected(seeded: Session, title: str) -> None:
 def test_create_invalid_estimate_rejected(seeded: Session, estimate: object) -> None:
     with pytest.raises(InvalidInputError, match="예상 공수"):
         _create(seeded, estimate_minutes=estimate)
+
+
+TOO_LARGE_ESTIMATE = 2**63
+
+
+def test_create_estimate_over_sqlite_integer_rejected(seeded: Session) -> None:
+    with pytest.raises(InvalidInputError, match="예상 공수가 너무 큽니다"):
+        _create(seeded, estimate_minutes=TOO_LARGE_ESTIMATE)
+
+
+def test_update_estimate_over_sqlite_integer_rejected(seeded: Session) -> None:
+    task = _create(seeded, estimate_minutes=60)
+
+    with pytest.raises(InvalidInputError, match="예상 공수가 너무 큽니다"):
+        services.update_task(seeded, task.id, estimate_minutes=TOO_LARGE_ESTIMATE)
+
+    assert task.estimate_minutes == 60
+
+
+def test_estimate_accepts_sqlite_integer_maximum(seeded: Session) -> None:
+    assert _create(seeded, estimate_minutes=2**63 - 1).estimate_minutes == 2**63 - 1
 
 
 def test_create_estimate_has_no_upper_limit(seeded: Session) -> None:
@@ -728,3 +749,58 @@ def test_carry_tasks_from_week_53_goes_to_next_year(seeded: Session) -> None:
 
     assert _ids(moved) == [task.id]
     assert task.planned_week == "2027-W01"
+
+
+# --- count_done_tasks ---
+
+KST = timezone(timedelta(hours=9))
+
+
+def _done(s: Session, done_at: datetime | None, project: str = "payment", **fields: Any) -> Task:
+    status = fields.pop("status", TaskStatus.DONE)
+    task = Task(
+        project=services.get_project(s, project),
+        title="완료 태스크",
+        status=status,
+        done_at=done_at,
+        **fields,
+    )
+    s.add(task)
+    s.flush()
+    return task
+
+
+def test_count_done_tasks_counts_only_done_tasks_in_week(seeded: Session) -> None:
+    _done(seeded, datetime(2026, 9, 29, 3, tzinfo=UTC))
+    _done(seeded, datetime(2026, 10, 3, 3, tzinfo=UTC))
+    _done(seeded, datetime(2026, 9, 21, 3, tzinfo=UTC))  # 앞 주
+    _done(seeded, datetime(2026, 10, 12, 3, tzinfo=UTC))  # 뒤 주
+    _done(seeded, None, status=TaskStatus.TODO)
+    services.archive_project(seeded, "search")
+    _done(seeded, datetime(2026, 10, 1, 3, tzinfo=UTC), project="search")  # 보관 프로젝트
+
+    assert services.count_done_tasks(seeded, W40, tz=UTC) == 3
+
+
+def test_count_done_tasks_uses_local_date_of_tz(seeded: Session) -> None:
+    # UTC 09-27 15:30 = KST 09-28 00:30
+    _done(seeded, datetime(2026, 9, 27, 15, 30, tzinfo=UTC))
+
+    assert services.count_done_tasks(seeded, W40, tz=KST) == 1
+    assert services.count_done_tasks(seeded, W40, tz=UTC) == 0
+
+
+@pytest.mark.parametrize(
+    ("done_at", "expected"),
+    [
+        (datetime(2026, 9, 28, 0, 0, tzinfo=KST), 1),  # week.start 00:00(로컬)은 센다
+        (datetime(2026, 10, 5, 0, 0, tzinfo=KST), 0),  # week.end + 1일 00:00은 세지 않는다
+    ],
+    ids=["start-midnight", "next-week-midnight"],
+)
+def test_count_done_tasks_week_boundaries_are_local_midnight(
+    seeded: Session, done_at: datetime, expected: int
+) -> None:
+    _done(seeded, done_at)
+
+    assert services.count_done_tasks(seeded, W40, tz=KST) == expected
