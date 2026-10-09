@@ -158,3 +158,38 @@ def json_attr(markup: str, element_id: str, name: str) -> object:
     value = by_id(markup, element_id).attrs.get(name)
     assert value is not None, f"'{element_id}' 요소에 '{name}' 속성이 없습니다"
     return json.loads(value)
+
+
+def select_options(markup: str, name: str) -> list[tuple[str, str, bool]]:
+    """name 속성이 name인 select의 (value, 표시 글, 선택됨) 목록."""
+    result: list[tuple[str, str, bool]] = []
+    in_select = False
+    for element in parse_html(markup):
+        if element.tag == "select":
+            in_select = element.attrs.get("name") == name
+        elif in_select and element.tag == "option":
+            result.append((str(element.attrs["value"]), element.text, "selected" in element.attrs))
+    return result
+
+
+def named_input(markup: str, name: str) -> Element:
+    """name 속성이 name인 input·select 요소. 없으면 AssertionError."""
+    for element in parse_html(markup):
+        if element.tag in {"input", "select"} and element.attrs.get("name") == name:
+            return element
+    raise AssertionError(f"name이 '{name}'인 입력이 없습니다")
+
+
+def row_ids(markup: str) -> list[str]:
+    """id가 'log-숫자'인 tr 요소의 id 목록(문서 순서)."""
+    ids = [str(e.attrs.get("id")) for e in parse_html(markup) if e.tag == "tr"]
+    return [i for i in ids if i.startswith("log-")]
+
+
+def week_links(markup: str) -> list[Element]:
+    """주차 이동 링크(href가 /logs?week=로 시작하는 a 요소)."""
+    return [
+        e
+        for e in parse_html(markup)
+        if e.tag == "a" and str(e.attrs.get("href", "")).startswith("/logs?week=")
+    ]

@@ -1027,7 +1027,7 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
 | test_logs_edit | `hold_lock` 중 PATCH·DELETE(`BUSY_TIMEOUT_SECONDS` 0.05, 새 엔진) | 503 `busy`, DB 그대로 |
 | test_logs_edit | W39 기록을 `week=2026-W39` 필터와 함께 PATCH | W39 표 조각과 OOB `#week-nav`(W39) |
 
-- [ ] RED → GREEN → 커밋 `feat: 기록 페이지 필터·인라인 수정·삭제 추가`
+- [x] RED → GREEN → 커밋 `feat: 기록 페이지 필터·인라인 수정·삭제 추가`
 
 ---
 

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}기록{% endblock %}
+{% block content %}
+{% include "partials/log_filters.html" %}
+{% if table %}
+{% include "partials/log_table.html" %}
+{% else %}
+<section id="log-table" class="panel" aria-label="기록 표">
+  <p class="form-message form-message--error" role="alert">{{ error }}</p>
+</section>
+{% endif %}
+{% endblock %}
