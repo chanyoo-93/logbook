@@ -592,7 +592,7 @@ def timer_json(timer: ActiveTimer, now: datetime) -> dict[str, object]
 | 이미 진행 중일 때 start | 400 core 문구 |
 | clock을 85분 옮긴 뒤 stop(본문 없음) | 200, `log.minutes == 85`, `log.started_at`·`ended_at`, `elapsed_minutes == 85`, 타이머 없어짐 |
 | stop `{"note": "리뷰 반영", "round": 15}` | 메모 `… — 리뷰 반영`, 90분 |
-| stop `{"round": 0}` / 타이머 없음 / 30초 뒤 stop | 400 core 반올림 문구 / 404 `NO_TIMER_MESSAGE` / 400 1분 문구, 타이머 남음 |
+| stop `{"round": 0}` / 타이머 없음 / 29초 뒤 stop(30초 이상은 1분으로 올림) | 400 core 반올림 문구 / 404 `NO_TIMER_MESSAGE` / 400 1분 문구, 타이머 남음 |
 
 - [x] RED → GREEN → 커밋 `feat: 태스크·보고서·타이머 JSON API 추가`
 
@@ -931,7 +931,7 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
 | test_timer_panel | GET `/timer` 없음 / 진행 중 | 안내 문구, `#timer-elapsed` 없음 / `#timer-elapsed`에 `hx-trigger="every 60s"`, 정지 버튼에 `hx-disabled-elt` |
 | test_timer_panel | GET `/timer/elapsed` 진행 중(85분) / 타이머 없음 | `경과 1h 25m` span / 빈 패널과 `HX-Retarget: #timer`·`HX-Reswap: outerHTML` |
 | test_timer_panel | 85분 뒤 POST `/timer/stop` | 200, 결과 줄 정확히 일치, 기록 날짜는 시작한 날, 타이머 없음, OOB 두 개 |
-| test_timer_panel | 30초 뒤 stop / 타이머 없음 | 400·1분 문구, 패널은 진행 중 상태 그대로 / 404·`NO_TIMER_MESSAGE`, 빈 패널 |
+| test_timer_panel | 29초 뒤 stop(30초 이상은 1분으로 올림) / 타이머 없음 | 400·1분 문구, 패널은 진행 중 상태 그대로 / 404·`NO_TIMER_MESSAGE`, 빈 패널 |
 
 - [x] RED → GREEN → 커밋 `feat: 대시보드 빠른 기록 폼과 타이머 정지 추가`
 
