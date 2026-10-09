@@ -141,6 +141,25 @@ def parse_html(markup: str) -> list[Element]:
     return collector.elements
 
 
+def inline_code_violations(markup: str) -> list[str]:
+    """CSP가 막는 인라인 코드를 태그 속성만 보고 찾는다(본문 텍스트는 보지 않는다).
+
+    대상: style 속성, on 이벤트 속성, hx-on*, javascript: 값, <style>, src 없는 <script>.
+    """
+    found: list[str] = []
+    for element in parse_html(markup):
+        if element.tag == "style":
+            found.append("<style>")
+        if element.tag == "script" and not element.attrs.get("src"):
+            found.append("<script> without src")
+        for name, value in element.attrs.items():
+            if name == "style" or name.startswith(("on", "hx-on")):
+                found.append(f"<{element.tag} {name}>")
+            elif (value or "").strip().lower().startswith("javascript:"):
+                found.append(f"<{element.tag} {name}=javascript:>")
+    return found
+
+
 def by_id(markup: str, element_id: str) -> Element:
     """id가 element_id인 요소. 없으면 AssertionError."""
     for element in parse_html(markup):

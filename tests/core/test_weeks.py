@@ -385,6 +385,13 @@ def test_clock_label_adds_date_for_other_days() -> None:
     assert clock_label(datetime(2026, 9, 30, 22, 10), today) == "09-30 (수) 22:10"
 
 
+def test_clock_label_midnight_boundary() -> None:
+    today = date(2026, 10, 1)
+
+    assert clock_label(datetime(2026, 10, 1, 0, 5), today) == "00:05"
+    assert clock_label(datetime(2026, 9, 30, 23, 59), today) == "09-30 (수) 23:59"
+
+
 def test_total_label_says_today_or_month_day() -> None:
     today = date(2026, 10, 1)
 

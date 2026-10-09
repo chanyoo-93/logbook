@@ -24,9 +24,9 @@ def test_serves_api_over_real_socket(web_ctx: WebContext) -> None:
     thread.start()
     try:
         deadline = time.monotonic() + STARTUP_TIMEOUT_SECONDS
-        while not server.started and time.monotonic() < deadline:
+        while not server.started and thread.is_alive() and time.monotonic() < deadline:
             time.sleep(0.05)
-        assert server.started, "서버가 시작되지 않았습니다"
+        assert server.started, "서버가 시작되지 않았습니다(스레드가 먼저 끝났거나 시간 초과)"
 
         response = httpx2.get(f"http://127.0.0.1:{port}/api/stats", timeout=5)
     finally:

@@ -767,3 +767,19 @@ def test_count_done_tasks_uses_local_date_of_tz(seeded: Session) -> None:
 
     assert services.count_done_tasks(seeded, W40, tz=KST) == 1
     assert services.count_done_tasks(seeded, W40, tz=UTC) == 0
+
+
+@pytest.mark.parametrize(
+    ("done_at", "expected"),
+    [
+        (datetime(2026, 9, 28, 0, 0, tzinfo=KST), 1),  # week.start 00:00(로컬)은 센다
+        (datetime(2026, 10, 5, 0, 0, tzinfo=KST), 0),  # week.end + 1일 00:00은 세지 않는다
+    ],
+    ids=["start-midnight", "next-week-midnight"],
+)
+def test_count_done_tasks_week_boundaries_are_local_midnight(
+    seeded: Session, done_at: datetime, expected: int
+) -> None:
+    _done(seeded, done_at)
+
+    assert services.count_done_tasks(seeded, W40, tz=KST) == expected

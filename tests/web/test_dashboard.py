@@ -1,7 +1,6 @@
 """대시보드 GET / 테스트 (W40 = 09-28 ~ 10-04, 오늘 = 2026-10-01 목요일 09:30 +09:00)."""
 
 import dataclasses
-import re
 from datetime import UTC, date, datetime
 from pathlib import Path
 
@@ -24,6 +23,7 @@ from tests.web.helpers import (
     add_task,
     all_by_tag,
     by_id,
+    inline_code_violations,
     json_attr,
 )
 
@@ -312,11 +312,31 @@ def test_dashboard_has_no_inline_code(client: TestClient, web_engine: Engine, cl
     assert scripts
     assert all(script.attrs.get("src") for script in scripts)
     assert all(script.text == "" for script in scripts)
-    assert "<style" not in html
-    assert not re.search(r"\sstyle\s*=", html, re.IGNORECASE)
-    assert not re.search(r"\son[a-z]+\s*=", html, re.IGNORECASE)
-    assert "hx-on" not in html
-    assert "javascript:" not in html
+    assert inline_code_violations(html) == []
+
+
+def test_inline_code_check_ignores_note_text(client: TestClient, web_engine: Engine) -> None:
+    note = 'x onclick=alert(1) style="a" hx-on:click=y javascript:z'
+    add_log(web_engine, minutes=10, note=note, day=W40_THURSDAY)
+    html = _get(client)
+
+    assert "onclick=alert(1)" in html  # 메모 본문이 화면에 있어도
+    assert inline_code_violations(html) == []  # 태그 속성만 보므로 오탐하지 않는다
+
+
+def test_inline_code_violations_finds_tag_attributes() -> None:
+    markup = (
+        '<p style="a" onclick="x" hx-on:click="y"></p>'
+        '<a href="javascript:1">l</a><script>1</script>'
+    )
+
+    assert inline_code_violations(markup) == [
+        "<p style>",
+        "<p onclick>",
+        "<p hx-on:click>",
+        "<a href=javascript:>",
+        "<script> without src",
+    ]
 
 
 def test_dashboard_loads_local_deferred_scripts_in_order(client: TestClient) -> None:

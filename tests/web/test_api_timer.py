@@ -152,6 +152,34 @@ def test_stop_under_a_minute_keeps_timer(
     assert _has_timer(web_engine)
 
 
+def test_stop_at_thirty_seconds_rounds_up_to_one_minute(
+    client: TestClient, web_engine: Engine, clock: Clock
+) -> None:
+    add_project(web_engine, "payment", "결제")
+    client.post("/api/timer/start", json=START_BODY)
+    clock.advance(seconds=30)
+
+    response = client.post("/api/timer/stop")
+
+    assert response.status_code == 200
+    assert response.json()["data"]["log"]["minutes"] == 1
+    assert not _has_timer(web_engine)
+
+
+def test_stop_rejects_round_above_sixty_with_core_message(
+    client: TestClient, web_engine: Engine, clock: Clock
+) -> None:
+    add_project(web_engine, "payment", "결제")
+    client.post("/api/timer/start", json=START_BODY)
+    clock.advance(minutes=10)
+
+    response = client.post("/api/timer/stop", json={"round": 61})
+
+    assert response.status_code == 400
+    assert "반올림 단위는 1~60분" in _error(response.json())["message"]
+    assert _has_timer(web_engine)
+
+
 @pytest.mark.parametrize("body", [{"extra": 1}, {"note": 1}, {"round": "15"}])
 def test_stop_rejects_bad_body(client: TestClient, body: dict[str, object]) -> None:
     response = client.post("/api/timer/stop", json=body)

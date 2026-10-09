@@ -225,13 +225,26 @@ def test_serve_reports_port_in_use(
     os.replace(initialized, tmp_path / "moved.db")
 
 
-def wait_until_ready(url: str, proc: "subprocess.Popen[bytes]") -> httpx2.Response:
-    """/api/stats가 200이 될 때까지 폴링한다. 서버가 먼저 죽으면 실패로 끝낸다."""
+def _with_log(message: str, log_path: Path | None) -> str:
+    """실패 메시지에 서버가 남긴 출력(stdout·stderr)을 붙인다."""
+    if log_path is None or not log_path.exists():
+        return message
+    output = log_path.read_text(encoding="utf-8", errors="replace").strip()
+    return "\n".join([message, "--- 서버 출력 ---", output or "(없음)"])
+
+
+def wait_until_ready(
+    url: str, proc: "subprocess.Popen[bytes]", log_path: Path | None = None
+) -> httpx2.Response:
+    """/api/stats가 200이 될 때까지 폴링한다. 서버가 먼저 죽으면 실패로 끝낸다.
+
+    log_path가 있으면 실패 메시지에 그 파일(서버 출력)의 내용을 붙인다.
+    """
     deadline = time.monotonic() + STARTUP_TIMEOUT_SECONDS
     last_error = ""
     while time.monotonic() < deadline:
         if proc.poll() is not None:
-            pytest.fail(f"서버 프로세스가 먼저 끝났습니다: {proc.returncode}")
+            pytest.fail(_with_log(f"서버 프로세스가 먼저 끝났습니다: {proc.returncode}", log_path))
         try:
             response = httpx2.get(url, timeout=2)
         except httpx2.HTTPError as error:
@@ -242,7 +255,11 @@ def wait_until_ready(url: str, proc: "subprocess.Popen[bytes]") -> httpx2.Respon
             return response
         last_error = f"status {response.status_code}"
         time.sleep(0.2)
-    pytest.fail(f"서버가 {STARTUP_TIMEOUT_SECONDS}초 안에 응답하지 않았습니다: {last_error}")
+    pytest.fail(
+        _with_log(
+            f"서버가 {STARTUP_TIMEOUT_SECONDS}초 안에 응답하지 않았습니다: {last_error}", log_path
+        )
+    )
 
 
 @pytest.fixture
@@ -254,11 +271,25 @@ def serve_env(tmp_path: Path) -> dict[str, str]:
 
 
 def spawn_serve(
-    port: int, env: dict[str, str], cwd: Path, *, capture: bool
+    port: int, env: dict[str, str], cwd: Path, *, capture: bool, log_path: Path | None = None
 ) -> "subprocess.Popen[bytes]":
+    """서버를 띄운다. capture면 출력을 파이프로 받고, log_path가 있으면 그 파일로 받는다."""
+    command = [sys.executable, "-c", RUN_LB_CODE, "serve", "--port", str(port)]
+    if log_path is not None:
+        # 자식이 핸들을 복제해 쓰므로 부모는 Popen 직후 닫아도 된다.
+        with log_path.open("wb") as log:
+            return subprocess.Popen(
+                command,
+                shell=False,
+                stdin=subprocess.DEVNULL,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                cwd=cwd,
+                env=env,
+            )
     stream = subprocess.PIPE if capture else subprocess.DEVNULL
     return subprocess.Popen(
-        [sys.executable, "-c", RUN_LB_CODE, "serve", "--port", str(port)],
+        command,
         shell=False,
         stdin=subprocess.DEVNULL,
         stdout=stream,
@@ -292,10 +323,11 @@ def test_real_server_process_answers_api(
     tmp_path: Path, serve_env: dict[str, str], spawned: list["subprocess.Popen[bytes]"]
 ) -> None:
     port = free_port()
-    proc = spawn_serve(port, serve_env, tmp_path, capture=False)
+    log_path = tmp_path / "serve-output.log"
+    proc = spawn_serve(port, serve_env, tmp_path, capture=False, log_path=log_path)
     spawned.append(proc)
 
-    response = wait_until_ready(f"http://127.0.0.1:{port}/api/stats", proc)
+    response = wait_until_ready(f"http://127.0.0.1:{port}/api/stats", proc, log_path)
 
     assert response.json()["ok"] is True
     assert response.headers["x-content-type-options"] == "nosniff"
