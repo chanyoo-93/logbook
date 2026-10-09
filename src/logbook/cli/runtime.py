@@ -57,6 +57,9 @@ DueOpt = Annotated[str | None, typer.Option("--due", help="마감일: today, 10-
 MAX_ROUND_MINUTES = 60
 # ASCII 숫자 1~2자리만 받는다(\d는 아랍 숫자·전각 숫자도 받는다).
 _ROUND_PATTERN = re.compile(r"[0-9]{1,2}")
+# core.config.MAX_PORT와 같은 값이다(테스트가 확인). config를 import하지 않으려고 따로 둔다.
+MAX_PORT = 65535
+_PORT_PATTERN = re.compile(r"[0-9]{1,5}")
 _UTF8_BOM = b"\xef\xbb\xbf"
 _YES_ANSWERS = frozenset({"y", "yes", "ㅛ", "ㅛㄷㄴ"})  # 한글 자판 상태의 y, yes
 
@@ -98,6 +101,17 @@ def parse_round(text: str) -> int:
         raise InvalidInputError(
             f"반올림 단위가 올바르지 않습니다: '{text}'. "
             f"1~{MAX_ROUND_MINUTES} 사이의 분 단위 숫자로 입력하세요 (예: --round 15)."
+        )
+    return value
+
+
+def parse_port(text: str) -> int:
+    """'--port' 값: 1~MAX_PORT. ASCII 숫자 1~5자리만 받는다."""
+    value = int(text) if _PORT_PATTERN.fullmatch(text) else 0
+    if not 1 <= value <= MAX_PORT:
+        raise InvalidInputError(
+            f"포트가 올바르지 않습니다: '{text}'. "
+            f"1~{MAX_PORT} 사이의 숫자로 입력하세요 (예: --port 8765)."
         )
     return value
 

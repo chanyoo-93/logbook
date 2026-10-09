@@ -15,6 +15,7 @@ from logbook.cli.commands import (
     plan,
     project,
     report,
+    serve,
     stats,
     task,
     timer,
@@ -42,6 +43,7 @@ COMMAND_MODULES: tuple[CommandModule, ...] = (
     timer,
     stats,
     report,
+    serve,
     data,
 )
 

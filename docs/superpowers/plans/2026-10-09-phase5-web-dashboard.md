@@ -679,7 +679,7 @@ def serve(
 - 첫 테스트는 stdout·stderr를 `subprocess.DEVNULL`로 준다. 두 번째는 출력을 읽어야 하므로 `PIPE`와 `communicate(timeout=10)`를 쓴다(서버 출력은 몇 줄뿐이다).
 - Ctrl+C 테스트는 `@pytest.mark.skipif(sys.platform == "win32", …)`다. Windows는 자식에게만 Ctrl+C를 보내기 어렵다(`CTRL_C_EVENT`는 같은 콘솔의 모든 프로세스에 간다). Windows의 Ctrl+C 동작은 Task 5-9 수동 확인으로 본다.
 
-- [ ] RED → GREEN → 커밋 `feat: lb serve 웹 대시보드 실행 명령 추가`
+- [x] RED → GREEN → 커밋 `feat: lb serve 웹 대시보드 실행 명령 추가`
 
 ---
 
