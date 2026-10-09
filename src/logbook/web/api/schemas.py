@@ -13,6 +13,8 @@ class Body(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
 
+# 본문의 project·category·date는 빈 문자열이어도 그대로 서비스에 넘긴다.
+# 쿼리와 달리 본문은 명시한 값이라 core가 검증해 오류를 낸다.
 class LogCreate(Body):
     duration: str
     note: str
@@ -41,17 +43,14 @@ def optional_text(value: str | None) -> str | None:
     return stripped or None
 
 
-def changed_fields(body: Body, *, nullable: frozenset[str]) -> dict[str, object]:
-    """보낸 키와 값. nullable에 없는 키가 null이면 NOT_NULLABLE을 낸다.
+def changed_fields(body: Body, *, nullable: frozenset[str]) -> frozenset[str]:
+    """보낸 키 집합. nullable에 없는 키가 null이면 NOT_NULLABLE을 낸다.
 
-    하나도 보내지 않았으면 빈 dict를 돌려주고, 그때의 문구는 호출자가 정한다.
+    값은 호출자가 모델 속성(body.xxx)에서 읽는다(이미 타입이 맞다).
+    하나도 보내지 않았으면 빈 집합을 돌려주고, 그때의 문구는 호출자가 정한다.
     """
-    fields: dict[str, object] = {}
+    sent = body.model_fields_set
     for name in type(body).model_fields:
-        if name not in body.model_fields_set:
-            continue
-        value = getattr(body, name)
-        if value is None and name not in nullable:
+        if name in sent and name not in nullable and getattr(body, name) is None:
             raise InvalidInputError(NOT_NULLABLE.format(field=name))
-        fields[name] = value
-    return fields
+    return frozenset(sent)

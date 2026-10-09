@@ -44,18 +44,19 @@ def list_logs(
             category=optional_text(category),
         )
         data = [worklog_json(log) for log in logs]
-    total = sum(int(str(item["minutes"])) for item in data)
+        total = sum(log.minutes for log in logs)
     meta = {**week_meta(the_week), "count": len(data), "total_minutes": total}
     return ok(data, meta=meta)
 
 
 @router.post("/logs")
 def create_log(body: LogCreate, ctx: Ctx) -> JSONResponse:
+    today = ctx.today()  # 자정 경계에서 날짜가 갈리지 않게 한 번만 받는다
     minutes = parse_duration(body.duration)
     task_id = check_id(body.task_id, TASK_LABEL) if body.task_id is not None else None
     work_date = parse_date(
         body.date if body.date is not None else "today",
-        today=ctx.today(),
+        today=today,
         week_start=ctx.cfg.week_start,
     )
     with ctx.session() as s:
@@ -69,7 +70,7 @@ def create_log(body: LogCreate, ctx: Ctx) -> JSONResponse:
             task_id=task_id,
             allowed_categories=tuple(ctx.cfg.categories),
             default_project=ctx.cfg.default_project,
-            today=ctx.today(),
+            today=today,
         )
         data = {
             "log": worklog_json(log),
@@ -81,27 +82,24 @@ def create_log(body: LogCreate, ctx: Ctx) -> JSONResponse:
 @router.patch("/logs/{log_id}")
 def update_log(log_id: str, body: LogPatch, ctx: Ctx) -> JSONResponse:
     the_id = parse_id(log_id)
-    fields = changed_fields(body, nullable=frozenset({"task_id"}))
-    if not fields:
+    sent = changed_fields(body, nullable=frozenset({"task_id"}))
+    if not sent:
         raise InvalidInputError(NOTHING_TO_CHANGE)
-    duration = fields.get("duration")
-    work_date = fields.get("date")
-    task_id = fields.get("task_id")
     with ctx.session() as s:
         log = services.update_worklog(
             s,
             the_id,
-            minutes=parse_duration(str(duration)) if duration is not None else None,
-            note=_text(fields, "note"),
-            category=_text(fields, "category"),
-            project_slug=_text(fields, "project"),
+            minutes=parse_duration(body.duration) if body.duration is not None else None,
+            note=body.note,
+            category=body.category,
+            project_slug=body.project,
             work_date=(
-                parse_date(str(work_date), today=ctx.today(), week_start=ctx.cfg.week_start)
-                if work_date is not None
+                parse_date(body.date, today=ctx.today(), week_start=ctx.cfg.week_start)
+                if body.date is not None
                 else None
             ),
-            task_id=check_id(int(str(task_id)), TASK_LABEL) if task_id is not None else None,
-            clear_task="task_id" in fields and task_id is None,
+            task_id=check_id(body.task_id, TASK_LABEL) if body.task_id is not None else None,
+            clear_task="task_id" in sent and body.task_id is None,
             allowed_categories=tuple(ctx.cfg.categories),
         )
         data = {"log": worklog_json(log)}
@@ -114,8 +112,3 @@ def delete_log(log_id: str, ctx: Ctx) -> JSONResponse:
     with ctx.session() as s:
         services.delete_worklog(s, the_id)
     return ok({"id": the_id})
-
-
-def _text(fields: dict[str, object], name: str) -> str | None:
-    value = fields.get(name)
-    return None if value is None else str(value)
