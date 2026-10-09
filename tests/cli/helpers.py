@@ -33,7 +33,11 @@ FORBIDDEN_MODULES = (
     "logbook.core.models",
     "logbook.core.services",
     "fastapi",
+    "starlette",
+    "pydantic",
+    "python_multipart",
     "uvicorn",
+    "logbook.web",
     "jinja2",
     "pyperclip",
 )

@@ -425,7 +425,7 @@ def create_app(ctx: WebContext) -> FastAPI
 | test_layering | 새 인터프리터에서 `import logbook.web.app` | `logbook.cli`로 시작하는 모듈이 `sys.modules`에 없음 |
 | test_layering | `src/logbook/web/**/*.py`의 AST | `sqlalchemy` import는 `if TYPE_CHECKING:` 안에만 있음, `logbook.cli` import 없음 |
 
-- [ ] RED → GREEN → 커밋 `feat: 웹 대시보드 의존성과 보안·오류 처리 골격 추가`
+- [x] RED → GREEN → 커밋 `feat: 웹 대시보드 의존성과 보안·오류 처리 골격 추가`
 
 ---
 
