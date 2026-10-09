@@ -5,9 +5,7 @@
 <script src="/static/js/dashboard.js" defer></script>
 {% endblock %}
 {% block content %}
-<section id="quick-form" class="quick" aria-label="빠른 기록">
-  <p class="quick__hint">터미널에서 lb add로 기록할 수 있습니다.</p>
-</section>
+{% include "partials/quick_form.html" %}
 {% include "partials/summary.html" %}
 {% include "partials/timer.html" %}
 {% include "partials/recent.html" %}

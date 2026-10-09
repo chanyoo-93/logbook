@@ -184,7 +184,7 @@ main {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-1);
   min-height: 3.5rem;
   padding: var(--space-3) var(--space-4);
   background: var(--surface);
@@ -193,9 +193,65 @@ main {
   box-shadow: var(--shadow-raised);
 }
 
-.quick__hint {
-  color: var(--ink-muted);
+.quick__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  width: 100%;
+}
+
+.quick__field {
+  min-width: 0;
+}
+
+.quick__field--duration {
+  flex: 0 1 9rem;
+}
+
+.quick__field--note {
+  flex: 1 1 14rem;
+}
+
+.quick__field--project,
+.quick__field--category,
+.quick__field--task {
+  flex: 0 1 11rem;
+}
+
+.quick input,
+.quick select {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--ink-muted);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.quick input:hover,
+.quick select:hover {
+  border-color: var(--ink);
+}
+
+.quick input:focus-visible,
+.quick select:focus-visible {
+  border-color: var(--accent);
+}
+
+.form-message {
+  width: 100%;
+  margin-top: var(--space-2);
+  color: var(--ok);
   font-size: var(--text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.form-message--error {
+  color: var(--danger);
 }
 
 /* 구역 */
@@ -418,6 +474,18 @@ main {
 .timer--running {
   border-left: 4px solid var(--ok);
   color: var(--ink);
+}
+
+.timer .btn {
+  margin-left: auto;
+}
+
+.timer .form-message {
+  margin-top: 0;
+}
+
+.timer {
+  flex-wrap: wrap;
 }
 
 .timer__dot {

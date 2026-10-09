@@ -127,8 +127,11 @@ def test_dashboard_page_skeleton(client: TestClient) -> None:
     assert flash.attrs["role"] == "status"
     assert flash.attrs["aria-live"] == "polite"
     assert [by_id(html, name).tag for name in ("quick-form", "summary", "timer", "recent")] == [
-        "section"
-    ] * 4
+        "form",
+        "section",
+        "section",
+        "section",
+    ]
 
 
 def test_dashboard_sections_are_in_reading_order(client: TestClient) -> None:

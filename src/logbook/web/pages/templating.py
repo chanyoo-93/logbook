@@ -1,4 +1,4 @@
-"""화면 렌더링 도우미: Jinja2 환경, render(), is_htmx().
+"""화면 렌더링 도우미: Jinja2 환경, render(). is_htmx는 web.htmx에서 가져와 다시 내보낸다.
 
 환경은 항상 자동 이스케이프(`.html` 포함 모든 템플릿)와 StrictUndefined를 쓴다.
 Starlette 기본 환경의 select_autoescape()는 `.j2`를 이스케이프하지 않으므로 쓰지 않는다.
@@ -16,9 +16,7 @@ from starlette.templating import Jinja2Templates
 from logbook.core.duration import format_duration
 from logbook.core.weeks import week_heading, week_of
 from logbook.web.context import get_context
-
-HTMX_REQUEST_HEADER = "HX-Request"
-HTMX_HISTORY_RESTORE_HEADER = "HX-History-Restore-Request"
+from logbook.web.htmx import HTMX_HISTORY_RESTORE_HEADER, HTMX_REQUEST_HEADER, is_htmx
 
 
 def _environment() -> jinja2.Environment:
@@ -34,15 +32,6 @@ def _environment() -> jinja2.Environment:
 
 
 TEMPLATES = Jinja2Templates(env=_environment())
-
-
-def is_htmx(request: Request) -> bool:
-    """조각만 돌려줘야 하는 HTMX 요청인지.
-
-    뒤로 가기 복원 요청(HX-History-Restore-Request)에는 전체 페이지를 줘야 하므로 제외한다.
-    """
-    headers = request.headers
-    return bool(headers.get(HTMX_REQUEST_HEADER)) and HTMX_HISTORY_RESTORE_HEADER not in headers
 
 
 def _shared_context(request: Request) -> dict[str, Any]:
@@ -65,3 +54,6 @@ def render(
     return TEMPLATES.TemplateResponse(
         request, name, values, status_code=status_code, headers=headers
     )
+
+
+__all__ = ["HTMX_HISTORY_RESTORE_HEADER", "HTMX_REQUEST_HEADER", "TEMPLATES", "is_htmx", "render"]

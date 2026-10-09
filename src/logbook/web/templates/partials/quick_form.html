@@ -1,0 +1,30 @@
+{% macro choose(name, label, empty_label, choices, current) %}
+  <div class="quick__field quick__field--{{ name }}">
+    <label class="visually-hidden" for="quick-{{ name }}">{{ label }}</label>
+    <select id="quick-{{ name }}" name="{{ name }}">
+      <option value="">{{ empty_label }}</option>
+{% for choice in choices %}
+      <option value="{{ choice.value }}"{% if choice.value == current %} selected{% endif %}>{{ choice.label }}</option>
+{% endfor %}
+    </select>
+  </div>
+{% endmacro %}
+<form id="quick-form" class="quick" aria-label="빠른 기록" hx-post="/logs" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button">
+  <div class="quick__fields">
+    <div class="quick__field quick__field--duration">
+      <label class="visually-hidden" for="quick-duration">시간</label>
+      <input id="quick-duration" name="duration" type="text" autocomplete="off" autofocus placeholder="2h, 90m, 1:30" value="{{ quick_values.duration }}">
+    </div>
+    <div class="quick__field quick__field--note">
+      <label class="visually-hidden" for="quick-note">메모</label>
+      <input id="quick-note" name="note" type="text" autocomplete="off" placeholder="무엇을 했나요" value="{{ quick_values.note }}">
+    </div>
+    {{ choose("project", "프로젝트", "자동 (태스크 또는 " ~ default_project ~ ")", quick_options.projects, quick_values.project) }}
+    {{ choose("category", "카테고리", "자동 (태스크)", quick_options.categories, quick_values.category) }}
+    {{ choose("task", "태스크", "없음", quick_options.tasks, quick_values.task) }}
+    <button type="submit" class="btn btn--primary">기록</button>
+  </div>
+{% if quick_message|default("") %}
+  <p id="quick-result" class="form-message{% if quick_error|default(false) %} form-message--error{% endif %}" role="{{ 'alert' if quick_error|default(false) else 'status' }}">{{ quick_message }}</p>
+{% endif %}
+</form>

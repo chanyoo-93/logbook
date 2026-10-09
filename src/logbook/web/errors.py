@@ -22,7 +22,7 @@ from logbook.core.errors import (
     NotFoundError,
 )
 from logbook.web.api.envelope import fail
-from logbook.web.pages.templating import is_htmx
+from logbook.web.htmx import is_htmx
 from logbook.web.security import is_api_path, security_headers
 
 API_NOT_FOUND = "요청한 API가 없습니다: {method} {path}"

@@ -88,3 +88,20 @@ def test_web_imports_sqlalchemy_only_for_type_checking() -> None:
         if (module == "sqlalchemy" or module.startswith("sqlalchemy.")) and not guarded
     ]
     assert offenders == []
+
+
+@pytest.mark.subprocess
+@pytest.mark.parametrize(
+    "first",
+    ["logbook.web.errors", "logbook.web.pages", "logbook.web.pages.dashboard", "logbook.web.app"],
+)
+def test_web_modules_import_in_any_order(first: str) -> None:
+    # errors와 pages가 서로를 import해도 어느 쪽을 먼저 불러도 순환 import가 나지 않는다.
+    result = subprocess.run(
+        [sys.executable, "-c", f"import {first}"],
+        capture_output=True,
+        encoding="utf-8",
+        timeout=SUBPROCESS_TIMEOUT_SECONDS,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr

@@ -4,10 +4,13 @@
   <div class="timer__body">
     <p class="timer__state">진행 중</p>
     <p class="timer__what">{{ timer.scope }} — {{ timer.note }}{% if timer.task %} [{{ timer.task }}]{% endif %}</p>
-    <p class="timer__time">시작 {{ timer.started }} · 경과 {{ timer.elapsed }}</p>
+    <p class="timer__time">시작 {{ timer.started }} · {% include "partials/timer_elapsed.html" %}</p>
   </div>
-{# 정지 버튼은 Task 5-7에서 더한다. #}
+  <button type="button" class="btn" hx-post="/timer/stop" hx-target="#timer" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">정지</button>
 {% else %}
   <p class="timer__idle">진행 중인 타이머가 없습니다. 터미널에서 lb start로 시작하세요.</p>
+{% endif %}
+{% if timer_message|default("") %}
+  <p id="timer-result" class="form-message{% if timer_error|default(false) %} form-message--error{% endif %}" role="{{ 'alert' if timer_error|default(false) else 'status' }}">{{ timer_message }}</p>
 {% endif %}
 </section>

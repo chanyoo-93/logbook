@@ -933,7 +933,7 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
 | test_timer_panel | 85분 뒤 POST `/timer/stop` | 200, 결과 줄 정확히 일치, 기록 날짜는 시작한 날, 타이머 없음, OOB 두 개 |
 | test_timer_panel | 30초 뒤 stop / 타이머 없음 | 400·1분 문구, 패널은 진행 중 상태 그대로 / 404·`NO_TIMER_MESSAGE`, 빈 패널 |
 
-- [ ] RED → GREEN → 커밋 `feat: 대시보드 빠른 기록 폼과 타이머 정지 추가`
+- [x] RED → GREEN → 커밋 `feat: 대시보드 빠른 기록 폼과 타이머 정지 추가`
 
 ---
 

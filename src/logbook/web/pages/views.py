@@ -12,9 +12,13 @@ from typing import TYPE_CHECKING
 
 from logbook.core import services
 from logbook.core.duration import format_duration
+from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import clock_label, day_label, full_day
 
 if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+    from logbook.core.config import Config
     from logbook.core.models import ActiveTimer, WorkLog
 
 RECENT_LIMIT = 10
@@ -101,3 +105,38 @@ def timer_view(timer: ActiveTimer, now: datetime) -> TimerView:
         started=clock_label(timer.started_at.astimezone(now.tzinfo), now.date()),
         elapsed=format_duration(services.elapsed_minutes(timer.started_at, now)),
     )
+
+
+@dataclass(frozen=True)
+class Choice:
+    value: str
+    label: str
+
+
+@dataclass(frozen=True)
+class QuickFormOptions:
+    projects: tuple[Choice, ...]  # 보관하지 않은 프로젝트: Choice('payment', 'payment — 결제 서버')
+    categories: tuple[Choice, ...]  # 설정 순서: Choice('dev', 'dev — 개발')
+    tasks: tuple[
+        Choice, ...
+    ]  # 보관하지 않은 프로젝트의 todo·doing: Choice('42', '#42 payment · 제목')
+
+
+@dataclass(frozen=True)
+class QuickFormValues:
+    """빠른 기록 폼에 채워 둘 값. 모두 입력 문자열 그대로이고 비어 있으면 '자동'이다."""
+
+    duration: str = ""
+    note: str = ""
+    project: str = ""
+    category: str = ""
+    task: str = ""
+
+
+def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions:
+    """빠른 기록 폼의 선택지. 세션 안에서 불러 일반 값으로 바꾼다."""
+    projects = tuple(Choice(p.slug, f"{p.slug} — {p.name}") for p in services.list_projects(s))
+    categories = tuple(Choice(key, f"{key} — {label}") for key, label in cfg.categories.items())
+    open_tasks = services.list_tasks(s, statuses=(TaskStatus.TODO, TaskStatus.DOING))
+    tasks = tuple(Choice(str(t.id), f"#{t.id} {t.project.slug} · {t.title}") for t in open_tasks)
+    return QuickFormOptions(projects=projects, categories=categories, tasks=tasks)
