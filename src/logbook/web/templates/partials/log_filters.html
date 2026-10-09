@@ -1,4 +1,4 @@
-{% macro choose(id, name, label, empty_label, choices, current) %}
+{% macro filter_select(id, name, label, empty_label, choices, current) %}
   <div class="filters__field">
     <label for="{{ id }}">{{ label }}</label>
     <select id="{{ id }}" name="{{ name }}">
@@ -11,6 +11,6 @@
 {% endmacro %}
 <form id="log-filters" class="filters" aria-label="기록 필터" hx-get="/logs" hx-target="#log-table" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change, submit" hx-sync="this:replace">
 {% include "partials/week_nav.html" %}
-  {{ choose("filter-project", "project", "프로젝트", "전체", filters.projects, filters.project) }}
-  {{ choose("filter-category", "category", "카테고리", "전체", filters.categories, filters.category) }}
+  {{ filter_select("filter-project", "project", "프로젝트", "전체", filters.projects, filters.project) }}
+  {{ filter_select("filter-category", "category", "카테고리", "전체", filters.categories, filters.category) }}
 </form>

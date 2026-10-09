@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Annotated, Any
 
-from fastapi import APIRouter, Depends, Form, Query
+from fastapi import APIRouter, Depends
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
@@ -21,6 +21,7 @@ from logbook.core.weeks import Week, parse_date, parse_week
 from logbook.web.context import WebContext, get_context
 from logbook.web.errors import RECORD_CHANGED, ConflictError
 from logbook.web.htmx import is_htmx
+from logbook.web.pages.forms import FormText, QueryText
 from logbook.web.pages.panels import RESULT_MARK
 from logbook.web.pages.templating import render, render_error
 from logbook.web.pages.views import (
@@ -56,8 +57,6 @@ LOG_LABEL = "기록"
 TASK_LABEL = "태스크"
 
 Ctx = Annotated[WebContext, Depends(get_context)]
-QueryText = Annotated[str, Query()]
-FormText = Annotated[str, Form()]
 
 
 def _filter(week: str, project: str, category: str) -> LogFilter:
@@ -90,14 +89,14 @@ def _table_page(
     }
 
 
-def _check_filter_project(s: Session, values: LogFilter) -> None:
+def _load_checked(s: Session, number: int, values: LogFilter, version: str) -> WorkLog:
+    """세션 안의 앞부분 검증: 필터 프로젝트 확인 -> 기록 조회 -> 버전 확인(다르면 409)."""
     if values.project:
         services.get_project(s, values.project)
-
-
-def _check_version(log: WorkLog, version: str) -> None:
+    log = services.get_worklog(s, number)
     if worklog_version(log) != version:
         raise ConflictError(RECORD_CHANGED.format(id=log.id))
+    return log
 
 
 @router.get("/logs", response_class=HTMLResponse)
@@ -174,9 +173,7 @@ def _apply_edit(
     work_date = parse_date(form.log_date, today=ctx.today(), week_start=ctx.cfg.week_start)
     task_id = parse_id(form.log_task, TASK_LABEL) if form.log_task.strip() else None
     with ctx.session() as s:
-        _check_filter_project(s, values)
-        log = services.get_worklog(s, number)
-        _check_version(log, form.version)
+        log = _load_checked(s, number, values, form.version)
         changes = _changes(log, form, minutes, work_date, task_id)
         message = NO_CHANGE
         if changes:
@@ -237,9 +234,7 @@ def delete_log(
     number = parse_id(log_id, LOG_LABEL)
     parsed = _parse_week(ctx, values)
     with ctx.session() as s:
-        _check_filter_project(s, values)
-        log = services.get_worklog(s, number)
-        _check_version(log, version)
+        log = _load_checked(s, number, values, version)
         record = record_text(log, with_date=True)
         services.delete_worklog(s, number)
         page = _table_page(s, ctx, parsed, values, message=DELETED.format(record=record))

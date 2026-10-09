@@ -1,6 +1,6 @@
 <section id="log-table" class="panel" aria-labelledby="log-table-title">
   <div class="panel__head">
-    <h2 id="log-table-title" class="panel__title">{{ table.heading }}</h2>
+    <h2 id="log-table-title" class="panel__title" tabindex="-1">{{ table.heading }}</h2>
   </div>
 {% if table.message %}
   <p id="log-result" class="form-message{% if table.is_error %} form-message--error{% endif %}" role="{{ 'alert' if table.is_error else 'status' }}">{{ table.message }}</p>

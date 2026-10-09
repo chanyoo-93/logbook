@@ -305,3 +305,7 @@ def test_week_links_are_omitted_at_range_end(
 
     assert response.status_code == 200
     assert [link.text for link in week_links(response.text)] == labels
+
+
+def test_table_title_can_take_focus_after_delete(client: TestClient) -> None:
+    assert by_id(client.get("/logs").text, "log-table-title").attrs["tabindex"] == "-1"

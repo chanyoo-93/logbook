@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form
+from fastapi import APIRouter, Depends
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
@@ -14,6 +14,7 @@ from logbook.core.errors import InvalidInputError, LogbookError
 from logbook.core.ids import parse_id
 from logbook.core.weeks import week_of
 from logbook.web.context import WebContext, get_context
+from logbook.web.pages.forms import FormText
 from logbook.web.pages.panels import quick_form_context, refreshed_panels, result_line
 from logbook.web.pages.summary import build_summary
 from logbook.web.pages.templating import render, render_error
@@ -25,8 +26,6 @@ QUICK_FORM_TEMPLATE = "partials/quick_form_response.html"
 DURATION_REQUIRED = "시간을 입력하세요. 예: 2h, 90m, 1:30"
 CATEGORY_REQUIRED = "카테고리를 고르세요. 태스크를 고르면 태스크의 카테고리를 씁니다."
 TASK_LABEL = "태스크"
-
-FormText = Annotated[str, Form()]
 
 
 @router.get("/", response_class=HTMLResponse)

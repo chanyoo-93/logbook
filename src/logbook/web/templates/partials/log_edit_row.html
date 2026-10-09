@@ -1,4 +1,4 @@
-{% macro choose(name, label, choices, current, empty_label=none) %}
+{% macro edit_select(name, label, choices, current, empty_label=none) %}
 <select name="{{ name }}" aria-label="{{ label }}">
 {% if empty_label %}
   <option value=""{% if not current %} selected{% endif %}>{{ empty_label }}</option>
@@ -11,11 +11,11 @@
 <tr id="log-{{ edit.id }}" class="is-editing">
   <td class="num">{{ edit.id }}<input type="hidden" name="version" value="{{ edit.values.version }}"></td>
   <td><input type="date" name="log_date" aria-label="날짜" value="{{ edit.values.log_date }}"></td>
-  <td>{{ choose("log_project", "프로젝트", edit.projects, edit.values.log_project) }}</td>
-  <td>{{ choose("log_category", "카테고리", edit.categories, edit.values.log_category) }}</td>
+  <td>{{ edit_select("log_project", "프로젝트", edit.projects, edit.values.log_project) }}</td>
+  <td>{{ edit_select("log_category", "카테고리", edit.categories, edit.values.log_category) }}</td>
   <td><input type="text" name="duration" aria-label="시간" autocomplete="off" value="{{ edit.values.duration }}"></td>
   <td class="grid__note"><input type="text" name="note" aria-label="메모" autocomplete="off" value="{{ edit.values.note }}"></td>
-  <td>{{ choose("log_task", "태스크", edit.tasks, edit.values.log_task, "없음") }}</td>
+  <td>{{ edit_select("log_task", "태스크", edit.tasks, edit.values.log_task, "없음") }}</td>
   <td class="grid__actions">
     <button type="button" class="btn btn--small btn--primary" hx-patch="/logs/{{ edit.id }}" hx-include="closest tr, #log-filters" hx-target="#log-table" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">저장</button>
     <button type="button" class="btn btn--small" hx-get="/logs/{{ edit.id }}/row" hx-target="closest tr" hx-swap="outerHTML">취소</button>
