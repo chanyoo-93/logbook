@@ -23,10 +23,12 @@ from logbook.core.services.projects import (
 )
 from logbook.core.services.report import weekly_report
 from logbook.core.services.stats import (
+    DailyProjectResult,
     MatrixResult,
     StatsBy,
     StatsResult,
     StatsRow,
+    daily_project_minutes,
     stats_by,
     stats_matrix,
 )
@@ -34,6 +36,7 @@ from logbook.core.services.tasks import (
     actual_minutes_by_task,
     carry_candidates,
     carry_tasks,
+    count_done_tasks,
     create_task,
     get_task,
     list_tasks,
@@ -58,6 +61,7 @@ from logbook.core.services.worklogs import (
     delete_worklog,
     get_worklog,
     list_worklogs,
+    recent_worklogs,
     update_worklog,
 )
 
@@ -79,6 +83,7 @@ __all__ = [
     "actual_minutes_by_task",
     "carry_candidates",
     "carry_tasks",
+    "count_done_tasks",
     "create_task",
     "get_task",
     "list_tasks",
@@ -99,11 +104,14 @@ __all__ = [
     "delete_worklog",
     "get_worklog",
     "list_worklogs",
+    "recent_worklogs",
     "update_worklog",
+    "DailyProjectResult",
     "MatrixResult",
     "StatsBy",
     "StatsResult",
     "StatsRow",
+    "daily_project_minutes",
     "stats_by",
     "stats_matrix",
     "weekly_report",

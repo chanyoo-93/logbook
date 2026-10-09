@@ -287,7 +287,7 @@ def recent_worklogs(s: Session, *, limit: int) -> list[WorkLog]
 | `recent_worklogs` | 기록 12건(날짜 섞음), `limit=10` | id 내림차순 10건, 세션을 닫은 뒤 `log.project.slug`·`log.task` 접근 가능 |
 | `recent_worklogs` | `limit=0` | `ValueError` |
 
-- [ ] RED → GREEN → 커밋 `refactor: ID 파싱·시각 표기·완료 태스크 수를 core로 옮기고 웹용 집계 추가`
+- [x] RED → GREEN → 커밋 `refactor: ID 파싱·시각 표기·완료 태스크 수를 core로 옮기고 웹용 집계 추가`
 
 ---
 

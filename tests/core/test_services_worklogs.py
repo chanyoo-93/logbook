@@ -829,3 +829,42 @@ def test_package_reexports_worklog_services() -> None:
         "list_worklogs",
         "update_worklog",
     }
+
+
+# --- recent_worklogs ---
+
+
+def test_recent_worklogs_returns_latest_ids_first_with_relations(
+    seeded: Session, engine: Engine
+) -> None:
+    task = _make_task(seeded)
+    for index in range(12):
+        _add(
+            seeded,
+            work_date=date(2026, 9, 20 + index % 5),
+            task_id=task.id if index == 11 else None,
+            project_slug="payment",
+        )
+    seeded.commit()
+
+    with session_scope(engine) as s:
+        logs = services.recent_worklogs(s, limit=10)
+
+    ids = [log.id for log in logs]
+    assert ids == sorted(ids, reverse=True)
+    assert len(ids) == 10
+    assert ids[0] == 12
+    assert logs[0].project.slug == "payment"
+    assert logs[0].task is not None
+
+
+def test_recent_worklogs_returns_all_when_fewer_than_limit(seeded: Session) -> None:
+    _add(seeded)
+
+    assert len(services.recent_worklogs(seeded, limit=10)) == 1
+
+
+@pytest.mark.parametrize("limit", [0, -1])
+def test_recent_worklogs_rejects_limit_below_one(seeded: Session, limit: int) -> None:
+    with pytest.raises(ValueError, match="limit"):
+        services.recent_worklogs(seeded, limit=limit)

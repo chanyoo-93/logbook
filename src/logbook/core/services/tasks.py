@@ -1,7 +1,7 @@
 """태스크(할 일) 생성·조회·목록·수정·상태 변경과 실제 공수 집계 유스케이스."""
 
 from collections.abc import Callable, Collection
-from datetime import date
+from datetime import date, datetime, time, timedelta, tzinfo
 from typing import Any
 
 from sqlalchemy import func, select
@@ -229,3 +229,19 @@ def _week_label(week: Week | None) -> str | None:
 
 def _checked_due_date(due_date: date | None) -> date | None:
     return None if due_date is None else check_date(due_date, "마감일은")
+
+
+def _local_midnight(day: date, tz: tzinfo) -> datetime:
+    return datetime.combine(day, time.min, tzinfo=tz)
+
+
+def count_done_tasks(s: Session, week: Week, *, tz: tzinfo) -> int:
+    """완료 시각의 로컬 날짜(tz 기준)가 주 범위 안인 완료 태스크 수(보관 프로젝트 포함)."""
+    first = _local_midnight(week.start, tz)
+    after = _local_midnight(week.end + timedelta(days=1), tz)
+    count = s.scalar(
+        select(func.count(Task.id)).where(
+            Task.status == TaskStatus.DONE, Task.done_at >= first, Task.done_at < after
+        )
+    )
+    return count or 0

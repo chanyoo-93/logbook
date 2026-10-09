@@ -19,6 +19,8 @@ from logbook.core.weeks import WeekStart
 CONFIG_FILE_NAME = "config.toml"
 DB_FILE_NAME = "logbook.db"
 MAX_PORT = 65535
+# 서버는 루프백에만 연다. [web].host는 화면에 보여 줄 주소로만 쓰므로 이 둘만 받는다.
+LOCAL_HOSTS = ("127.0.0.1", "localhost")
 # 기본 설정 파일에 쓰는 OS 공통 표기
 _DEFAULT_DB_PATH_TEXT = f"~/{DATA_DIR_NAME}/{DB_FILE_NAME}"
 
@@ -351,10 +353,15 @@ class _Table:
         self.check_keys(_keys(GitRepo))
         return GitRepo(project=self.string("project", non_empty=True), path=self.path("path"))
 
+    def _local_host(self, host: str) -> str:
+        if host not in LOCAL_HOSTS:
+            raise self._invalid("host", host, "'127.0.0.1' 또는 'localhost'")
+        return host
+
     def to_web(self) -> WebConfig:
         self.check_keys(_keys(WebConfig))
         defaults = WebConfig()
         return WebConfig(
-            host=self.string("host", defaults.host, non_empty=True),
+            host=self._local_host(self.string("host", defaults.host, non_empty=True)),
             port=self.integer("port", defaults.port, MAX_PORT),
         )
