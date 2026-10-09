@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{% endblock %} · logbook</title>
+<meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "allowScriptTags": false, "selfRequestsOnly": true, "responseHandling": [{"code": "204", "swap": false}, {"code": "[23]..", "swap": true}, {"code": "[45]..", "swap": true, "error": true}]}'>
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="stylesheet" href="/static/css/app.css">
+<script src="/static/vendor/htmx-2.0.11.min.js" defer></script>
+<script src="/static/js/app.js" defer></script>
+{% block scripts %}{% endblock %}
+</head>
+<body>
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<header class="masthead">
+  <div class="masthead__inner">
+    <span class="masthead__brand">logbook</span>
+    <nav class="masthead__nav" aria-label="주 메뉴">
+      <a href="/"{% if active == "dashboard" %} aria-current="page"{% endif %}>대시보드</a>
+      <a href="/logs"{% if active == "logs" %} aria-current="page"{% endif %}>기록</a>
+    </nav>
+    <p class="masthead__week">이번 주 {{ current_week }}</p>
+  </div>
+</header>
+<main id="main">
+{% block content %}{% endblock %}
+</main>
+<div id="flash" role="status" aria-live="polite"></div>
+</body>
+</html>

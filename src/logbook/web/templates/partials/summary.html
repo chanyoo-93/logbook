@@ -1,0 +1,117 @@
+{% set chart = summary.chart %}
+{% set daily = chart["daily"] %}
+{% set projects = chart["projects"] %}
+{% set categories = chart["categories"] %}
+<section id="summary" class="panel summary" aria-labelledby="summary-title" data-chart='{{ chart|tojson }}'{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+  <div class="panel__head">
+    <h2 id="summary-title" class="panel__title">이번 주 요약</h2>
+    <p class="panel__meta">{{ summary.heading }}</p>
+  </div>
+  <dl class="stats">
+    <div class="stat stat--lead">
+      <dt class="stat__label">이번 주 공수</dt>
+      <dd class="stat__value">{{ summary.total }}</dd>
+    </div>
+    <div class="stat">
+      <dt class="stat__label">기록</dt>
+      <dd class="stat__value">{{ summary.count }}건</dd>
+    </div>
+    <div class="stat">
+      <dt class="stat__label">완료 태스크</dt>
+      <dd class="stat__value">{{ summary.done_count }}건</dd>
+    </div>
+  </dl>
+{% if summary.has_logs %}
+  <div class="charts">
+    <figure class="chart chart--daily">
+      <figcaption class="chart__title">
+        <span>요일별 공수</span>
+        <span class="chart__hint">하루 목표 {{ daily["target"]|duration }}</span>
+      </figcaption>
+      <div class="chart__frame chart__frame--bar">
+        <canvas id="chart-daily" role="img" aria-label="요일별 프로젝트 공수 막대 차트. 이번 주 합계 {{ summary.total }}, 하루 목표 {{ daily["target"]|duration }}. 값은 표로 볼 수 있습니다."></canvas>
+      </div>
+      <details class="chart__table">
+        <summary>표로 보기</summary>
+        <div class="table-wrap">
+          <table class="grid">
+            <caption class="visually-hidden">요일별 프로젝트 공수</caption>
+            <thead>
+              <tr>
+                <th scope="col">요일</th>
+{% for dataset in daily["datasets"] %}
+                <th scope="col" class="num">{{ dataset["label"] }}</th>
+{% endfor %}
+                <th scope="col" class="num">합계</th>
+              </tr>
+            </thead>
+            <tbody>
+{% for label in daily["labels"] %}
+{% set day_index = loop.index0 %}
+{% set day = namespace(total=0) %}
+              <tr>
+                <th scope="row">{{ label }}</th>
+{% for dataset in daily["datasets"] %}
+{% set minutes = dataset["data"][day_index] %}
+{% set day.total = day.total + minutes %}
+                <td class="num">{% if minutes %}{{ minutes|duration }}{% else %}-{% endif %}</td>
+{% endfor %}
+                <td class="num">{% if day.total %}{{ day.total|duration }}{% else %}-{% endif %}</td>
+              </tr>
+{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </figure>
+    <div class="charts__side">
+      <figure class="chart">
+        <figcaption class="chart__title"><span>프로젝트별</span></figcaption>
+        <div class="chart__frame chart__frame--donut">
+          <canvas id="chart-projects" role="img" aria-label="프로젝트별 공수 도넛 차트: {% for name in projects["labels"] %}{{ name }} {{ projects["data"][loop.index0]|duration }}{% if not loop.last %}, {% endif %}{% endfor %}"></canvas>
+        </div>
+        <details class="chart__table">
+          <summary>표로 보기</summary>
+          <div class="table-wrap">
+            <table class="grid">
+              <caption class="visually-hidden">프로젝트별 공수</caption>
+              <thead>
+                <tr><th scope="col">프로젝트</th><th scope="col" class="num">공수</th></tr>
+              </thead>
+              <tbody>
+{% for name in projects["labels"] %}
+                <tr><th scope="row">{{ name }}</th><td class="num">{{ projects["data"][loop.index0]|duration }}</td></tr>
+{% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </figure>
+      <figure class="chart">
+        <figcaption class="chart__title"><span>카테고리별</span></figcaption>
+        <div class="chart__frame chart__frame--donut">
+          <canvas id="chart-categories" role="img" aria-label="카테고리별 공수 도넛 차트: {% for name in categories["labels"] %}{{ name }} {{ categories["data"][loop.index0]|duration }}{% if not loop.last %}, {% endif %}{% endfor %}"></canvas>
+        </div>
+        <details class="chart__table">
+          <summary>표로 보기</summary>
+          <div class="table-wrap">
+            <table class="grid">
+              <caption class="visually-hidden">카테고리별 공수</caption>
+              <thead>
+                <tr><th scope="col">카테고리</th><th scope="col" class="num">공수</th></tr>
+              </thead>
+              <tbody>
+{% for name in categories["labels"] %}
+                <tr><th scope="row">{{ name }}</th><td class="num">{{ categories["data"][loop.index0]|duration }}</td></tr>
+{% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      </figure>
+    </div>
+  </div>
+{% else %}
+  <p class="empty">이번 주 기록이 없습니다.</p>
+{% endif %}
+</section>

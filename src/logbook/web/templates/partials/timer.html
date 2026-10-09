@@ -1,0 +1,13 @@
+<section id="timer" class="panel timer{% if timer %} timer--running{% endif %}" aria-label="타이머"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+{% if timer %}
+  <span class="timer__dot" aria-hidden="true"></span>
+  <div class="timer__body">
+    <p class="timer__state">진행 중</p>
+    <p class="timer__what">{{ timer.scope }} — {{ timer.note }}{% if timer.task %} [{{ timer.task }}]{% endif %}</p>
+    <p class="timer__time">시작 {{ timer.started }} · 경과 {{ timer.elapsed }}</p>
+  </div>
+{# 정지 버튼은 Task 5-7에서 더한다. #}
+{% else %}
+  <p class="timer__idle">진행 중인 타이머가 없습니다. 터미널에서 lb start로 시작하세요.</p>
+{% endif %}
+</section>

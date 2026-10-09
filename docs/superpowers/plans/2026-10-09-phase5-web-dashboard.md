@@ -857,7 +857,7 @@ def project_colors(slugs: Sequence[str], explicit: Mapping[str, str | None]) -> 
 | test_static | htmx 설정 meta | JSON 파싱 값이 공통 규칙의 설정과 같음 |
 | test_report_render(휠) | 휠 목록 | 기존 기본 템플릿과 `logbook/web/templates/base.html`, `logbook/web/static/css/app.css`, `logbook/web/static/vendor/htmx-2.0.11.min.js` 포함. 테스트 이름을 `test_wheel_contains_package_data`로 바꾼다 |
 
-- [ ] RED → GREEN → 커밋 `feat: 웹 대시보드 레이아웃·요약·차트 화면 추가`
+- [x] RED → GREEN → 커밋 `feat: 웹 대시보드 레이아웃·요약·차트 화면 추가`
 
 ---
 
