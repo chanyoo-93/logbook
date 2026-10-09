@@ -2,25 +2,19 @@
 
 from collections.abc import Iterator
 from datetime import date
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 
 from logbook.core import db, services
-from logbook.core.config import Config
 from logbook.core.services._shared import MISSING_CATEGORY_MESSAGE
-from logbook.web.app import create_app
-from logbook.web.context import WebContext
-from tests.cli.helpers import Clock
 from tests.helpers import hold_lock
-from tests.web.conftest import LOCAL_BASE_URL
+from tests.web.conftest import LockedApp
 from tests.web.helpers import add_log, add_project, add_task
 
 W40_DAY = date(2026, 10, 1)
 W39_DAY = date(2026, 9, 24)
-FAST_BUSY_TIMEOUT = 0.05
 
 
 def _count_logs(engine: Engine) -> int:
@@ -174,30 +168,14 @@ def test_create_log_in_archived_project(client: TestClient, web_engine: Engine) 
     assert _count_logs(web_engine) == 0
 
 
-def test_create_log_when_database_is_locked(
-    monkeypatch: pytest.MonkeyPatch, config: Config, tmp_home: Path, clock: Clock
-) -> None:
-    monkeypatch.setattr(db, "BUSY_TIMEOUT_SECONDS", FAST_BUSY_TIMEOUT)
-    path = tmp_home / "logbook.db"
-    db.initialize_database(path)
-    engine = db.open_database(path)
-    try:
-        ctx = WebContext(
-            cfg=config, engine=engine, config_file=tmp_home / "config.toml", now=lambda: clock.now
-        )
-        with TestClient(create_app(ctx), base_url=LOCAL_BASE_URL) as locked_client:
-            with db.session_scope(engine) as s:
-                services.ensure_common_project(s)
-            with hold_lock(path, "EXCLUSIVE"):
-                response = locked_client.post(
-                    "/api/logs", json={"duration": "1h", "note": "n", "category": "dev"}
-                )
-            assert response.status_code == 503
-            assert _error(response.json())["code"] == "busy"
-            assert "사용 중" in _error(response.json())["message"]
-            assert _count_logs(engine) == 0
-    finally:
-        engine.dispose()
+def test_create_log_when_database_is_locked(locked_client: LockedApp) -> None:
+    client, engine, path = locked_client
+    with hold_lock(path, "EXCLUSIVE"):
+        response = client.post("/api/logs", json={"duration": "1h", "note": "n", "category": "dev"})
+    assert response.status_code == 503
+    assert _error(response.json())["code"] == "busy"
+    assert "사용 중" in _error(response.json())["message"]
+    assert _count_logs(engine) == 0
 
 
 def test_create_log_rejects_cross_origin(client: TestClient, web_engine: Engine) -> None:

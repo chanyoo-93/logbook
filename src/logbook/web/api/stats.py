@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from starlette.responses import JSONResponse
 
 from logbook.core import services
@@ -12,7 +12,7 @@ from logbook.core.weeks import parse_week
 from logbook.web.api.envelope import ok
 from logbook.web.api.schemas import optional_text
 from logbook.web.api.serialize import stats_json
-from logbook.web.context import WebContext, get_context
+from logbook.web.context import Ctx
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ DEFAULT_BY = "project"
 
 @router.get("/stats")
 def get_stats(
-    ctx: Annotated[WebContext, Depends(get_context)],
+    ctx: Ctx,
     week: Annotated[str | None, Query()] = None,
     by: Annotated[str | None, Query()] = None,
 ) -> JSONResponse:

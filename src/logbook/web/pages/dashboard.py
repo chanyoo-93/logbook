@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
@@ -13,7 +11,7 @@ from logbook.core.duration import parse_duration
 from logbook.core.errors import InvalidInputError, LogbookError
 from logbook.core.ids import parse_id
 from logbook.core.weeks import week_of
-from logbook.web.context import WebContext, get_context
+from logbook.web.context import TASK_LABEL, Ctx, WebContext
 from logbook.web.pages.forms import FormText
 from logbook.web.pages.panels import quick_form_context, refreshed_panels, result_line
 from logbook.web.pages.summary import build_summary
@@ -25,11 +23,10 @@ router = APIRouter()
 QUICK_FORM_TEMPLATE = "partials/quick_form_response.html"
 DURATION_REQUIRED = "시간을 입력하세요. 예: 2h, 90m, 1:30"
 CATEGORY_REQUIRED = "카테고리를 고르세요. 태스크를 고르면 태스크의 카테고리를 씁니다."
-TASK_LABEL = "태스크"
 
 
 @router.get("/", response_class=HTMLResponse)
-def dashboard(request: Request, ctx: Annotated[WebContext, Depends(get_context)]) -> HTMLResponse:
+def dashboard(request: Request, ctx: Ctx) -> HTMLResponse:
     now = ctx.now()
     week = week_of(now.date(), ctx.cfg.week_start)
     with ctx.session() as s:
@@ -85,7 +82,7 @@ def _add_log(ctx: WebContext, values: QuickFormValues) -> dict[str, object]:
 @router.post("/logs", response_class=HTMLResponse)
 def add_log(
     request: Request,
-    ctx: Annotated[WebContext, Depends(get_context)],
+    ctx: Ctx,
     duration: FormText = "",
     note: FormText = "",
     project: FormText = "",

@@ -12,10 +12,11 @@ from starlette.datastructures import Headers, MutableHeaders
 from starlette.responses import PlainTextResponse, Response
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+from logbook.core.config import LOCAL_HOSTS
 from logbook.core.duration import echo_input
 from logbook.web.api.envelope import fail
 
-ALLOWED_HOSTNAMES = frozenset({"127.0.0.1", "localhost"})
+ALLOWED_HOSTNAMES = frozenset(LOCAL_HOSTS)
 SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 API_PREFIX = "/api/"
 STATIC_PREFIX = "/static/"

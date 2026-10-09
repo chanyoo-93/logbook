@@ -6,7 +6,7 @@ from sqlalchemy import Engine
 
 from logbook.core import db, services
 from logbook.core.services.timer import NO_TIMER_MESSAGE
-from tests.cli.helpers import Clock
+from tests.helpers import Clock
 from tests.web.helpers import add_project, add_task
 
 STARTED_AT_UTC = "2026-10-01T00:30:00+00:00"

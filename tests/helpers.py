@@ -3,6 +3,7 @@
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -11,6 +12,23 @@ from sqlalchemy.orm import Session
 
 from logbook.core import db
 from logbook.core.models import Project
+
+SUBPROCESS_TIMEOUT_SECONDS = 60
+
+# CLI·웹 테스트의 '지금'. 목요일, today fixture(2026-10-01)와 같은 날, 고정 오프셋 UTC+9.
+FIXED_NOW = datetime(2026, 10, 1, 9, 30, tzinfo=timezone(timedelta(hours=9)))
+
+
+class Clock:
+    """runtime.now()가 돌려줄 시각. advance()로 옮긴다."""
+
+    def __init__(self, now: datetime = FIXED_NOW) -> None:
+        self.now = now
+
+    def advance(self, **delta: float) -> datetime:
+        """timedelta 인자만큼 시각을 옮기고 새 시각을 돌려준다 (예: advance(minutes=85))."""
+        self.now += timedelta(**delta)
+        return self.now
 
 
 @contextmanager

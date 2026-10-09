@@ -7,10 +7,10 @@ from starlette.responses import JSONResponse
 
 from logbook.core import services
 from logbook.core.ids import check_id
-from logbook.web.api.deps import TASK_LABEL, Ctx
 from logbook.web.api.envelope import ok
 from logbook.web.api.schemas import TimerStart, TimerStop
 from logbook.web.api.serialize import timer_json, worklog_json
+from logbook.web.context import TASK_LABEL, Ctx
 
 router = APIRouter()
 

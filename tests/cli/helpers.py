@@ -8,7 +8,6 @@ import subprocess
 import sys
 from collections.abc import Callable, Sequence
 from contextlib import AbstractContextManager
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Literal, NamedTuple
 
@@ -16,6 +15,12 @@ import pytest
 from rich.cells import cell_len
 from sqlalchemy.orm import Session
 from typer.testing import Result
+
+# Clock, FIXED_NOW, SUBPROCESS_TIMEOUT_SECONDS는 tests/helpers.py로 옮겼다.
+# 기존 CLI 테스트의 import가 깨지지 않게 같은 이름을 다시 내보낸다.
+from tests.helpers import FIXED_NOW as FIXED_NOW
+from tests.helpers import SUBPROCESS_TIMEOUT_SECONDS as SUBPROCESS_TIMEOUT_SECONDS
+from tests.helpers import Clock as Clock
 
 # open_db fixture의 타입: 호출하면 데이터 준비·검증용 세션 컨텍스트를 연다.
 OpenDb = Callable[[], AbstractContextManager[Session]]
@@ -44,24 +49,6 @@ FORBIDDEN_MODULES = (
 
 # 현재 인터프리터와 같은 가상환경의 lb 실행 파일 (Windows: Scripts\lb.exe, macOS: bin/lb)
 LAUNCHER: str | None = shutil.which("lb", path=str(Path(sys.executable).parent))
-
-SUBPROCESS_TIMEOUT_SECONDS = 60
-
-# CLI 테스트의 '지금'. 목요일, today fixture(2026-10-01)와 같은 날, 고정 오프셋 UTC+9.
-FIXED_NOW = datetime(2026, 10, 1, 9, 30, tzinfo=timezone(timedelta(hours=9)))
-
-
-class Clock:
-    """runtime.now()가 돌려줄 시각. advance()로 옮긴다."""
-
-    def __init__(self, now: datetime = FIXED_NOW) -> None:
-        self.now = now
-
-    def advance(self, **delta: float) -> datetime:
-        """timedelta 인자만큼 시각을 옮기고 새 시각을 돌려준다 (예: advance(minutes=85))."""
-        self.now += timedelta(**delta)
-        return self.now
-
 
 # 서브프로세스 출력 모양을 바꾸는 환경변수
 _REMOVED_ENV_VARS = (

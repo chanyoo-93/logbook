@@ -6,7 +6,7 @@ import dataclasses
 from datetime import UTC
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Query
 from starlette.responses import JSONResponse
 
 from logbook.core import services
@@ -16,7 +16,7 @@ from logbook.core.report import render_markdown, user_template_path
 from logbook.core.weeks import parse_week
 from logbook.web.api.envelope import ok
 from logbook.web.api.schemas import optional_text
-from logbook.web.context import WebContext, get_context
+from logbook.web.context import Ctx
 
 router = APIRouter()
 
@@ -27,7 +27,7 @@ FORMAT_INVALID = "보고서 형식이 올바르지 않습니다: '{value}'. md �
 
 @router.get("/report")
 def get_report(
-    ctx: Annotated[WebContext, Depends(get_context)],
+    ctx: Ctx,
     week: Annotated[str | None, Query()] = None,
     report_format: Annotated[str | None, Query(alias="format")] = None,
 ) -> JSONResponse:

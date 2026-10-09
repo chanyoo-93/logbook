@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 import logbook.web
-from tests.cli.helpers import SUBPROCESS_TIMEOUT_SECONDS
+from tests.helpers import SUBPROCESS_TIMEOUT_SECONDS
 
 WEB_ROOT = Path(logbook.web.__file__).parent
 _PROBE = """\

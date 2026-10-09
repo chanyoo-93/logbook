@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Annotated
-
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 from logbook.core import services
 from logbook.core.errors import LogbookError
-from logbook.web.context import WebContext, get_context
+from logbook.web.context import Ctx, WebContext
 from logbook.web.pages.panels import refreshed_panels, result_line
 from logbook.web.pages.templating import render, render_error
 from logbook.web.pages.views import TimerView, timer_view
@@ -23,8 +21,6 @@ ELAPSED_TEMPLATE = "partials/timer_elapsed.html"
 # 경과 갱신 중 타이머가 사라졌을 때(CLI에서 정지 등) 요소 대신 패널 전체를 바꾼다.
 PANEL_RETARGET = {"HX-Retarget": "#timer", "HX-Reswap": "outerHTML"}
 
-Ctx = Annotated[WebContext, Depends(get_context)]
-
 
 def _current_timer(ctx: WebContext) -> TimerView | None:
     now = ctx.now()
@@ -35,6 +31,7 @@ def _current_timer(ctx: WebContext) -> TimerView | None:
 
 @router.get("/timer", response_class=HTMLResponse)
 def timer_panel(request: Request, ctx: Ctx) -> HTMLResponse:
+    # 지금 화면은 /timer/elapsed만 폴링한다. 타이머 패널 전체를 다시 그릴 때 쓰는 조각이다.
     return render(request, PANEL_TEMPLATE, {"timer": _current_timer(ctx)})
 
 

@@ -13,7 +13,7 @@ from logbook.core import db, services
 from logbook.core.config import Config
 from logbook.core.report import TEMPLATE_NAME, render_markdown
 from logbook.core.weeks import parse_week
-from tests.cli.helpers import FIXED_NOW
+from tests.helpers import FIXED_NOW
 from tests.web.helpers import add_log, add_project
 
 W40_DAY = date(2026, 10, 1)

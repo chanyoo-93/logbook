@@ -2,6 +2,7 @@
 
 from collections.abc import Iterator
 from pathlib import Path
+from typing import NamedTuple
 
 import pytest
 from fastapi import FastAPI
@@ -22,9 +23,18 @@ from logbook.core.errors import (
 from logbook.web.app import create_app
 from logbook.web.context import WebContext
 from logbook.web.errors import ConflictError
-from tests.cli.helpers import Clock
+from tests.helpers import Clock
 
 LOCAL_BASE_URL = "http://127.0.0.1:8765"
+FAST_BUSY_TIMEOUT = 0.05
+
+
+class LockedApp(NamedTuple):
+    """locked_client fixture의 값: 클라이언트, 엔진, DB 파일 경로(hold_lock에 넘긴다)."""
+
+    client: TestClient
+    engine: Engine
+    db_path: Path
 
 
 class IntBody(BaseModel):
@@ -143,3 +153,24 @@ def probe_client(probe_app: FastAPI) -> Iterator[TestClient]:
     """500도 응답으로 받는 시험용 클라이언트."""
     with TestClient(probe_app, base_url=LOCAL_BASE_URL, raise_server_exceptions=False) as c:
         yield c
+
+
+@pytest.fixture
+def locked_client(
+    monkeypatch: pytest.MonkeyPatch, config: Config, tmp_home: Path, clock: Clock
+) -> Iterator[LockedApp]:
+    """DB 잠금(503) 시험용: 대기 시간을 줄인 별도 엔진과 클라이언트. 본문에서 hold_lock을 건다."""
+    monkeypatch.setattr(db, "BUSY_TIMEOUT_SECONDS", FAST_BUSY_TIMEOUT)
+    path = tmp_home / "logbook.db"
+    db.initialize_database(path)
+    engine = db.open_database(path)
+    try:
+        with db.session_scope(engine) as s:
+            services.ensure_common_project(s)
+        ctx = WebContext(
+            cfg=config, engine=engine, config_file=tmp_home / "config.toml", now=lambda: clock.now
+        )
+        with TestClient(create_app(ctx), base_url=LOCAL_BASE_URL) as c:
+            yield LockedApp(c, engine, path)
+    finally:
+        engine.dispose()

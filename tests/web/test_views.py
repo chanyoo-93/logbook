@@ -14,7 +14,7 @@ from logbook.web.pages.views import (
     timer_view,
     worklog_version,
 )
-from tests.cli.helpers import FIXED_NOW
+from tests.helpers import FIXED_NOW
 
 CREATED_AT = datetime(2026, 10, 1, 0, 30, tzinfo=UTC)
 

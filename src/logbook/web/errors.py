@@ -52,7 +52,7 @@ _WHOLE_BODY = ("body",)
 
 
 class ConflictError(LogbookError):
-    """화면이 본 기록이 그사이 바뀌었을 때(409 conflict). Task 5-8의 수정·삭제가 쓴다."""
+    """화면이 본 기록이 그사이 바뀌었을 때(409 conflict). 기록 수정·삭제 화면이 쓴다."""
 
 
 @dataclass(frozen=True)

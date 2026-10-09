@@ -7,9 +7,9 @@ DB 없이 끝나는 검증을 먼저 하고, 나머지는 세션 하나 안에�
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
@@ -18,7 +18,7 @@ from logbook.core.duration import parse_duration
 from logbook.core.errors import InvalidInputError, LogbookError, NotFoundError
 from logbook.core.ids import parse_id
 from logbook.core.weeks import Week, parse_date, parse_week
-from logbook.web.context import WebContext, get_context
+from logbook.web.context import TASK_LABEL, Ctx, WebContext
 from logbook.web.errors import RECORD_CHANGED, ConflictError
 from logbook.web.htmx import is_htmx
 from logbook.web.pages.forms import FormText, QueryText
@@ -54,9 +54,6 @@ NO_CHANGE = "바뀐 내용이 없습니다."
 UPDATED = f"{RESULT_MARK} 수정했습니다: {{record}}"
 DELETED = f"{RESULT_MARK} 삭제했습니다: {{record}}"
 LOG_LABEL = "기록"
-TASK_LABEL = "태스크"
-
-Ctx = Annotated[WebContext, Depends(get_context)]
 
 
 def _filter(week: str, project: str, category: str) -> LogFilter:

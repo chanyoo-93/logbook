@@ -12,10 +12,10 @@ from logbook.core.duration import parse_duration
 from logbook.core.errors import InvalidInputError
 from logbook.core.ids import check_id, parse_id
 from logbook.core.weeks import parse_date, parse_week
-from logbook.web.api.deps import TASK_LABEL, Ctx
 from logbook.web.api.envelope import ok
 from logbook.web.api.schemas import LogCreate, LogPatch, changed_fields, optional_text
 from logbook.web.api.serialize import week_meta, worklog_json
+from logbook.web.context import TASK_LABEL, Ctx
 
 router = APIRouter()
 

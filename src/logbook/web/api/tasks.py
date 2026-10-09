@@ -14,11 +14,10 @@ from logbook.core.errors import InvalidInputError
 from logbook.core.ids import parse_id
 from logbook.core.taskstatus import OPEN_STATUSES, TaskStatus, parse_statuses
 from logbook.core.weeks import parse_date, parse_week
-from logbook.web.api.deps import TASK_LABEL, Ctx
 from logbook.web.api.envelope import ok
 from logbook.web.api.schemas import TaskCreate, TaskPatch, changed_fields, optional_text
 from logbook.web.api.serialize import task_json
-from logbook.web.context import WebContext
+from logbook.web.context import TASK_LABEL, Ctx, WebContext
 
 if TYPE_CHECKING:
     from logbook.core.weeks import Week, WeekStart

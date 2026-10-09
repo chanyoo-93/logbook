@@ -2,25 +2,20 @@
 
 from datetime import date
 from html import unescape
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 
 from logbook.core import db, services
-from logbook.core.config import Config
 from logbook.core.duration import parse_duration
 from logbook.core.errors import InvalidInputError, NotFoundError
 from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import parse_week
-from logbook.web.app import create_app
-from logbook.web.context import WebContext
 from logbook.web.errors import RECORD_CHANGED
 from logbook.web.pages.views import worklog_version
-from tests.cli.helpers import Clock
 from tests.helpers import hold_lock
-from tests.web.conftest import LOCAL_BASE_URL
+from tests.web.conftest import LockedApp
 from tests.web.helpers import (
     add_log,
     add_project,
@@ -36,7 +31,6 @@ W40_THURSDAY = date(2026, 10, 1)
 W41_MONDAY = date(2026, 10, 5)
 W39_THURSDAY = date(2026, 9, 24)
 HTMX = {"HX-Request": "true"}
-FAST_BUSY_TIMEOUT = 0.05
 FILTERS = {"week": "this", "project": "", "category": ""}
 
 
@@ -553,35 +547,21 @@ def test_delete_with_filter_keeps_week_nav(client: TestClient, web_engine: Engin
 
 
 @pytest.mark.parametrize("method", ["patch", "delete"])
-def test_database_lock_is_503(
-    monkeypatch: pytest.MonkeyPatch, config: Config, tmp_home: Path, clock: Clock, method: str
-) -> None:
-    monkeypatch.setattr(db, "BUSY_TIMEOUT_SECONDS", FAST_BUSY_TIMEOUT)
-    path = tmp_home / "logbook.db"
-    db.initialize_database(path)
-    engine = db.open_database(path)
-    try:
-        ctx = WebContext(
-            cfg=config, engine=engine, config_file=tmp_home / "config.toml", now=lambda: clock.now
-        )
-        with TestClient(create_app(ctx), base_url=LOCAL_BASE_URL) as locked_client:
-            with db.session_scope(engine) as s:
-                services.ensure_common_project(s)
-            log_id = _seed_log(engine)
-            before = _snapshot(engine, log_id)
-            form = _form(engine, log_id, duration="3h")
-            with hold_lock(path, "EXCLUSIVE"):
-                if method == "patch":
-                    response = locked_client.patch(f"/logs/{log_id}", data=form, headers=HTMX)
-                else:
-                    response = locked_client.delete(
-                        f"/logs/{log_id}",
-                        params={"version": form["version"], **FILTERS},
-                        headers=HTMX,
-                    )
-            assert response.status_code == 503
-            assert response.headers["HX-Retarget"] == "#flash"
-            assert "사용 중" in response.text
-            assert _snapshot(engine, log_id) == before
-    finally:
-        engine.dispose()
+def test_database_lock_is_503(locked_client: LockedApp, method: str) -> None:
+    client, engine, path = locked_client
+    log_id = _seed_log(engine)
+    before = _snapshot(engine, log_id)
+    form = _form(engine, log_id, duration="3h")
+    with hold_lock(path, "EXCLUSIVE"):
+        if method == "patch":
+            response = client.patch(f"/logs/{log_id}", data=form, headers=HTMX)
+        else:
+            response = client.delete(
+                f"/logs/{log_id}",
+                params={"version": form["version"], **FILTERS},
+                headers=HTMX,
+            )
+    assert response.status_code == 503
+    assert response.headers["HX-Retarget"] == "#flash"
+    assert "사용 중" in response.text
+    assert _snapshot(engine, log_id) == before

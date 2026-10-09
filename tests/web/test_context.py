@@ -7,8 +7,8 @@ from fastapi.testclient import TestClient
 from logbook.core import services
 from logbook.core.errors import InvalidInputError
 from logbook.web.context import WebContext, get_context
-from tests.cli.helpers import FIXED_NOW
 from tests.conftest import FIXED_TODAY
+from tests.helpers import FIXED_NOW
 
 
 def test_today_follows_injected_clock(web_ctx: WebContext) -> None:

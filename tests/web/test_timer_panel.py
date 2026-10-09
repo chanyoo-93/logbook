@@ -5,8 +5,8 @@ from sqlalchemy import Engine
 
 from logbook.core import db, services
 from logbook.core.services.timer import NO_TIMER_MESSAGE
-from tests.cli.helpers import FIXED_NOW, Clock
 from tests.conftest import FIXED_TODAY
+from tests.helpers import FIXED_NOW, Clock
 from tests.web.helpers import add_log, add_project, all_by_tag, by_id, parse_html
 
 HTMX = {"HX-Request": "true"}

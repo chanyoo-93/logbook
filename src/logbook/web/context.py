@@ -7,8 +7,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Annotated
 
+from fastapi import Depends
 from starlette.requests import Request
 
 from logbook.core.config import Config
@@ -46,3 +47,9 @@ class WebContext:
 def get_context(request: Request) -> WebContext:
     ctx: WebContext = request.app.state.ctx
     return ctx
+
+
+Ctx = Annotated[WebContext, Depends(get_context)]
+"""라우트 핸들러의 `ctx: Ctx` 매개변수 별칭. API와 화면이 함께 쓴다."""
+TASK_LABEL = "태스크"
+"""태스크 ID 입력 오류 문구에 쓰는 이름(parse_id·check_id의 what)."""
