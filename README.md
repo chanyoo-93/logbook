@@ -211,7 +211,7 @@ port = 8765
 | 엔드포인트 | 하는 일 |
 |---|---|
 | `GET /api/logs?week=&project=&category=` | 기록 목록(기본 이번 주)과 합계 |
-| `POST /api/logs` | 기록 추가 (`duration`, `note` 필수. `project`, `category`, `date`, `task_id`) |
+| `POST /api/logs` | 기록 추가 (`duration`, `note` 필수. `project`, `category`, `date`, `task_id`. `project`는 생략하면 태스크의 프로젝트, 없으면 `default_project`. `category`는 생략하면 태스크의 카테고리이고, 태스크도 없으면 400) |
 | `PATCH /api/logs/{id}` | 보낸 항목만 수정 (`task_id`에 `null`이면 태스크 연결 해제) |
 | `DELETE /api/logs/{id}` | 기록 삭제 |
 | `GET /api/tasks?status=&week=&project=` | 태스크 목록(기본 todo, doing)과 실적 시간 |
@@ -219,7 +219,7 @@ port = 8765
 | `PATCH /api/tasks/{id}` | 보낸 항목만 수정 (`status` 포함, 비울 수 있는 항목은 `null`) |
 | `GET /api/stats?week=&by=project\|category\|day` | 주간 공수 집계 |
 | `GET /api/report?week=&format=md\|json` | 주간보고서(Markdown 문자열 또는 구조화 데이터) |
-| `POST /api/timer/start` | 타이머 시작 (`note`, `project`, `category`, `task_id`) |
+| `POST /api/timer/start` | 타이머 시작 (`task_id`만 주거나, `note`와 `category`를 함께 준다. `project`도 받는다. 본문 전체를 생략할 수 있는 것은 `stop`뿐) |
 | `POST /api/timer/stop` | 타이머 정지 (`note`, `round`) |
 
 본문은 `Content-Type: application/json`의 UTF-8 JSON 객체입니다. 시간(`"1h30m"`)·날짜(`"yesterday"`)·주차(`"last"`)는 CLI와 같은 문자열을 받습니다. 모르는 키는 400으로 거부합니다.

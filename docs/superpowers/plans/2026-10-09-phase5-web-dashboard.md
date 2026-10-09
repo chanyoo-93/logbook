@@ -65,7 +65,8 @@
 | `src/logbook/cli/commands/serve.py` | 생성 | `lb serve [--port] [--open]` |
 | `src/logbook/cli/main.py` | 수정 | serve 등록 |
 | `src/logbook/web/__init__.py` | 생성 | 문서 문자열만(import 없음) |
-| `src/logbook/web/context.py` | 생성 | `WebContext`(설정·엔진·설정 파일 경로·시계), `get_context()` |
+| `src/logbook/web/context.py` | 생성 | `WebContext`(설정·엔진·설정 파일 경로·시계), `get_context()`, 공용 별칭 `Ctx`와 `TASK_LABEL` |
+| `src/logbook/web/htmx.py` | 생성 | `is_htmx()`, HTMX 헤더 상수 |
 | `src/logbook/web/security.py` | 생성 | `LocalOnlyMiddleware`(Host 검사, 교차 출처 쓰기 차단, 보안 헤더) |
 | `src/logbook/web/errors.py` | 생성 | 오류 분류(상태 코드·code), API·HTMX·페이지별 오류 응답, 예외 처리기 등록 |
 | `src/logbook/web/app.py` | 생성 | `create_app(ctx) -> FastAPI` |
@@ -76,8 +77,10 @@
 | `src/logbook/web/api/serialize.py` | 생성 | ORM·결과 객체를 JSON용 dict로 바꾼다 |
 | `src/logbook/web/api/logs.py`, `tasks.py`, `stats.py`, `report.py`, `timer.py` | 생성 | API 엔드포인트 |
 | `src/logbook/web/pages/__init__.py` | 생성 | 화면 라우터 묶음 |
-| `src/logbook/web/pages/templating.py` | 생성 | Jinja2 환경(자동 이스케이프, StrictUndefined), `render()`, `is_htmx()` |
+| `src/logbook/web/pages/templating.py` | 생성 | Jinja2 환경(자동 이스케이프, StrictUndefined), `render()`, `render_error()`. `is_htmx()`는 갖지 않는다(`web/htmx.py`) |
 | `src/logbook/web/pages/views.py` | 생성 | 행·타이머·기록 문구·폼 선택지 뷰 데이터, `worklog_version()`, `record_text()` |
+| `src/logbook/web/pages/panels.py` | 생성 | 결과 줄, 요약·최근 기록 갱신 조각의 공용 맥락 |
+| `src/logbook/web/pages/forms.py` | 생성 | 폼·쿼리 값 타입 `FormText`, `QueryText` |
 | `src/logbook/web/pages/summary.py` | 생성 | 대시보드 요약 숫자와 차트 데이터(`build_summary`, `project_colors`) |
 | `src/logbook/web/pages/dashboard.py` | 생성 | `GET /`, `POST /logs`(빠른 기록) |
 | `src/logbook/web/pages/timer.py` | 생성 | `GET /timer`, `POST /timer/stop` |
@@ -190,7 +193,7 @@
   - 4xx·5xx도 swap한다. 그래서 오류 응답은 항상 우리가 만든 조각이어야 하고, 놓일 자리는 응답 헤더 `HX-Retarget`·`HX-Reswap`으로 정한다.
   - HTMX 요청의 오류 응답에는 `HX-Push-Url: false`도 붙인다. `hx-push-url`이 있는 필터 요청이 실패해도 주소창이 잘못된 주소로 바뀌지 않게 한다.
 - **중복 제출 방지:** 변경 요청을 보내는 폼과 버튼(빠른 기록, 정지, 저장, 삭제)에는 `hx-sync="this:drop"`과 `hx-disabled-elt`를 둔다. Enter를 두 번 눌러도 기록이 두 번 저장되지 않는다.
-- **조각과 전체 페이지:** `HX-Request` 헤더가 있고 `HX-History-Restore-Request`가 없을 때만 조각을 돌려준다. 뒤로 가기 복원 요청에는 전체 페이지를 준다(`templating.is_htmx(request)`).
+- **조각과 전체 페이지:** `HX-Request` 헤더가 있고 `HX-History-Restore-Request`가 없을 때만 조각을 돌려준다. 뒤로 가기 복원 요청에는 전체 페이지를 준다(`htmx.is_htmx(request)`).
 - **알림 영역:** `base.html`의 `<div id="flash" role="status" aria-live="polite">`다. 핸들러가 직접 처리하지 않은 오류(예상 못 한 500, 연결 실패)는 여기 표시한다.
 - **변경 응답:** 성공한 변경은 영향을 받는 영역을 `hx-swap-oob="true"`로 함께 바꾼다. 같은 조각 템플릿에 `oob` 변수를 넘겨 루트 요소에 속성을 붙인다.
 - **htmx의 DELETE:** htmx 2는 DELETE 매개변수를 쿼리 문자열로 보낸다(`methodsThatUseUrlParams`). 서버는 DELETE의 값을 쿼리에서 읽는다.
@@ -1078,7 +1081,7 @@ def quick_form_options(s: Session, cfg: Config) -> QuickFormOptions
 - [ ] **전체 검증:**
   - ruff, ruff format, mypy(core strict, `uv run mypy src/logbook` 전체도 오류 없음)
   - pytest(전체 80%, core 80%)
-- [ ] 커밋 `docs: Phase 5 완료 표시와 웹 대시보드·API 사용 안내 추가`
+- [x] 커밋 `docs: Phase 5 완료 표시와 웹 대시보드·API 사용 안내 추가`
 - [ ] 사용자 확인 후 Phase 5 이슈 생성 → push → develop 대상 PR. CI 두 OS가 녹색이어야 한다. 브라우저 확인 절차는 PR 댓글로 남긴다.
 
 ---

@@ -371,12 +371,12 @@ Phase 5에서 모두 구현했다. 화면과 같은 서비스를 부르므로 CL
 
 | 엔드포인트 | 필드 (필수는 굵게) |
 |---|---|
-| `POST /api/logs` | **`duration`**, **`note`**, `project`, `category`, `date`, `task_id`. `project`·`category`를 생략하면 `lb add`와 같이 태스크 또는 설정 값을 쓴다. `date` 기본은 오늘 |
+| `POST /api/logs` | **`duration`**, **`note`**, `project`, `category`, `date`, `task_id`. `project`를 생략하면 태스크의 프로젝트, 태스크도 없으면 설정 `default_project`를 쓴다. `category`를 생략하면 태스크의 카테고리를 쓰고, 태스크도 없으면 400(카테고리 필요)이다. 카테고리에는 설정 기본값이 없다. `date` 기본은 오늘 |
 | `PATCH /api/logs/{id}` | `duration`, `note`, `category`, `project`, `date`, `task_id` |
 | `POST /api/tasks` | **`title`**, `project`(기본 `default_project`), `category`, `estimate`(24시간 상한 없음), `week`, `due`, `ref`, `description` |
 | `PATCH /api/tasks/{id}` | `title`, `category`, `estimate`, `week`, `due`, `ref`, `description`, `status`(`todo`·`doing`·`done`·`dropped`) |
-| `POST /api/timer/start` | `note`, `project`, `category`, `task_id` (본문 전체를 생략할 수 있다. `-t`처럼 `task_id`로 메모를 생략할 수 있다) |
-| `POST /api/timer/stop` | `note`(` — `로 덧붙임), `round`(1~60, 15분 단위 반올림) (본문 전체를 생략할 수 있다) |
+| `POST /api/timer/start` | `note`, `project`, `category`, `task_id` (`task_id`만 줘도 시작한다. 메모는 태스크 제목, 카테고리는 태스크의 것을 쓴다. 태스크 없이 시작하려면 `note`와 `category`를 함께 줘야 한다) |
+| `POST /api/timer/stop` | `note`(` — `로 덧붙임), `round`(1~60, 15분 단위 반올림) (본문 전체를 생략할 수 있다. 본문을 통째로 생략할 수 있는 것은 `stop`뿐이다) |
 
 **PATCH 규칙:**
 - 보낸 키만 바꾼다. 하나도 보내지 않으면 400(`바꿀 항목을 하나 이상 지정하세요: …`).
