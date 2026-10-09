@@ -35,6 +35,42 @@ class LogPatch(Body):
     task_id: int | None = None
 
 
+class TaskCreate(Body):
+    title: str
+    project: str | None = None  # 없으면 cfg.default_project
+    category: str | None = None
+    estimate: str | None = None  # parse_duration(text, max_minutes=None), 예: "40h"
+    week: str | None = None  # parse_week
+    due: str | None = None  # parse_date
+    ref: str | None = None
+    description: str | None = None
+
+
+class TaskPatch(Body):
+    """보낸 키만 바꾼다. null은 category·estimate·week·due·ref·description만 허용한다(값 비우기)."""
+
+    title: str | None = None
+    category: str | None = None
+    estimate: str | None = None
+    week: str | None = None
+    due: str | None = None
+    ref: str | None = None
+    description: str | None = None
+    status: str | None = None  # todo|doing|done|dropped
+
+
+class TimerStart(Body):
+    note: str | None = None
+    project: str | None = None
+    category: str | None = None
+    task_id: int | None = None
+
+
+class TimerStop(Body):
+    note: str | None = None  # lb stop --note와 같다(' — '로 덧붙임)
+    round: int | None = None  # 1~60, core가 검증
+
+
 def optional_text(value: str | None) -> str | None:
     """쿼리 값: 앞뒤 공백을 지우고 비면 생략한 것(None)으로 본다."""
     if value is None:

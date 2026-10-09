@@ -594,7 +594,7 @@ def timer_json(timer: ActiveTimer, now: datetime) -> dict[str, object]
 | stop `{"note": "리뷰 반영", "round": 15}` | 메모 `… — 리뷰 반영`, 90분 |
 | stop `{"round": 0}` / 타이머 없음 / 30초 뒤 stop | 400 core 반올림 문구 / 404 `NO_TIMER_MESSAGE` / 400 1분 문구, 타이머 남음 |
 
-- [ ] RED → GREEN → 커밋 `feat: 태스크·보고서·타이머 JSON API 추가`
+- [x] RED → GREEN → 커밋 `feat: 태스크·보고서·타이머 JSON API 추가`
 
 ---
 

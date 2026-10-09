@@ -5,10 +5,11 @@ from __future__ import annotations
 import datetime as dt
 from typing import TYPE_CHECKING
 
+from logbook.core import services
 from logbook.core.duration import format_duration
 
 if TYPE_CHECKING:
-    from logbook.core.models import WorkLog
+    from logbook.core.models import ActiveTimer, Task, WorkLog
     from logbook.core.services import StatsResult
     from logbook.core.weeks import Week
 
@@ -37,6 +38,36 @@ def worklog_json(log: WorkLog) -> dict[str, object]:
         "started_at": iso_utc(log.started_at),
         "ended_at": iso_utc(log.ended_at),
         "created_at": iso_utc(log.created_at),
+    }
+
+
+def task_json(task: Task, actual_minutes: int) -> dict[str, object]:
+    return {
+        "id": task.id,
+        "project": task.project.slug,
+        "title": task.title,
+        "description": task.description,
+        "status": task.status.value,
+        "category": task.category,
+        "estimate_minutes": task.estimate_minutes,
+        "planned_week": task.planned_week,
+        "due_date": task.due_date.isoformat() if task.due_date is not None else None,
+        "external_ref": task.external_ref,
+        "created_at": iso_utc(task.created_at),
+        "updated_at": iso_utc(task.updated_at),
+        "done_at": iso_utc(task.done_at),
+        "actual_minutes": actual_minutes,
+    }
+
+
+def timer_json(timer: ActiveTimer, now: dt.datetime) -> dict[str, object]:
+    return {
+        "project": timer.project.slug,
+        "category": timer.category,
+        "note": timer.note,
+        "task_id": timer.task_id,
+        "started_at": iso_utc(timer.started_at),
+        "elapsed_minutes": services.elapsed_minutes(timer.started_at, now),
     }
 
 
