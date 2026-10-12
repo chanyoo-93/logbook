@@ -19,8 +19,9 @@
   <td class="grid__actions">
     <button type="button" class="btn btn--small btn--primary" hx-patch="/logs/{{ edit.id }}" hx-include="closest tr, #log-filters" hx-target="#log-table" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">저장</button>
     <button type="button" class="btn btn--small" hx-get="/logs/{{ edit.id }}/row" hx-target="closest tr" hx-swap="outerHTML">취소</button>
-{% if edit.error %}
-    <p class="row-error" role="alert">{{ edit.error }}</p>
-{% endif %}
   </td>
 </tr>
+{% if edit.error %}
+{# 오류 문구는 행 안이 아니라 알림 영역(스크롤과 상관없이 보인다)에 둔다. 행 안에 두면 가로 스크롤 밖으로 밀릴 수 있다. #}
+<div id="flash" hx-swap-oob="innerHTML"><p class="flash flash--error" role="alert">{{ edit.error }}</p></div>
+{% endif %}

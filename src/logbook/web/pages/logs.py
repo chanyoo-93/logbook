@@ -184,7 +184,10 @@ def _apply_edit(
 def _edit_error(
     request: Request, ctx: WebContext, log_id: str, form: LogEditValues, error: LogbookError
 ) -> HTMLResponse:
-    """입력 문제나 버전 충돌은 편집 행에 오류 줄을 달아 그 자리에 다시 그린다."""
+    """입력 문제나 버전 충돌은 편집 행을 입력값 그대로 다시 그린다.
+
+    문구는 OOB로 알림 영역(#flash)에 넣는다. 행 안에 두면 가로 스크롤 밖으로 밀릴 수 있다.
+    """
     number = parse_id(log_id, LOG_LABEL)
     with ctx.session() as s:
         log = services.get_worklog(s, number)

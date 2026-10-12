@@ -540,6 +540,12 @@ main {
   width: 6rem;
 }
 
+/* 선택 상자는 칸에 맞춰 줄어든다(펼치면 전체 이름이 보인다). 넓은 화면에서 편집 행이 표 폭을 넘지 않게 한다. */
+.grid .is-editing select {
+  width: 100%;
+  min-width: 6rem;
+}
+
 .grid__actions {
   white-space: nowrap;
 }
@@ -553,16 +559,6 @@ main {
 .btn--danger {
   border-color: var(--danger);
   color: var(--danger);
-}
-
-.row-error {
-  margin-top: var(--space-1);
-  max-width: 24rem;
-  color: var(--danger);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 
 .panel > .form-message {

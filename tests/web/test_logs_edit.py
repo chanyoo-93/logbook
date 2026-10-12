@@ -80,6 +80,18 @@ def _patch(client: TestClient, engine: Engine, log_id: int, **overrides: str):  
     return client.patch(f"/logs/{log_id}", data=_form(engine, log_id, **overrides), headers=HTMX)
 
 
+def _flash_error(markup: str) -> str:
+    """편집 행 오류 응답이 OOB로 알림 영역(#flash)에 넣는 오류 문구. 알림은 이것 하나뿐이다."""
+    elements = parse_html(markup)
+    flash = by_id(markup, "flash")
+    assert flash.attrs["hx-swap-oob"] == "innerHTML"
+    alerts = [e for e in elements if e.attrs.get("role") == "alert"]
+    assert len(alerts) == 1
+    assert alerts[0].attrs["class"] == "flash flash--error"
+    assert elements.index(alerts[0]) == elements.index(flash) + 1  # #flash 안의 첫 요소
+    return alerts[0].text
+
+
 def _result_text(html: str) -> str:
     return by_id(html, "log-result").text
 
@@ -104,6 +116,7 @@ def test_edit_row_shows_current_values(client: TestClient, web_engine: Engine) -
     row = by_id(html, f"log-{log_id}")
     assert row.tag == "tr"
     assert "is-editing" in str(row.attrs["class"]).split()
+    assert [e for e in parse_html(html) if "hx-swap-oob" in e.attrs] == []
     assert named_input(html, "duration").attrs["value"] == "1h 30m"
     assert named_input(html, "note").attrs["value"] == "결제 재시도"
     date_input = named_input(html, "log_date")
@@ -343,7 +356,7 @@ def test_patch_with_filter_keeps_filtered_table_and_week_nav(
 # --- PATCH 오류 ----------------------------------------------------------------------------
 
 
-def test_patch_bad_duration_returns_edit_row_with_error(
+def test_patch_bad_duration_keeps_edit_row_and_flashes_error(
     client: TestClient, web_engine: Engine
 ) -> None:
     log_id = _seed_log(web_engine)
@@ -362,9 +375,7 @@ def test_patch_bad_duration_returns_edit_row_with_error(
     assert "is-editing" in str(row.attrs["class"]).split()
     assert named_input(html, "duration").attrs["value"] == "abc"
     assert named_input(html, "note").attrs["value"] == "입력하던 메모"
-    alerts = [e for e in parse_html(html) if e.attrs.get("role") == "alert"]
-    assert [e.text for e in alerts] == [str(caught.value)]
-    assert alerts[0].attrs["class"] == "row-error"
+    assert _flash_error(html) == str(caught.value)
     assert [e for e in parse_html(html) if e.tag == "tr"] == [row]
     assert _snapshot(web_engine, log_id) == before
 
@@ -379,8 +390,12 @@ def test_patch_with_stale_version_conflicts(client: TestClient, web_engine: Engi
     response = client.patch(f"/logs/{log_id}", data=stale, headers=HTMX)
 
     assert response.status_code == 409
-    assert RECORD_CHANGED.format(id=log_id) in response.text
     assert response.headers["HX-Retarget"] == f"#log-{log_id}"
+    html = response.text
+    assert "is-editing" in str(by_id(html, f"log-{log_id}").attrs["class"]).split()
+    assert named_input(html, "duration").attrs["value"] == "120m"
+    assert named_input(html, "version").attrs["value"] == stale["version"]
+    assert _flash_error(html) == RECORD_CHANGED.format(id=log_id)
     assert _snapshot(web_engine, log_id) == before
 
 
