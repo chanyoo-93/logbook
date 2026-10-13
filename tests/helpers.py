@@ -73,16 +73,50 @@ def set_version(engine: Engine, version: int) -> None:
         conn.execute(text("UPDATE schema_version SET version = :v"), {"v": version})
 
 
-def make_v1_database(path: Path) -> None:
-    """스키마 버전 1인 DB를 만든다. 엔진은 닫는다.
+# develop 44ddf9f(스키마 버전 1)에서 `lb init`으로 만든 DB의 sqlite_master DDL (테이블과 인덱스).
+# 지금의 스키마에서 파생하지 않고 고정해 두어야 스키마가 바뀌어도 이 DB가 v1로 남는다.
+V1_DDL = (
+    "CREATE TABLE projects (\n\tid INTEGER NOT NULL, \n\tslug VARCHAR(32) NOT NULL, \n"
+    "\tname TEXT NOT NULL, \n\tdescription TEXT, \n\tcolor VARCHAR(7), \n"
+    "\tarchived BOOLEAN DEFAULT 0 NOT NULL, \n\tcreated_at DATETIME NOT NULL, \n"
+    "\tPRIMARY KEY (id)\n)",
+    "CREATE UNIQUE INDEX ix_projects_slug ON projects (slug)",
+    "CREATE TABLE schema_version (\n\tversion INTEGER NOT NULL, \n\tPRIMARY KEY (version)\n)",
+    "CREATE TABLE tasks (\n\tid INTEGER NOT NULL, \n\tproject_id INTEGER NOT NULL, \n"
+    "\ttitle TEXT NOT NULL, \n\tdescription TEXT, \n\tstatus VARCHAR(16) NOT NULL, \n"
+    "\tcategory VARCHAR(32), \n\testimate_minutes INTEGER, \n\tplanned_week VARCHAR(8), \n"
+    "\tdue_date DATE, \n\texternal_ref TEXT, \n\tcreated_at DATETIME NOT NULL, \n"
+    "\tupdated_at DATETIME NOT NULL, \n\tdone_at DATETIME, \n\tPRIMARY KEY (id), \n"
+    "\tFOREIGN KEY(project_id) REFERENCES projects (id), \n"
+    "\tCONSTRAINT ck_tasks_status CHECK (status IN ('todo', 'doing', 'done', 'dropped'))\n)",
+    "CREATE INDEX ix_tasks_planned_week ON tasks (planned_week)",
+    "CREATE INDEX ix_tasks_project_id ON tasks (project_id)",
+    "CREATE TABLE worklogs (\n\tid INTEGER NOT NULL, \n\tproject_id INTEGER NOT NULL, \n"
+    "\ttask_id INTEGER, \n\tcategory VARCHAR(32) NOT NULL, \n\tdate DATE NOT NULL, \n"
+    "\tminutes INTEGER NOT NULL, \n\tnote TEXT NOT NULL, \n\tstarted_at DATETIME, \n"
+    "\tended_at DATETIME, \n\tcreated_at DATETIME NOT NULL, \n\tPRIMARY KEY (id), \n"
+    "\tCONSTRAINT ck_worklogs_minutes_positive CHECK (minutes >= 1), \n"
+    "\tFOREIGN KEY(project_id) REFERENCES projects (id), \n"
+    "\tFOREIGN KEY(task_id) REFERENCES tasks (id) ON DELETE SET NULL\n)",
+    "CREATE INDEX ix_worklogs_project_id ON worklogs (project_id)",
+    "CREATE INDEX ix_worklogs_task_id ON worklogs (task_id)",
+    "CREATE INDEX ix_worklogs_date ON worklogs (date)",
+    "CREATE TABLE active_timer (\n\tid INTEGER NOT NULL, \n\tproject_id INTEGER NOT NULL, \n"
+    "\ttask_id INTEGER, \n\tcategory VARCHAR(32) NOT NULL, \n\tnote TEXT NOT NULL, \n"
+    "\tstarted_at DATETIME NOT NULL, \n\tPRIMARY KEY (id), \n"
+    "\tCONSTRAINT ck_active_timer_single_row CHECK (id = 1), \n"
+    "\tFOREIGN KEY(project_id) REFERENCES projects (id), \n"
+    "\tFOREIGN KEY(task_id) REFERENCES tasks (id) ON DELETE SET NULL\n)",
+)
 
-    스키마 2는 v1에 week_notes 테이블 하나를 더한 것이라 그 테이블을 지우고 버전을 1로 둔다.
-    """
+
+def make_v1_database(path: Path) -> None:
+    """스키마 버전 1인 DB를 만든다(고정한 V1_DDL과 schema_version 행 1). 엔진은 닫는다."""
     engine = db.create_engine_for(path)
     try:
-        db.init_db(engine)
         with engine.begin() as conn:
-            conn.execute(text("DROP TABLE week_notes"))
-        set_version(engine, 1)
+            for statement in V1_DDL:
+                conn.exec_driver_sql(statement)
+            conn.execute(text("INSERT INTO schema_version (version) VALUES (1)"))
     finally:
         engine.dispose()

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.helpers import hold_lock
+from tests.helpers import hold_lock, make_v1_database
 
 
 def make_sqlite_file(path: Path) -> None:
@@ -32,3 +32,20 @@ def test_hold_lock_reports_lock_conflict_and_closes_connection(tmp_path: Path) -
     assert excinfo.value.__context__ is None
     # 두 연결이 모두 닫혀야 Windows에서 파일을 지울 수 있다.
     path.unlink()
+
+
+def test_make_v1_database_has_the_fixed_v1_shape(tmp_path: Path) -> None:
+    path = tmp_path / "logbook.db"
+
+    make_v1_database(path)
+
+    conn = sqlite3.connect(path)
+    try:
+        tables = {
+            name for (name,) in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+        }
+        versions = conn.execute("SELECT version FROM schema_version").fetchall()
+    finally:
+        conn.close()
+    assert tables == {"projects", "tasks", "worklogs", "active_timer", "schema_version"}
+    assert versions == [(1,)]
