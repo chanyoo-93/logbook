@@ -12,7 +12,7 @@ project_app = typer.Typer(
     cls=LogbookGroup, help="프로젝트를 추가·조회·수정·보관합니다.", no_args_is_help=True
 )
 
-EDIT_NOTHING = "바꿀 항목을 하나 이상 지정하세요. 예: lb project edit payment --color '#22c55e'"
+EDIT_NOTHING = '바꿀 항목을 하나 이상 지정하세요. 예: lb project edit payment --color "#22c55e"'
 
 # (값 옵션, 비우기 옵션, update_project 필드). 충돌 검사와 비우기 매핑이 이 표 하나를 쓴다.
 _CLEARABLE = (

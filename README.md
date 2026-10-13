@@ -49,7 +49,7 @@ uv run lb stats --by project
 uv run lb project add payment "결제 서버" --color "#4f46e5"
 uv run lb project list --all
 uv run lb project edit payment --name "결제 서버 v2"
-uv run lb project edit payment --color '#22c55e'
+uv run lb project edit payment --color "#22c55e"
 uv run lb project edit payment --no-color --description "결제 관련 서버"
 uv run lb project archive payment
 uv run lb project unarchive payment
@@ -234,8 +234,8 @@ uv run lb serve --open
 
 - 빠른 기록은 시간(`2h`, `90m`, `1:30`)과 메모를 입력하고 Enter를 누르면 저장합니다. 프로젝트와 카테고리를 `자동`으로 두면 태스크 또는 설정의 `default_project`를 쓰고, 태스크도 카테고리도 없으면 카테고리를 고르라고 안내합니다. 날짜는 항상 오늘이고, 다른 날짜는 기록 페이지에서 고칩니다.
 - 그사이 다른 곳(CLI 등)에서 바뀐 기록·태스크·프로젝트·특이사항을 수정·삭제하려 하면 거부하고 화면을 새로 고치라고 안내합니다(타이머 정지는 확인하지 않습니다).
-- 대시보드의 타이머는 시작 폼(메모, 프로젝트, 카테고리, 태스크)으로 시작하고, 진행 중이면 정지와 취소(확인 창)를 보여 줍니다.
-- 태스크 화면: 카드의 `수정`으로 제목·카테고리·예상·주차를 고칩니다(Enter 저장, Esc 취소). 프로젝트 필터는 보드와 다음 주 계획 패널에 함께 적용됩니다. `이월`은 이번 주의 할 일·진행 중 태스크를 다음 주로 옮기고 확인 창을 거칩니다.
+- 대시보드의 타이머는 시작 폼(메모, 프로젝트, 카테고리, 태스크)으로 시작하고, 진행 중이면 정지와 취소(확인 창)를 보여 줍니다. 타이머가 없을 때 패널은 스스로 갱신하지 않으므로, CLI에서 시작한 타이머는 화면을 새로 고쳐야 보입니다.
+- 태스크 화면: 카드의 `수정`으로 제목·카테고리·예상·주차를 고칩니다(Enter 저장, Esc 취소). 카드에는 실적(연결된 기록 합계)이 늘 보이고(없으면 `실적 0m`), 예상이 있으면 `/ 예상 Y`가 붙으며, 실적이 예상보다 크면 `예상 초과` 꼬리표가 붙습니다. 계획 주차 옆에는 이번 주·다음 주·지난 주 꼬리표가 붙습니다. 프로젝트 필터는 보드와 다음 주 계획 패널에 함께 적용됩니다. `다음 주로 이월` 버튼은 이번 주의 할 일·진행 중 태스크를 다음 주로 옮기고 확인 창을 거칩니다. 일부가 그사이 바뀌었으면 성공 줄 뒤에 `N건은 그사이 바뀌어 옮기지 않았습니다.`가 붙고, 하나도 옮기지 못하면 409(`옮긴 태스크가 없습니다. 그사이 상태나 계획 주차가 바뀌었습니다. 패널을 지금 상태로 다시 표시했습니다.`)입니다.
 - 보고서 화면: 주를 이동하며 Markdown 원문을 보고, 복사하거나 `weekly-report-2026-W40.md`로 내려받습니다. 아래 입력란에 그 주의 특이사항·리스크를 저장하면 `lb report`에도 반영됩니다.
 - 설정 화면: `common`은 보관할 수 없습니다. 설정 정보(설정 파일, 실제로 연 DB 경로, 기본값, 카테고리)는 읽기 전용이라 고치려면 설정 파일을 편집하세요.
 - 다크모드는 OS·브라우저 설정(`prefers-color-scheme`)을 따르고 토글은 없습니다. 인쇄는 항상 밝은 색입니다.
@@ -284,10 +284,10 @@ port = 8765
 | `PATCH /api/tasks/{id}` | 보낸 항목만 수정 (`status` 포함, 비울 수 있는 항목은 `null`) |
 | `GET /api/stats?week=&by=project\|category\|day` | 주간 공수 집계 |
 | `GET /api/report?week=&format=md\|json` | 주간보고서(Markdown 문자열 또는 구조화 데이터) |
-| `GET /api/timer` | 진행 중인 타이머 조회(없으면 `data.timer`가 `null`) |
-| `POST /api/timer/start` | 타이머 시작 (`task_id`만 주거나, `note`와 `category`를 함께 준다. `project`도 받는다. 본문 전체를 생략할 수 있는 것은 `stop`뿐) |
-| `POST /api/timer/stop` | 타이머 정지 (`note`, `round`) |
-| `POST /api/timer/cancel` | 타이머를 기록 없이 버림(진행 중인 타이머가 없으면 404) |
+| `GET /api/timer` | 진행 중인 타이머 조회(본문 없음. 없으면 `data.timer`가 `null`) |
+| `POST /api/timer/start` | 타이머 시작 (`task_id`만 주거나, `note`와 `category`를 함께 준다. `project`도 받는다. 본문을 생략하면 400) |
+| `POST /api/timer/stop` | 타이머 정지 (`note`, `round`. 본문 전체를 생략할 수 있다) |
+| `POST /api/timer/cancel` | 타이머를 기록 없이 버림(본문 없음. 진행 중인 타이머가 없으면 404) |
 
 본문은 `Content-Type: application/json`의 UTF-8 JSON 객체입니다. 시간(`"1h30m"`)·날짜(`"yesterday"`)·주차(`"last"`)는 CLI와 같은 문자열을 받습니다. 모르는 키는 400으로 거부합니다.
 

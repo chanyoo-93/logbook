@@ -337,3 +337,9 @@ def test_conflict_message_is_shared_with_task_command() -> None:
     from logbook.cli.commands import task
 
     assert task.CONFLICT_MESSAGE is runtime.CONFLICT_MESSAGE
+
+
+def test_edit_nothing_example_uses_double_quotes_for_cmd_exe() -> None:
+    # cmd.exe는 작은따옴표를 벗기지 않아 값에 따옴표가 남는다.
+    assert 'lb project edit payment --color "#22c55e"' in EDIT_NOTHING
+    assert "'" not in EDIT_NOTHING
