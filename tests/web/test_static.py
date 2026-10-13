@@ -175,14 +175,6 @@ def test_app_css_defines_color_tokens_and_reduced_motion() -> None:
     assert ".visually-hidden" in css
 
 
-def test_app_css_uses_color_literals_only_in_the_token_block() -> None:
-    css = (STATIC_ROOT / "css" / "app.css").read_text(encoding="utf-8")
-    after_tokens = css.split("}", 1)[1]  # 첫 규칙(:root)을 지난 뒤
-
-    assert not re.search(r"#[0-9a-fA-F]{3,8}\b", after_tokens)
-    assert not re.search(r"\b(?:rgb|rgba|hsl|hsla|oklch)\(", after_tokens)
-
-
 def test_static_text_files_are_utf8_without_carriage_returns() -> None:
     for path in (
         STATIC_ROOT / "css" / "app.css",

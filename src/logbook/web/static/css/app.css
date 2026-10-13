@@ -13,6 +13,7 @@
   --ok: #0f7a3d;
   --danger: #b42318;
   --shadow-raised: 0 8px 14px -10px rgba(21, 23, 28, 0.45);
+  color-scheme: light dark;
 
   /* 글꼴: 웹 글꼴을 내려받지 않고 OS 한글 글꼴을 쓴다(오프라인, 의존성 없음). */
   --font-sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui,
@@ -41,6 +42,24 @@
   --row-height: 36px;
   --radius: 2px;
   --focus-ring: 2px solid var(--accent);
+}
+
+/* 어두운 테마: 색 토큰만 다시 정한다. 인쇄는 밝은 토큰을 쓰도록 screen으로 한정한다. */
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --surface: #171a21;
+    --ink: #e6e8ec;
+    --ink-muted: #a1a8b5;
+    --rule: #2c313b;
+    --row-hover: #1f232c;
+    --accent: #8aa4ff;
+    --accent-hover: #a9bcff;
+    --accent-ink: #0b1020;
+    --ok: #4fc283;
+    --danger: #ff7b72;
+    --shadow-raised: 0 8px 14px -10px rgba(0, 0, 0, 0.8);
+  }
 }
 
 *,

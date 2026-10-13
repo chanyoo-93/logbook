@@ -96,6 +96,7 @@ def _error_page(message: str) -> str:
         "<head>\n"
         '<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        '<meta name="color-scheme" content="light dark">\n'
         "<title>오류 · logbook</title>\n"
         '<link rel="stylesheet" href="/static/css/app.css">\n'
         "</head>\n"
