@@ -13,8 +13,9 @@ from typing import TYPE_CHECKING
 
 from logbook.core import services
 from logbook.core.duration import format_duration
+from logbook.core.report import PlanGroup
 from logbook.core.taskstatus import TaskStatus
-from logbook.core.weeks import week_of
+from logbook.core.weeks import week_heading, week_of
 from logbook.web.pages.views import Choice, category_choices, content_version, project_choices
 
 if TYPE_CHECKING:
@@ -36,6 +37,8 @@ DROP_CONFIRM = (
     "중단할 태스크: #{id} {project} · {title}\n"
     "중단할까요? 중단한 태스크는 이 화면에 보이지 않습니다."
 )
+CARRY_CONFIRM = "이번 주의 할 일·진행 태스크를 다음 주로 옮길까요?\n{this} → {next}, {count}건"
+PLAN_EMPTY = "계획된 태스크가 없습니다."
 COLUMN_TITLES = (("todo", "할 일"), ("doing", "진행 중"), ("done", "이번 주 완료"))
 THIS_WEEK_TAG = "이번 주"
 NEXT_WEEK_TAG = "다음 주"
@@ -115,6 +118,36 @@ class TaskFormView:
     projects: tuple[Choice, ...]  # 보관하지 않은 프로젝트
     categories: tuple[Choice, ...]
     default_project: str
+    message: str = ""
+    is_error: bool = False
+
+
+@dataclass(frozen=True)
+class TaskEditValues:
+    """편집 카드에 채워 둘 값(입력 문자열 그대로, 오류 뒤에도 유지)."""
+
+    title: str
+    task_category: str  # key 또는 ''
+    estimate: str  # '4h' 또는 ''
+    week: str  # '2026-W42' 또는 ''
+    version: str
+
+
+@dataclass(frozen=True)
+class TaskEditView:
+    id: int
+    project: str
+    values: TaskEditValues
+    categories: tuple[Choice, ...]  # 설정 카테고리 + 현재 값
+    error: str = ""
+
+
+@dataclass(frozen=True)
+class PlanPanelView:
+    heading: str  # '다음 주 계획 2026-W43 (10-19 ~ 10-25)'
+    groups: tuple[PlanGroup, ...]
+    carry_ids: tuple[int, ...]  # 표시된 이월 후보의 id
+    carry_confirm: str
     message: str = ""
     is_error: bool = False
 
@@ -245,3 +278,50 @@ def task_form_view(
 
 def task_filter_view(s: Session, project: str) -> TaskFilterView:
     return TaskFilterView(project=project, projects=project_choices(s))
+
+
+def edit_values(task: Task) -> TaskEditValues:
+    estimate = task.estimate_minutes
+    return TaskEditValues(
+        title=task.title,
+        task_category=task.category or "",
+        estimate="" if estimate is None else format_duration(estimate),
+        week=task.planned_week or "",
+        version=task_version(task),
+    )
+
+
+def task_edit_view(
+    ctx: WebContext, task: Task, values: TaskEditValues, *, error: str = ""
+) -> TaskEditView:
+    return TaskEditView(
+        id=task.id,
+        project=task.project.slug,
+        values=values,
+        categories=category_choices(ctx.cfg, task.category or ""),
+        error=error,
+    )
+
+
+def plan_panel(
+    s: Session, ctx: WebContext, project: str, *, message: str = "", is_error: bool = False
+) -> PlanPanelView:
+    """다음 주 계획 패널. 보고서 4절과 같은 묶음이고, project가 있으면 그 프로젝트만 보인다."""
+    this_week = week_of(ctx.today(), ctx.cfg.week_start)
+    next_week = this_week.next()
+    groups = tuple(
+        group
+        for group in services.next_week_plan(s, this_week)
+        if not project or group.project == project
+    )
+    carry_ids = tuple(item.task_id for group in groups for item in group.items if item.carried)
+    return PlanPanelView(
+        heading=f"다음 주 계획 {week_heading(next_week)}",
+        groups=groups,
+        carry_ids=carry_ids,
+        carry_confirm=CARRY_CONFIRM.format(
+            this=this_week.label, next=next_week.label, count=len(carry_ids)
+        ),
+        message=message,
+        is_error=is_error,
+    )

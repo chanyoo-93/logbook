@@ -1,0 +1,26 @@
+<li id="task-{{ edit.id }}" class="task-card is-editing">
+  <p class="task-card__title"><span class="task-card__id">#{{ edit.id }}</span> <span class="task-card__project">{{ edit.project }}</span><input type="hidden" name="version" value="{{ edit.values.version }}"></p>
+  <div class="task-edit">
+    <label for="task-{{ edit.id }}-title">제목</label>
+    <input id="task-{{ edit.id }}-title" type="text" name="title" autocomplete="off" data-focus value="{{ edit.values.title }}">
+    <label for="task-{{ edit.id }}-category">카테고리</label>
+    <select id="task-{{ edit.id }}-category" name="task_category">
+      <option value=""{% if not edit.values.task_category %} selected{% endif %}>없음</option>
+{% for choice in edit.categories %}
+      <option value="{{ choice.value }}"{% if choice.value == edit.values.task_category %} selected{% endif %}>{{ choice.label }}</option>
+{% endfor %}
+    </select>
+    <label for="task-{{ edit.id }}-estimate">예상</label>
+    <input id="task-{{ edit.id }}-estimate" type="text" name="estimate" autocomplete="off" placeholder="4h, 90m" value="{{ edit.values.estimate }}">
+    <label for="task-{{ edit.id }}-week">계획 주차</label>
+    <input id="task-{{ edit.id }}-week" type="text" name="week" autocomplete="off" placeholder="this, next, 2026-W43" value="{{ edit.values.week }}">
+  </div>
+  <div class="task-card__actions">
+    <button type="button" class="btn btn--small btn--primary" hx-patch="/tasks/{{ edit.id }}" hx-include="closest .task-card, #task-filters" hx-target="#task-board" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">저장</button>
+    <button type="button" class="btn btn--small" hx-get="/tasks/{{ edit.id }}/card" hx-target="#task-{{ edit.id }}" hx-swap="outerHTML">취소</button>
+  </div>
+</li>
+{% if edit.error %}
+{# 오류 문구는 카드 안이 아니라 알림 영역에 둔다(Phase 5 log_edit_row.html과 같다). #}
+<div id="flash" hx-swap-oob="innerHTML"><p class="flash flash--error" role="alert">{{ edit.error }}</p></div>
+{% endif %}

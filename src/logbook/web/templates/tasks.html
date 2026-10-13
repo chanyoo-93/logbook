@@ -10,4 +10,7 @@
   <p class="form-message form-message--error" role="alert">{{ error }}</p>
 </section>
 {% endif %}
+{% if plan|default(none) %}
+{% include "partials/task_plan.html" %}
+{% endif %}
 {% endblock %}

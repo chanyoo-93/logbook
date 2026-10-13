@@ -1,2 +1,7 @@
-{# 보드 조각 응답: 필터와 상태 변경이 보드(#task-board)를 통째로 바꾼다. #}
+{# 보드 조각 응답: 필터·상태 변경·수정이 보드(#task-board)를 통째로 바꾸고, 계획 패널은 OOB로 함께 바꾼다. #}
 {% include "partials/task_board.html" %}
+{% if plan|default(none) %}
+{% with oob = true %}
+{% include "partials/task_plan.html" %}
+{% endwith %}
+{% endif %}

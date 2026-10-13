@@ -22,6 +22,7 @@
 {% endif %}
           </p>
           <div class="task-card__actions">
+            <button type="button" class="btn btn--small" hx-get="/tasks/{{ card.id }}/edit" hx-target="#task-{{ card.id }}" hx-swap="outerHTML">수정</button>
 {% for action in card.actions %}
             <button type="button" class="btn btn--small{% if action.status == 'dropped' %} btn--danger{% endif %}" hx-post="/tasks/{{ card.id }}/status" hx-vals='{{ {"status": action.status, "version": card.version}|tojson }}' hx-include="#task-filters" hx-target="#task-board" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this"{% if action.confirm %} hx-confirm="{{ action.confirm }}"{% endif %}>{{ action.label }}</button>
 {% endfor %}
