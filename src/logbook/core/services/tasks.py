@@ -1,7 +1,7 @@
 """태스크(할 일) 생성·조회·목록·수정·상태 변경과 실제 공수 집계 유스케이스."""
 
 from collections.abc import Callable, Collection
-from datetime import date, datetime, time, timedelta, tzinfo
+from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from typing import Any
 
 from sqlalchemy import func, select
@@ -236,7 +236,18 @@ def _checked_due_date(due_date: date | None) -> date | None:
 
 
 def _local_midnight(day: date, tz: tzinfo) -> datetime:
-    return datetime.combine(day, time.min, tzinfo=tz)
+    """day의 로컬 자정. UTC로 바꿀 수 없으면 표현 가능한 가장 이른 UTC 시각으로 맞춘다.
+
+    UTC보다 앞선 시간대의 0001-01-01 자정은 UTC로 0000년이라 저장 형식이 다루지 못한다.
+    그 앞에는 기록이 있을 수 없으므로 하한을 맞춰도 비교 결과는 같다.
+    상한 쪽은 9999-W51까지만 주를 받으므로(다음 주 계산 범위) 넘치지 않는다.
+    """
+    midnight = datetime.combine(day, time.min, tzinfo=tz)
+    try:
+        midnight.astimezone(UTC)
+    except OverflowError:
+        return datetime.min.replace(tzinfo=UTC)
+    return midnight
 
 
 def _done_range(week: Week, tz: tzinfo) -> tuple[datetime, datetime]:

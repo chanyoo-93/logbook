@@ -806,6 +806,15 @@ def test_count_done_tasks_week_boundaries_are_local_midnight(
     assert services.count_done_tasks(seeded, W40, tz=KST) == expected
 
 
+def test_count_done_tasks_first_week_with_tz_ahead_of_utc_does_not_overflow(
+    seeded: Session,
+) -> None:
+    # 0001-W01의 로컬 자정은 KST에서 UTC 0000년이라 표현할 수 없다.
+    _done(seeded, datetime(2026, 9, 30, 3, tzinfo=UTC))
+
+    assert services.count_done_tasks(seeded, Week(1, 1), tz=KST) == 0
+
+
 # --- done_tasks_in_week ---
 
 
@@ -855,3 +864,11 @@ def test_done_tasks_in_week_loads_project(seeded: Session) -> None:
     seeded.expunge_all()
 
     assert tasks[0].project.slug == "payment"
+
+
+def test_done_tasks_in_week_first_week_with_tz_ahead_of_utc_does_not_overflow(
+    seeded: Session,
+) -> None:
+    _done(seeded, datetime(2026, 9, 30, 3, tzinfo=UTC))
+
+    assert services.done_tasks_in_week(seeded, Week(1, 1), tz=KST) == []

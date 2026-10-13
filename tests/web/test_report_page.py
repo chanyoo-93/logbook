@@ -106,3 +106,15 @@ def test_report_page_broken_user_template_still_renders(client: TestClient, tmp_
     assert not [e for e in elements if "data-copy-target" in e.attrs]
     assert not [e for e in elements if str(e.attrs.get("href", "")).startswith("/report/download")]
     assert not [e for e in elements if e.attrs.get("id") == "report-markdown"]
+
+
+def test_report_first_week_with_tz_ahead_of_utc_renders_without_previous_link(
+    client: TestClient,
+) -> None:
+    # 테스트 시계(FIXED_NOW)는 UTC+9다. 0001-W01의 로컬 자정은 UTC로 0000년이다.
+    response = client.get("/report", params={"week": "0001-W01"})
+
+    links = [e.attrs.get("href") for e in parse_html(response.text) if e.tag == "a"]
+    assert response.status_code == 200
+    assert "/report?week=0001-W02" in links
+    assert not [href for href in links if href and "week=0000" in href]
