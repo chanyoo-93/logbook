@@ -1,0 +1,7 @@
+{# 추가 폼 응답: 폼은 hx-target이 받는 본문이고, 성공하면 보드를 OOB로 함께 바꾼다. #}
+{% include "partials/task_form.html" %}
+{% if board %}
+{% with oob = true %}
+{% include "partials/task_board.html" %}
+{% endwith %}
+{% endif %}

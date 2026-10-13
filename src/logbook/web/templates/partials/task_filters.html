@@ -1,0 +1,11 @@
+<form id="task-filters" class="filters" aria-label="태스크 필터" hx-get="/tasks" hx-target="#task-board" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change, submit" hx-sync="this:replace">
+  <div class="filters__field">
+    <label for="filter-project">프로젝트</label>
+    <select id="filter-project" name="project">
+      <option value=""{% if not filters.project %} selected{% endif %}>전체</option>
+{% for choice in filters.projects %}
+      <option value="{{ choice.value }}"{% if choice.value == filters.project %} selected{% endif %}>{{ choice.label }}</option>
+{% endfor %}
+    </select>
+  </div>
+</form>

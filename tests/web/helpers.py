@@ -212,3 +212,32 @@ def week_links(markup: str) -> list[Element]:
         for e in parse_html(markup)
         if e.tag == "a" and str(e.attrs.get("href", "")).startswith("/logs?week=")
     ]
+
+
+def by_class(markup: str, css_class: str) -> list[Element]:
+    """class 목록에 css_class가 있는 요소(문서 순서)."""
+    return [
+        element
+        for element in parse_html(markup)
+        if css_class in str(element.attrs.get("class") or "").split()
+    ]
+
+
+def board_columns(markup: str) -> dict[str, list[int]]:
+    """칸반 열 id('todo'·'doing'·'done') -> 그 안의 카드 태스크 id(문서 순서).
+
+    열은 id가 'task-col-'로 시작하는 요소, 카드는 id가 'task-숫자'인 li다.
+    """
+    columns: dict[str, list[int]] = {}
+    current: list[int] | None = None
+    for element in parse_html(markup):
+        element_id = str(element.attrs.get("id") or "")
+        if element_id.startswith("task-col-"):
+            current = columns.setdefault(element_id.removeprefix("task-col-"), [])
+        elif (
+            element.tag == "li"
+            and element_id.removeprefix("task-").isdigit()
+            and current is not None
+        ):
+            current.append(int(element_id.removeprefix("task-")))
+    return columns

@@ -19,6 +19,7 @@
     <nav class="masthead__nav" aria-label="주 메뉴">
       <a href="/"{% if active == "dashboard" %} aria-current="page"{% endif %}>대시보드</a>
       <a href="/logs"{% if active == "logs" %} aria-current="page"{% endif %}>기록</a>
+      <a href="/tasks"{% if active == "tasks" %} aria-current="page"{% endif %}>태스크</a>
     </nav>
     <p class="masthead__week">이번 주 {{ current_week }}</p>
   </div>

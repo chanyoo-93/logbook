@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}태스크{% endblock %}
+{% block content %}
+{% include "partials/task_form.html" %}
+{% include "partials/task_filters.html" %}
+{% if board %}
+{% include "partials/task_board.html" %}
+{% else %}
+<section id="task-board" class="panel" aria-label="태스크 보드">
+  <p class="form-message form-message--error" role="alert">{{ error }}</p>
+</section>
+{% endif %}
+{% endblock %}
