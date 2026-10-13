@@ -257,7 +257,8 @@ def test_field_tuples_match_model_columns() -> None:
     for table, model in models.items():
         assert set(backup.FIELDS[table]) == set(model.__table__.columns.keys()), table
         assert list(backup.FIELDS[table]) == list(model.__table__.columns.keys()), table
-    assert set(backup.TABLE_ORDER) == set(Base.metadata.tables) - {"schema_version"}
+    # week_notes 내보내기는 Task 6-4(형식 2)에서 더한다. 그때 이 제외를 지운다.
+    assert set(backup.TABLE_ORDER) == set(Base.metadata.tables) - {"schema_version", "week_notes"}
     assert set(backup.FIELDS) == set(backup.TABLE_ORDER)
     assert backup.FORMAT_VERSION == 1
 

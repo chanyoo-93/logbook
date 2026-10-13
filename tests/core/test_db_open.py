@@ -6,6 +6,7 @@ import stat
 import sys
 import time
 from collections.abc import Callable, Iterator
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -66,8 +67,9 @@ def read_state(path: Path) -> tuple[int | None, list[str]]:
 
 
 def require_pending_migration(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(db, "SCHEMA_VERSION", 2)
-    monkeypatch.setitem(db.MIGRATIONS, 2, add_extra_column)
+    pending = db.SCHEMA_VERSION + 1
+    monkeypatch.setattr(db, "SCHEMA_VERSION", pending)
+    monkeypatch.setitem(db.MIGRATIONS, pending, add_extra_column)
 
 
 def test_open_database_rejects_missing_file_without_creating_it(tmp_path: Path) -> None:
@@ -145,7 +147,7 @@ def test_open_database_applies_pending_migration(
 
     engine = open_db(path)
 
-    assert db.current_version(engine) == 2
+    assert db.current_version(engine) == db.SCHEMA_VERSION
     assert "extra" in column_names(engine, "projects")
     assert project_slugs(engine) == ["payment"]
 
@@ -190,11 +192,16 @@ def test_initialize_database_applies_pending_migration(
 ) -> None:
     path = tmp_path / "logbook.db"
     make_database(path, slug="payment")
+    current = db.SCHEMA_VERSION
     require_pending_migration(monkeypatch)
+    now = datetime(2026, 10, 13, 15, 30, tzinfo=timezone(timedelta(hours=9)))
 
-    assert db.initialize_database(path) == db.InitResult(1, 2)
+    result = db.initialize_database(path, now=now)
 
-    assert read_state(path) == (2, ["payment"])
+    backup = tmp_path / f"logbook.db.v{current}-20261013-153000.bak"
+    assert result == db.InitResult(current, current + 1, backup)
+    assert backup.is_file()
+    assert read_state(path) == (current + 1, ["payment"])
 
 
 def test_initialize_database_rejects_newer_database_and_releases_it(tmp_path: Path) -> None:
@@ -305,29 +312,32 @@ def test_init_db_reports_write_lock_on_begin_as_busy(
     make_database(path)
     # 최신 DB를 먼저 연 뒤 대기 마이그레이션을 만들어 init_db의 BEGIN 경로만 시험한다.
     engine = open_db(path)
+    current = db.SCHEMA_VERSION
     require_pending_migration(monkeypatch)
 
     with hold_lock(path, "IMMEDIATE"), pytest.raises(DatabaseBusyError):
         db.init_db(engine)
 
-    assert db.current_version(engine) == 1
+    assert db.current_version(engine) == current
 
 
 def test_transaction_translates_error_in_migration_body_and_rolls_back(
     engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    current = db.SCHEMA_VERSION
+
     def disk_full_upgrade(conn: Connection) -> None:
         add_extra_column(conn)
         raise fake_operational_error("SQLITE_FULL")
 
-    monkeypatch.setattr(db, "SCHEMA_VERSION", 2)
-    monkeypatch.setitem(db.MIGRATIONS, 2, disk_full_upgrade)
+    monkeypatch.setattr(db, "SCHEMA_VERSION", current + 1)
+    monkeypatch.setitem(db.MIGRATIONS, current + 1, disk_full_upgrade)
 
     with pytest.raises(LogbookError, match="디스크 공간이 부족해") as excinfo:
         db.init_db(engine)
 
     assert isinstance(excinfo.value.__cause__, OperationalError)
-    assert db.current_version(engine) == 1
+    assert db.current_version(engine) == current
     assert "extra" not in column_names(engine, "projects")
 
 
@@ -335,19 +345,20 @@ def test_transaction_keeps_untranslated_operational_error(
     engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     error = fake_operational_error("SQLITE_ERROR")
+    current = db.SCHEMA_VERSION
 
     def broken_upgrade(conn: Connection) -> None:
         add_extra_column(conn)
         raise error
 
-    monkeypatch.setattr(db, "SCHEMA_VERSION", 2)
-    monkeypatch.setitem(db.MIGRATIONS, 2, broken_upgrade)
+    monkeypatch.setattr(db, "SCHEMA_VERSION", current + 1)
+    monkeypatch.setitem(db.MIGRATIONS, current + 1, broken_upgrade)
 
     with pytest.raises(OperationalError) as excinfo:
         db.init_db(engine)
 
     assert excinfo.value is error
-    assert db.current_version(engine) == 1
+    assert db.current_version(engine) == current
     assert "extra" not in column_names(engine, "projects")
 
 

@@ -9,8 +9,9 @@ import pytest
 from sqlalchemy.orm import Session
 from typer.testing import Result
 
+from logbook.cli import render
 from logbook.core import db, services
-from tests.helpers import add_extra_column, set_version
+from tests.helpers import add_extra_column, make_v1_database, set_version
 
 MISSING_DEFAULT_WARNING = (
     "주의: 설정의 default_project가 가리키는 프로젝트가 없습니다: 'payment'. "
@@ -45,7 +46,7 @@ def test_first_run_creates_config_db_and_common(lb: Callable[..., Result], tmp_h
     assert result.exit_code == 0, result.stderr
     assert result.stdout == (
         f"✔ 설정 파일 생성: {cfg}\n"
-        f"✔ 데이터베이스 생성: {db_path} (스키마 v1)\n"
+        f"✔ 데이터베이스 생성: {db_path} (스키마 v{db.SCHEMA_VERSION})\n"
         "✔ 기본 프로젝트 준비: common (공통)\n"
     )
     assert result.stderr == ""
@@ -69,7 +70,7 @@ def test_rerun_keeps_config_and_checks_db(
     assert result.exit_code == 0, result.stderr
     assert result.stdout == (
         f"· 설정 파일 유지 (이미 있음): {cfg}\n"
-        f"✔ 데이터베이스 확인: {db_path} (스키마 v1, 최신)\n"
+        f"✔ 데이터베이스 확인: {db_path} (스키마 v{db.SCHEMA_VERSION}, 최신)\n"
         "✔ 기본 프로젝트 준비: common (공통)\n"
     )
     assert result.stderr == ""
@@ -88,7 +89,10 @@ def test_empty_db_file_is_created_as_new(
     result = lb("init")
 
     assert result.exit_code == 0, result.stderr
-    assert result.stdout.splitlines()[1] == f"✔ 데이터베이스 생성: {db_path} (스키마 v1)"
+    assert (
+        result.stdout.splitlines()[1]
+        == f"✔ 데이터베이스 생성: {db_path} (스키마 v{db.SCHEMA_VERSION})"
+    )
     assert project_slugs(open_db) == ["common"]
 
 
@@ -97,14 +101,43 @@ def test_pending_migration_is_reported_as_upgrade(
 ) -> None:
     db_path = tmp_home / "logbook.db"
     assert lb("init").exit_code == 0
-    monkeypatch.setattr(db, "SCHEMA_VERSION", 2)
-    monkeypatch.setattr(db, "MIGRATIONS", {2: add_extra_column})
+    current = db.SCHEMA_VERSION
+    monkeypatch.setattr(db, "SCHEMA_VERSION", current + 1)
+    monkeypatch.setattr(db, "MIGRATIONS", {current + 1: add_extra_column})
 
     result = lb("init")
 
     assert result.exit_code == 0, result.stderr
-    assert result.stdout.splitlines()[1] == f"✔ 데이터베이스 업그레이드: {db_path} (v1 → v2)"
+    arrow = render.arrow()
+    assert result.stdout.splitlines()[1] == (
+        f"✔ 데이터베이스 업그레이드: {db_path} (v{current} {arrow} v{current + 1})"
+    )
     assert_db_released(db_path)
+
+
+def test_v1_database_is_upgraded_with_backup_line(
+    lb: Callable[..., Result], tmp_home: Path
+) -> None:
+    db_path = tmp_home / "logbook.db"
+    make_v1_database(db_path)
+
+    result = lb("init")
+
+    backup = tmp_home / "logbook.db.v1-20261001-093000.bak"
+    assert result.exit_code == 0, result.stderr
+    lines = result.stdout.splitlines()
+    assert lines[1] == f"✔ 데이터베이스 업그레이드: {db_path} (v1 {render.arrow()} v2)"
+    assert lines[2] == f"{render.info_mark()} 이전 데이터베이스 백업: {backup}"
+    assert lines[3] == "✔ 기본 프로젝트 준비: common (공통)"
+    assert backup.is_file()
+    assert_db_released(db_path)
+
+
+def test_new_database_has_no_backup_line(lb: Callable[..., Result], tmp_home: Path) -> None:
+    result = lb("init")
+
+    assert "백업" not in result.stdout
+    assert list(tmp_home.glob("*.bak")) == []
 
 
 def test_newer_db_fails_without_stdout(lb: Callable[..., Result], tmp_home: Path) -> None:
@@ -190,6 +223,9 @@ def test_korean_path_with_space(
     result = lb("init")
 
     assert result.exit_code == 0, result.stderr
-    assert result.stdout.splitlines()[1] == f"✔ 데이터베이스 생성: {db_path} (스키마 v1)"
+    assert (
+        result.stdout.splitlines()[1]
+        == f"✔ 데이터베이스 생성: {db_path} (스키마 v{db.SCHEMA_VERSION})"
+    )
     assert db_path.is_file()
     assert_db_released(db_path)

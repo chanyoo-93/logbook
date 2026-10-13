@@ -43,6 +43,7 @@ def serve(
         now=runtime.now,
         on_ready=_announce_ready,
         on_browser_failed=_warn_browser_failed,
+        on_upgrade=runtime.announce_upgrade,
     )
     console.print_line("웹 대시보드를 종료했습니다.")
 

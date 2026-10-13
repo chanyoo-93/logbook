@@ -71,3 +71,18 @@ def add_project(engine: Engine, slug: str = "payment") -> None:
 def set_version(engine: Engine, version: int) -> None:
     with engine.begin() as conn:
         conn.execute(text("UPDATE schema_version SET version = :v"), {"v": version})
+
+
+def make_v1_database(path: Path) -> None:
+    """스키마 버전 1인 DB를 만든다. 엔진은 닫는다.
+
+    스키마 2는 v1에 week_notes 테이블 하나를 더한 것이라 그 테이블을 지우고 버전을 1로 둔다.
+    """
+    engine = db.create_engine_for(path)
+    try:
+        db.init_db(engine)
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE week_notes"))
+        set_version(engine, 1)
+    finally:
+        engine.dispose()

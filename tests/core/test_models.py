@@ -3,11 +3,19 @@
 import datetime as dt
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import Engine, inspect, text
 from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm import Session
 
-from logbook.core.models import ActiveTimer, Project, Task, TaskStatus, WorkLog, utcnow
+from logbook.core.models import (
+    ActiveTimer,
+    Project,
+    Task,
+    TaskStatus,
+    WeekNote,
+    WorkLog,
+    utcnow,
+)
 
 KST = dt.timezone(dt.timedelta(hours=9))
 UTC_OFFSET = dt.timedelta(0)
@@ -242,3 +250,37 @@ def test_deleting_task_clears_active_timer_task(session: Session) -> None:
     session.refresh(timer)
 
     assert timer.task_id is None
+
+
+def test_week_notes_columns(engine: Engine) -> None:
+    columns = {column["name"]: column for column in inspect(engine).get_columns("week_notes")}
+
+    assert list(columns) == ["week", "risks", "notes", "updated_at"]
+    assert columns["week"]["primary_key"] == 1
+    assert str(columns["week"]["type"]) == "VARCHAR(8)"
+    for name in ("risks", "notes"):
+        assert str(columns[name]["type"]) == "TEXT"
+    for name in ("week", "risks", "notes", "updated_at"):
+        assert columns[name]["nullable"] is False
+
+
+def test_week_note_updated_at_is_aware_and_changes_on_update(session: Session) -> None:
+    note = WeekNote(week="2026-W41", risks="", notes="특이사항")
+    session.add(note)
+    session.flush()
+    first = note.updated_at
+    assert_aware_utc(first)
+
+    note.risks = "일정 지연"
+    session.flush()
+
+    assert note.updated_at >= first
+
+
+def test_week_note_week_is_unique(session: Session) -> None:
+    session.add(WeekNote(week="2026-W41", risks="", notes="가"))
+    session.flush()
+    session.add(WeekNote(week="2026-W41", risks="", notes="나"))
+
+    with pytest.raises(IntegrityError):
+        session.flush()

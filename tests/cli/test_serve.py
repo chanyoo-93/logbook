@@ -14,8 +14,10 @@ import httpx2
 import pytest
 from typer.testing import Result
 
+from logbook.cli import render
 from logbook.web import server as web_server
 from tests.cli.helpers import assert_rejected, lb_env, run_lb
+from tests.helpers import make_v1_database
 
 DEFAULT_PORT = 8765
 STARTUP_TIMEOUT_SECONDS = 30
@@ -92,6 +94,22 @@ def test_serve_prints_start_and_stop_lines_and_releases_resources(
     # serve가 끝나면 소켓이 닫혀 있어야 한다.
     assert len(fake_server.sockets) == 1
     assert fake_server.sockets[0].fileno() == -1
+
+
+def test_serve_announces_database_upgrade_before_start_line(
+    lb: Callable[..., Result], tmp_home: Path, fake_server: FakeServer
+) -> None:
+    make_v1_database(tmp_home / "logbook.db")
+    backup = tmp_home / "logbook.db.v1-20261001-093000.bak"
+
+    result = lb("serve")
+
+    assert result.exit_code == 0, result.stderr
+    arrow = render.arrow()
+    assert result.stderr == (
+        f"데이터베이스를 업그레이드했습니다: v1 {arrow} v2. 이전 데이터베이스 백업: {backup}\n"
+    )
+    assert result.stdout == start_line(DEFAULT_PORT) + STOP_LINE
 
 
 def test_serve_closes_socket_so_port_can_be_reopened(

@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy import Engine, inspect
 from sqlalchemy.orm import Session
 
-from logbook.core.db import current_version
+from logbook.core.db import SCHEMA_VERSION, current_version
 from logbook.core.models import Project
 
 CONFTEST = Path(__file__).with_name("conftest.py")
@@ -62,7 +62,7 @@ def test_today_is_fixed_thursday_of_week_40(today: date) -> None:
 def test_engine_uses_initialized_db_in_tmp_home(engine: Engine, tmp_home: Path) -> None:
     assert engine.url.database == str(tmp_home / "logbook.db")
     assert (tmp_home / "logbook.db").is_file()
-    assert current_version(engine) == 1
+    assert current_version(engine) == SCHEMA_VERSION
 
 
 def test_session_is_bound_to_engine_and_keeps_objects_after_commit(
