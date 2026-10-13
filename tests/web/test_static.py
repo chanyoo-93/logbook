@@ -54,6 +54,7 @@ def _readme_hashes() -> dict[str, str]:
         ("/static/css/app.css", CSS),
         ("/static/js/app.js", JS),
         ("/static/js/dashboard.js", JS),
+        ("/static/js/report.js", JS),
         ("/static/vendor/htmx-2.0.11.min.js", JS),
         ("/static/vendor/chart-4.5.1.umd.min.js", JS),
     ],
@@ -187,6 +188,7 @@ def test_static_text_files_are_utf8_without_carriage_returns() -> None:
         STATIC_ROOT / "css" / "app.css",
         STATIC_ROOT / "js" / "app.js",
         STATIC_ROOT / "js" / "dashboard.js",
+        STATIC_ROOT / "js" / "report.js",
         STATIC_ROOT / "favicon.svg",
     ):
         data = path.read_bytes()

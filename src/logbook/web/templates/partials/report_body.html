@@ -1,0 +1,18 @@
+<section id="report-body" class="panel report" aria-labelledby="report-heading">
+  <div class="panel__head">
+    <h2 id="report-heading" class="report__title">{{ body.heading }}</h2>
+{% if not body.preview_error %}
+    <div class="report__actions">
+      <button type="button" class="btn btn--small" data-copy-target="report-markdown">복사</button>
+      <a class="btn btn--small" href="{{ body.download_url }}" download>내려받기</a>
+    </div>
+{% endif %}
+  </div>
+  <p id="copy-status" class="form-message" role="status"></p>
+{% if body.preview_error %}
+  <p class="form-message form-message--error" role="alert">{{ body.preview_error }}</p>
+{% else %}
+  <pre id="report-markdown" class="report__preview">{{ body.markdown }}</pre>
+{% endif %}
+{% include "partials/report_notes_form.html" %}
+</section>

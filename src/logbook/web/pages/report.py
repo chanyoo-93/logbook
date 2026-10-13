@@ -1,0 +1,243 @@
+"""보고서 화면: 미리보기(GET /report), 내려받기(GET /report/download), 특이사항 저장(POST).
+
+특이사항 저장은 화면이 본 값의 버전(notes_version)이 지금 저장된 값과 같을 때만 한다.
+Markdown 렌더링(jinja2)은 세션을 닫은 뒤에 한다.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+from urllib.parse import urlencode
+
+from fastapi import APIRouter
+from starlette.requests import Request
+from starlette.responses import HTMLResponse, Response
+
+from logbook.core import services
+from logbook.core.errors import InvalidInputError
+from logbook.core.weeks import Week, parse_week, week_heading
+from logbook.web.context import Ctx, WebContext
+from logbook.web.errors import NOTES_CHANGED, ConflictError
+from logbook.web.htmx import is_htmx
+from logbook.web.pages.forms import FormText, QueryText
+from logbook.web.pages.panels import NO_CHANGE, RESULT_MARK
+from logbook.web.pages.templating import render, render_error
+from logbook.web.pages.views import content_version
+from logbook.web.reporting import download_name, report_data, report_markdown
+
+if TYPE_CHECKING:
+    from datetime import datetime
+
+    from sqlalchemy.orm import Session
+
+    from logbook.core.models import WeekNote
+    from logbook.core.report import ReportData
+
+router = APIRouter()
+
+PAGE_TEMPLATE = "report.html"
+BODY_TEMPLATE = "partials/report_body.html"
+RESPONSE_TEMPLATE = "partials/report_response.html"
+FORM_TEMPLATE = "partials/report_notes_form.html"
+DEFAULT_WEEK = "this"
+REPORT_PATH = "/report"
+NOTES_SAVED = f"{RESULT_MARK} 특이사항·리스크를 저장했습니다: {{week}}"
+MARKDOWN_TYPE = "text/markdown; charset=utf-8"
+
+
+@dataclass(frozen=True)
+class NotesValues:
+    notes: str
+    risks: str
+    version: str
+
+
+@dataclass(frozen=True)
+class ReportBodyView:
+    week: str  # '2026-W42'
+    heading: str  # week_heading
+    markdown: str  # 렌더링 결과(템플릿 오류면 '')
+    preview_error: str  # 사용자 템플릿 오류 문구(있으면 미리보기 대신 보여 준다)
+    download_url: str  # '/report/download?week=2026-W42'
+    notes: NotesValues
+    message: str = ""
+    is_error: bool = False
+
+
+@dataclass(frozen=True)
+class ReportNavView:
+    week: str  # 주차 입력칸에 채울 값
+    prev_url: str | None
+    next_url: str | None
+
+
+def notes_version(note: WeekNote | None) -> str:
+    """화면이 본 특이사항이 그사이 바뀌었는지 가리는 값. 저장된 행이 없으면 ''."""
+    if note is None:
+        return ""
+    return content_version(note.week, note.risks, note.notes)
+
+
+def _week_url(week: Week) -> str:
+    return f"{REPORT_PATH}?{urlencode({'week': week.label})}"
+
+
+def _neighbor_url(week: Week, *, forward: bool) -> str | None:
+    try:
+        return _week_url(week.next() if forward else week.prev())
+    except InvalidInputError:  # 지원 범위의 끝
+        return None
+
+
+def _nav_view(week: Week | None, typed: str) -> ReportNavView:
+    if week is None:
+        return ReportNavView(typed, None, None)
+    return ReportNavView(
+        week.label, _neighbor_url(week, forward=False), _neighbor_url(week, forward=True)
+    )
+
+
+def _parse_week(ctx: WebContext, text: str) -> Week:
+    return parse_week(
+        text.strip() or DEFAULT_WEEK, today=ctx.today(), week_start=ctx.cfg.week_start
+    )
+
+
+def _body_view(
+    ctx: WebContext,
+    week: Week,
+    data: ReportData,
+    notes: NotesValues,
+    *,
+    message: str = "",
+    is_error: bool = False,
+) -> ReportBodyView:
+    """미리보기를 렌더링해 본문 뷰를 만든다. 세션을 닫은 뒤에 부른다."""
+    markdown = ""
+    preview_error = ""
+    try:
+        markdown = report_markdown(ctx, data)
+    except InvalidInputError as error:  # 사용자 템플릿 오류: 페이지는 계속 쓸 수 있다
+        preview_error = str(error)
+    return ReportBodyView(
+        week=week.label,
+        heading=week_heading(week),
+        markdown=markdown,
+        preview_error=preview_error,
+        download_url=f"{REPORT_PATH}/download?{urlencode({'week': week.label})}",
+        notes=notes,
+        message=message,
+        is_error=is_error,
+    )
+
+
+def _load(
+    s: Session, ctx: WebContext, week: Week, now: datetime
+) -> tuple[ReportData, WeekNote | None]:
+    return report_data(s, ctx, week, now), services.get_week_note(s, week)
+
+
+def _saved_values(note: WeekNote | None) -> NotesValues:
+    if note is None:
+        return NotesValues("", "", notes_version(None))
+    return NotesValues(note.notes, note.risks, notes_version(note))
+
+
+@router.get("/report", response_class=HTMLResponse)
+def report_page(request: Request, ctx: Ctx, week: QueryText = "") -> HTMLResponse:
+    now = ctx.now()
+    try:
+        the_week = _parse_week(ctx, week)
+    except InvalidInputError as error:
+        if is_htmx(request):
+            raise  # 알림 영역에 쓴다 (공통 오류 처리)
+        context = {"active": "report", "nav": _nav_view(None, week.strip()), "body": None}
+        return render_error(request, error, PAGE_TEMPLATE, {**context, "error": str(error)})
+    with ctx.session() as s:
+        data, note = _load(s, ctx, the_week, now)
+        notes = _saved_values(note)
+    body = _body_view(ctx, the_week, data, notes)
+    context = {"active": "report", "nav": _nav_view(the_week, ""), "body": body}
+    if is_htmx(request):
+        return render(request, RESPONSE_TEMPLATE, context)
+    return render(request, PAGE_TEMPLATE, context)
+
+
+@router.get("/report/download")
+def report_download(ctx: Ctx, week: QueryText = "") -> Response:
+    now = ctx.now()
+    the_week = _parse_week(ctx, week)
+    with ctx.session() as s:
+        data = report_data(s, ctx, the_week, now)
+    markdown = report_markdown(ctx, data)
+    headers = {"Content-Disposition": f'attachment; filename="{download_name(the_week)}"'}
+    return Response(markdown.encode("utf-8"), media_type=MARKDOWN_TYPE, headers=headers)
+
+
+def _conflict_response(
+    request: Request, ctx: WebContext, the_week: Week, now: datetime, form: NotesValues, error: str
+) -> HTMLResponse:
+    """저장된 내용으로 미리보기를 다시 그린다. 입력값은 그대로 두고 버전만 지금 값으로 바꾼다."""
+    with ctx.session() as s:
+        data, note = _load(s, ctx, the_week, now)
+    shown = NotesValues(form.notes, form.risks, notes_version(note))
+    body = _body_view(ctx, the_week, data, shown, message=error, is_error=True)
+    headers = {"HX-Retarget": "#report-body", "HX-Reswap": "outerHTML", "HX-Push-Url": "false"}
+    return render(request, BODY_TEMPLATE, {"body": body}, status_code=409, headers=headers)
+
+
+def _week_error_response(
+    request: Request, week_text: str, form: NotesValues, error: InvalidInputError
+) -> HTMLResponse:
+    """주차를 읽지 못하면 미리보기 없이 특이사항 폼만 입력값 그대로 다시 그린다."""
+    body = ReportBodyView(
+        week=week_text,
+        heading="",
+        markdown="",
+        preview_error="",
+        download_url="",
+        notes=form,
+        message=str(error),
+        is_error=True,
+    )
+    headers = {"HX-Retarget": "#report-notes", "HX-Reswap": "outerHTML", "HX-Push-Url": "false"}
+    return render_error(request, error, FORM_TEMPLATE, {"body": body}, headers=headers)
+
+
+def _save(
+    ctx: WebContext, the_week: Week, now: datetime, form: NotesValues
+) -> tuple[ReportData, NotesValues, bool]:
+    """세션 하나에서 버전 확인 -> 저장 -> 보고서 데이터 다시 만들기. 다르면 ConflictError."""
+    with ctx.session() as s:
+        before = services.get_week_note(s, the_week)
+        if notes_version(before) != form.version:
+            raise ConflictError(NOTES_CHANGED.format(week=the_week.label))
+        after = services.save_week_note(s, the_week, notes=form.notes, risks=form.risks)
+        data = report_data(s, ctx, the_week, now)
+        saved = _saved_values(after)
+    return data, saved, saved.version != notes_version(before)
+
+
+@router.post("/report/notes", response_class=HTMLResponse)
+def save_notes(
+    request: Request,
+    ctx: Ctx,
+    week: FormText = "",
+    notes: FormText = "",
+    risks: FormText = "",
+    version: FormText = "",
+) -> HTMLResponse:
+    form = NotesValues(notes, risks, version)
+    now = ctx.now()
+    try:
+        the_week = _parse_week(ctx, week)
+    except InvalidInputError as error:
+        return _week_error_response(request, week, form, error)
+    try:
+        data, saved, changed = _save(ctx, the_week, now, form)
+    except ConflictError as error:
+        return _conflict_response(request, ctx, the_week, now, form, str(error))
+    message = NOTES_SAVED.format(week=the_week.label) if changed else NO_CHANGE
+    body = _body_view(ctx, the_week, data, saved, message=message)
+    return render(request, BODY_TEMPLATE, {"body": body})

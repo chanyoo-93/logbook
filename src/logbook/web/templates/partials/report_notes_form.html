@@ -1,0 +1,17 @@
+<form id="report-notes" class="report-notes" aria-labelledby="report-notes-title" hx-post="/report/notes" hx-target="#report-body" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button">
+  <h2 id="report-notes-title" class="report-notes__title" tabindex="-1" data-focus>특이사항 · 리스크</h2>
+  <input type="hidden" name="week" value="{{ body.week }}">
+  <input type="hidden" name="version" value="{{ body.notes.version }}">
+  <div class="report-notes__field">
+    <label for="report-notes-text">특이사항</label>
+    <textarea id="report-notes-text" name="notes" rows="4">{{ body.notes.notes }}</textarea>
+  </div>
+  <div class="report-notes__field">
+    <label for="report-risks-text">리스크</label>
+    <textarea id="report-risks-text" name="risks" rows="4">{{ body.notes.risks }}</textarea>
+  </div>
+  <button type="submit" class="btn btn--primary">저장</button>
+{% if body.message %}
+  <p id="report-notes-result" class="form-message{% if body.is_error %} form-message--error{% endif %}" role="{{ 'alert' if body.is_error else 'status' }}">{{ body.message }}</p>
+{% endif %}
+</form>

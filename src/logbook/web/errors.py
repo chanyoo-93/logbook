@@ -34,6 +34,10 @@ BODY_NOT_JSON = "요청 본문을 JSON으로 읽을 수 없습니다. UTF-8로 �
 BODY_NOT_OBJECT = "요청 본문은 JSON 객체여야 합니다. Content-Type: application/json으로 보내세요."
 TIMER_CHANGED = "다른 곳에서 타이머가 바뀌었습니다. 패널에 지금 타이머를 다시 표시했습니다."
 TASK_CHANGED = "다른 곳에서 태스크가 바뀌었습니다: #{id}. 목록을 새로 고친 뒤 다시 시도하세요."
+NOTES_CHANGED = (
+    "다른 곳에서 특이사항이 바뀌었습니다: {week}. 미리보기에 지금 저장된 내용이 있습니다. "
+    "입력한 내용으로 바꾸려면 다시 저장하세요."
+)
 RECORD_CHANGED = "다른 곳에서 기록이 바뀌었습니다: #{id}. 목록을 새로 고친 뒤 다시 시도하세요."
 VALUE_INVALID = "요청 값이 올바르지 않습니다: '{field}' ({reason})."
 INTERNAL_ERROR = (
