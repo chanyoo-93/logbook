@@ -10,7 +10,8 @@ import logbook.web
 from tests.web.helpers import all_by_tag
 
 STATIC_ROOT = Path(logbook.web.__file__).parent / "static"
-CSS_PATH = STATIC_ROOT / "css" / "app.css"
+CSS_ROOT = STATIC_ROOT / "css"
+CSS_PATH = CSS_ROOT / "app.css"
 DARK_QUERY = "@media screen and (prefers-color-scheme: dark) {"
 
 COLOR_TOKENS = (
@@ -90,6 +91,16 @@ def css() -> str:
 
 
 @pytest.fixture(scope="module")
+def other_css() -> str:
+    """app.css(:root 토큰 두 블록이 있는 파일)를 뺀 나머지 스타일 파일 전부."""
+    return "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted(CSS_ROOT.glob("*.css"))
+        if path != CSS_PATH
+    )
+
+
+@pytest.fixture(scope="module")
 def themes(css: str) -> dict[str, dict[str, str]]:
     light, dark = _blocks(css)
     return {
@@ -118,17 +129,22 @@ def test_theme_pairs_meet_wcag_contrast(
     assert ratio >= MIN_CONTRAST, f"{theme} {foreground}/{background}: {ratio:.2f}"
 
 
-def test_colors_are_literals_only_inside_the_two_root_blocks(css: str) -> None:
+def test_colors_are_literals_only_inside_the_two_root_blocks(css: str, other_css: str) -> None:
     light, dark = _blocks(css)
-    rest = css[: light[0]] + css[light[1] + 1 : dark[0]] + css[dark[1] + 1 :]
+    rest = css[: light[0]] + css[light[1] + 1 : dark[0]] + css[dark[1] + 1 :] + other_css
 
     assert not re.search(r"#[0-9a-fA-F]{3,8}\b", rest)
     assert not re.search(r"\b(?:rgb|rgba|hsl|hsla|oklch)\(", rest)
 
 
-def test_dark_theme_applies_to_screen_only(css: str) -> None:
+def test_dark_theme_applies_to_screen_only(css: str, other_css: str) -> None:
     assert DARK_QUERY in css
-    assert "@media (prefers-color-scheme: dark)" not in css
+    assert "@media (prefers-color-scheme: dark)" not in css + other_css
+    assert "prefers-color-scheme" not in other_css
+
+
+def test_root_blocks_live_only_in_app_css(other_css: str) -> None:
+    assert ":root" not in other_css
 
 
 def test_root_declares_color_scheme(css: str) -> None:

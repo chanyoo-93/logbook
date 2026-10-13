@@ -1,0 +1,282 @@
+/* 태스크 화면: 추가 폼, 칸반 보드, 카드 */
+/* 태스크 화면: 추가 폼, 칸반 보드, 카드 */
+.task-form {
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-top: 2px solid var(--ink);
+}
+
+.task-form__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-3);
+}
+
+.task-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.task-form__field--title {
+  flex: 1 1 16rem;
+}
+
+.task-form__field--task_project,
+.task-form__field--task_category {
+  flex: 0 1 11rem;
+}
+
+.task-form__field--estimate {
+  flex: 0 1 7rem;
+}
+
+.task-form__field--week {
+  flex: 0 1 10rem;
+}
+
+.task-form input,
+.task-form select {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--ink-muted);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+.task-form input:hover,
+.task-form select:hover {
+  border-color: var(--ink);
+}
+
+.task-form input:focus-visible,
+.task-form select:focus-visible {
+  border-color: var(--accent);
+}
+
+.board {
+  margin-top: var(--space-5);
+}
+
+.board__title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.board__title:focus-visible {
+  outline-offset: 4px;
+}
+
+.board__columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-3);
+}
+
+.board__col {
+  min-width: 0;
+  padding: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-top: 2px solid var(--ink);
+}
+
+.board__col-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.board__col-title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+
+.board__count {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.board__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.task-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg);
+  border: 1px solid var(--rule);
+  border-left: 3px solid var(--ink-muted);
+}
+
+.task-card--over {
+  border-left-color: var(--danger);
+}
+
+.task-card p {
+  overflow-wrap: anywhere;
+}
+
+.task-card__title {
+  font-weight: 600;
+}
+
+.task-card__id {
+  color: var(--ink-muted);
+  font-weight: 400;
+}
+
+.task-card__meta,
+.task-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.task-card__project {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.task-card__tag {
+  padding: 0 var(--space-1);
+  border: 1px solid var(--rule);
+  font-size: var(--text-xs);
+}
+
+.task-card__over {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.task-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.task-edit {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.task-edit label {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.task-edit input,
+.task-edit select {
+  width: 100%;
+  min-width: 0;
+}
+
+.task-card.is-editing {
+  border-left-color: var(--accent);
+}
+
+.plan {
+  margin-top: var(--space-5);
+}
+
+.plan__title {
+  font-size: var(--text-md);
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.plan__title:focus-visible {
+  outline-offset: 4px;
+}
+
+.plan__group {
+  margin-top: var(--space-3);
+}
+
+.plan__project {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+
+.plan__items {
+  margin: var(--space-1) 0 0;
+  padding-left: var(--space-4);
+}
+
+.plan__item {
+  overflow-wrap: anywhere;
+}
+
+.plan .btn {
+  margin-top: var(--space-3);
+}
+
+/* 좁은 화면: 한 열 */
+@media (max-width: 719px) {
+  .board__columns {
+    grid-template-columns: 1fr;
+  }
+
+  .masthead__week {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .stat {
+    border-left: 0;
+    border-top: 1px solid var(--rule);
+  }
+
+  .stat:first-child {
+    border-top: 0;
+  }
+
+  .charts {
+    grid-template-columns: 1fr;
+  }
+
+  .charts__side {
+    border-top: 1px solid var(--rule);
+    border-left: 0;
+  }
+
+  .chart__frame--bar {
+    height: 16rem;
+  }
+
+  .chart__frame--donut {
+    height: 11rem;
+  }
+}
+

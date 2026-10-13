@@ -99,6 +99,12 @@ def _error_page(message: str) -> str:
         '<meta name="color-scheme" content="light dark">\n'
         "<title>오류 · logbook</title>\n"
         '<link rel="stylesheet" href="/static/css/app.css">\n'
+        '<link rel="stylesheet" href="/static/css/dashboard.css">\n'
+        '<link rel="stylesheet" href="/static/css/logs.css">\n'
+        '<link rel="stylesheet" href="/static/css/tasks.css">\n'
+        '<link rel="stylesheet" href="/static/css/report.css">\n'
+        '<link rel="stylesheet" href="/static/css/settings.css">\n'
+        '<link rel="stylesheet" href="/static/css/responsive.css">\n'
         "</head>\n"
         "<body>\n"
         "<main>\n"

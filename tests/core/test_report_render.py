@@ -410,6 +410,12 @@ def test_wheel_contains_package_data(tmp_path: Path) -> None:
         "logbook/core/templates/report.md.j2",
         "logbook/web/templates/base.html",
         "logbook/web/static/css/app.css",
+        "logbook/web/static/css/dashboard.css",
+        "logbook/web/static/css/logs.css",
+        "logbook/web/static/css/tasks.css",
+        "logbook/web/static/css/report.css",
+        "logbook/web/static/css/settings.css",
+        "logbook/web/static/css/responsive.css",
         "logbook/web/static/js/report.js",
         "logbook/web/static/vendor/htmx-2.0.11.min.js",
     } <= names

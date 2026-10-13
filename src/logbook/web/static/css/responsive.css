@@ -1,0 +1,34 @@
+/* 좁은 화면, 인쇄, 모션 줄이기: 앞 규칙을 덮어쓰므로 맨 뒤에 둔다 */
+@media (max-width: 480px) {
+  .info {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .info dd {
+    margin-bottom: var(--space-2);
+  }
+}
+
+@media print {
+  .quick,
+  #flash,
+  .skip-link,
+  .masthead__nav {
+    display: none;
+  }
+
+  .panel {
+    break-inside: avoid;
+    box-shadow: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
