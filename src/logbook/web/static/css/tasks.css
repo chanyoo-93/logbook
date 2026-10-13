@@ -1,5 +1,4 @@
-/* 태스크 화면: 추가 폼, 칸반 보드, 카드 */
-/* 태스크 화면: 추가 폼, 칸반 보드, 카드 */
+/* 태스크 화면: 추가 폼, 칸반 보드, 카드. 끝의 좁은 화면(719px 미만) 블록에는 머리·대시보드(.masthead__week, .stats, .charts) 규칙도 있다 */
 .task-form {
   margin-top: var(--space-4);
   padding: var(--space-3) var(--space-4);

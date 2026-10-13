@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 import logbook.web
 from logbook.web.app import create_app
+from logbook.web.assets import STYLESHEETS
 from logbook.web.context import WebContext
 from tests.web.conftest import LOCAL_BASE_URL
 from tests.web.helpers import all_by_tag
@@ -19,16 +20,6 @@ STATIC_ROOT = Path(logbook.web.__file__).parent / "static"
 VENDOR_ROOT = STATIC_ROOT / "vendor"
 
 CSS = "text/css; charset=utf-8"
-# base.html이 이 순서로 링크한다(뒤 파일이 앞 규칙을 덮어쓴다).
-CSS_FILES = (
-    "app.css",
-    "dashboard.css",
-    "logs.css",
-    "tasks.css",
-    "report.css",
-    "settings.css",
-    "responsive.css",
-)
 JS = "text/javascript; charset=utf-8"
 
 # 공통 규칙 '화면(HTMX) 공통'의 htmx 설정 값(그대로)
@@ -61,7 +52,7 @@ def _readme_hashes() -> dict[str, str]:
 @pytest.mark.parametrize(
     ("path", "content_type"),
     [
-        *[(f"/static/css/{name}", CSS) for name in CSS_FILES],
+        *[(f"/static/css/{name}", CSS) for name in STYLESHEETS],
         ("/static/js/app.js", JS),
         ("/static/js/dashboard.js", JS),
         ("/static/js/report.js", JS),
@@ -129,7 +120,7 @@ def test_create_app_overrides_a_registry_mime_type_for_js(
 
     with TestClient(create_app(web_ctx), base_url=LOCAL_BASE_URL) as client:
         assert client.get("/static/js/app.js").headers["content-type"] == JS
-        for name in CSS_FILES:
+        for name in STYLESHEETS:
             assert client.get(f"/static/css/{name}").headers["content-type"] == CSS
 
 
@@ -167,22 +158,33 @@ def test_base_template_sets_the_htmx_config(client: TestClient) -> None:
     assert json.loads(content) == HTMX_CONFIG
 
 
-def test_stylesheet_files_are_exactly_the_linked_ones() -> None:
-    assert {path.name for path in (STATIC_ROOT / "css").glob("*.css")} == set(CSS_FILES)
+def test_stylesheet_list_has_every_css_file_exactly_once() -> None:
+    on_disk = sorted(path.name for path in (STATIC_ROOT / "css").glob("*.css"))
+
+    assert sorted(STYLESHEETS) == on_disk
+
+
+def _linked_sheets(html: str) -> list[str | None]:
+    return [
+        e.attrs.get("href") for e in all_by_tag(html, "link") if e.attrs.get("rel") == "stylesheet"
+    ]
 
 
 def test_base_template_links_every_stylesheet_in_order(client: TestClient) -> None:
-    sheets = [
-        e.attrs["href"]
-        for e in all_by_tag(client.get("/").text, "link")
-        if e.attrs.get("rel") == "stylesheet"
-    ]
+    assert _linked_sheets(client.get("/").text) == [f"/static/css/{n}" for n in STYLESHEETS]
 
-    assert sheets == [f"/static/css/{name}" for name in CSS_FILES]
+
+def test_error_page_links_the_same_stylesheets_in_the_same_order(client: TestClient) -> None:
+    error = client.get("/no-such-page")
+
+    assert error.status_code == 404
+    assert _linked_sheets(error.text) == _linked_sheets(client.get("/").text)
 
 
 def test_css_files_define_color_tokens_and_reduced_motion() -> None:
-    css = "\n".join((STATIC_ROOT / "css" / name).read_text(encoding="utf-8") for name in CSS_FILES)
+    css = "\n".join(
+        (STATIC_ROOT / "css" / name).read_text(encoding="utf-8") for name in STYLESHEETS
+    )
 
     for token in (
         "--bg",
@@ -202,7 +204,7 @@ def test_css_files_define_color_tokens_and_reduced_motion() -> None:
 
 def test_static_text_files_are_utf8_without_carriage_returns() -> None:
     for path in (
-        *[STATIC_ROOT / "css" / name for name in CSS_FILES],
+        *[STATIC_ROOT / "css" / name for name in STYLESHEETS],
         STATIC_ROOT / "js" / "app.js",
         STATIC_ROOT / "js" / "dashboard.js",
         STATIC_ROOT / "js" / "report.js",

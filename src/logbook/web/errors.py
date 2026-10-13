@@ -23,6 +23,7 @@ from logbook.core.errors import (
     NotFoundError,
 )
 from logbook.web.api.envelope import fail
+from logbook.web.assets import STATIC_CSS_URL, STYLESHEETS
 from logbook.web.htmx import is_htmx
 from logbook.web.security import is_api_path, security_headers
 
@@ -89,6 +90,12 @@ def _flash_fragment(message: str) -> str:
     return f'<p class="flash flash--error" role="alert">{escape(message)}</p>'
 
 
+def _stylesheet_links() -> str:
+    return "".join(
+        f'<link rel="stylesheet" href="{STATIC_CSS_URL}{name}">\n' for name in STYLESHEETS
+    )
+
+
 def _error_page(message: str) -> str:
     return (
         "<!doctype html>\n"
@@ -98,13 +105,7 @@ def _error_page(message: str) -> str:
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
         '<meta name="color-scheme" content="light dark">\n'
         "<title>오류 · logbook</title>\n"
-        '<link rel="stylesheet" href="/static/css/app.css">\n'
-        '<link rel="stylesheet" href="/static/css/dashboard.css">\n'
-        '<link rel="stylesheet" href="/static/css/logs.css">\n'
-        '<link rel="stylesheet" href="/static/css/tasks.css">\n'
-        '<link rel="stylesheet" href="/static/css/report.css">\n'
-        '<link rel="stylesheet" href="/static/css/settings.css">\n'
-        '<link rel="stylesheet" href="/static/css/responsive.css">\n'
+        f"{_stylesheet_links()}"
         "</head>\n"
         "<body>\n"
         "<main>\n"

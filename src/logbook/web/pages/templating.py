@@ -16,6 +16,7 @@ from starlette.templating import Jinja2Templates
 from logbook.core.duration import format_duration
 from logbook.core.errors import LogbookError
 from logbook.core.weeks import week_heading, week_of
+from logbook.web.assets import STATIC_CSS_URL, STYLESHEETS
 from logbook.web.context import get_context
 from logbook.web.errors import classify
 
@@ -28,6 +29,8 @@ def _environment() -> jinja2.Environment:
         trim_blocks=True,
         lstrip_blocks=True,
     )
+    env.globals["STYLESHEETS"] = STYLESHEETS  # base.html이 링크 순서대로 반복한다
+    env.globals["STATIC_CSS_URL"] = STATIC_CSS_URL
     env.filters["duration"] = format_duration  # 분 -> '1h 30m' (CLI와 같은 표기)
     return env
 

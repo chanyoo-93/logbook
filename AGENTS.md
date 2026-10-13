@@ -56,6 +56,7 @@ src/logbook/
     commands/    # 명령별 모듈 (init, project, add, log, stats, task, plan, timer, report, data, serve)
   web/
     context.py   # WebContext(설정·엔진·시계), 요청별 의존성, 공용 별칭 Ctx·TASK_LABEL
+    assets.py    # 스타일시트 목록 STYLESHEETS (base.html과 오류 페이지가 공유, 다른 web 모듈을 import하지 않음)
     htmx.py      # HTMX 요청 판별(is_htmx)과 헤더 상수
     security.py  # Host 검사, 교차 출처 쓰기 차단, 보안 헤더(CSP)
     errors.py    # 오류 → HTTP 상태·JSON 봉투·HTMX 알림 변환
@@ -67,7 +68,7 @@ src/logbook/
     pages/       # 화면 라우트 (대시보드, 기록, 타이머, 태스크·보고서·설정), tasks.py·task_views.py(칸반·계획 패널), report.py, settings.py, panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText)
     templates/   # Jinja2 + HTMX
     static/      # 최소한의 CSS와 JS(js/report.js 포함), vendor/에 htmx·Chart.js 로컬 파일 (CDN 없음)
-                 # css/: app.css(색 토큰 :root 두 벌은 여기에만), dashboard·logs·tasks·report·settings·responsive.css (base.html이 이 순서로 링크)
+                 # css/: app.css(색 토큰 :root 두 벌은 여기에만), dashboard·logs·components·tasks·report·settings·responsive.css (순서는 web/assets.py의 STYLESHEETS가 정하고 base.html·오류 페이지가 그대로 링크)
 tests/
 docs/
 ```
