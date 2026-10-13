@@ -6,6 +6,11 @@
   font-weight: 700;
 }
 
+/* 복사 결과 알림(live region)은 DOM에 두되, 비어 있는 동안에는 자리를 차지하지 않는다. */
+.report > .form-message:empty {
+  margin: 0;
+}
+
 .report__actions {
   display: flex;
   flex-wrap: wrap;

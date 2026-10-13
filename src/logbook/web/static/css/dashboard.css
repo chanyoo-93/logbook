@@ -73,7 +73,7 @@
 /* 차트: 막대 2 : 도넛 1(두 도넛을 세로로 쌓는다). 높이는 컨테이너가 정한다(Chart.js 반응형). */
 .charts {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   align-items: start;
   border-top: 1px solid var(--rule);
 }
@@ -87,6 +87,7 @@
 }
 
 .chart {
+  min-width: 0;
   padding: var(--space-4);
 }
 
