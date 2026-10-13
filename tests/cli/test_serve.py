@@ -107,10 +107,13 @@ def test_serve_announces_database_upgrade_before_start_line(
 
     assert result.exit_code == 0, result.stderr
     arrow = render.arrow()
-    assert result.stderr == (
+    upgrade_line = (
         f"데이터베이스를 업그레이드했습니다: v1 {arrow} v2. 이전 데이터베이스 백업: {backup}\n"
     )
+    assert result.stderr == upgrade_line
     assert result.stdout == start_line(DEFAULT_PORT) + STOP_LINE
+    # Click 8.2+의 result.output은 stdout과 stderr를 나온 순서대로 담는다.
+    assert result.output == upgrade_line + start_line(DEFAULT_PORT) + STOP_LINE
 
 
 def test_serve_closes_socket_so_port_can_be_reopened(
@@ -407,3 +410,7 @@ def test_serve_passes_a_config_watcher_to_the_app(
     watcher = built[0].state.watcher
     assert isinstance(watcher, ConfigWatcher)
     assert watcher.current().cfg.db_path == initialized
+    # 같은 설정 파일을 보고 있으므로 파일을 고치면 current()가 새 값을 돌려준다.
+    assert watcher.current().cfg.report.author == ""
+    (tmp_home / "config.toml").write_text('[report]\nauthor = "홍길동"\n', encoding="utf-8")
+    assert watcher.current().cfg.report.author == "홍길동"

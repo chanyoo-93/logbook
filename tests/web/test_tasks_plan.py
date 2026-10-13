@@ -177,6 +177,10 @@ def test_carry_after_week_changed_conflicts(
     assert by_id(html, "plan-result").text == CARRY_NONE
     assert by_id(html, "task-board").attrs["hx-swap-oob"] == "true"
     assert _planned(web_engine, current) == THIS_WEEK.label
+    # 409 뒤 다시 그린 계획 패널은 바뀐 주(W41)를 기준으로 한다.
+    panel = _panel(html)
+    assert f"다음 주 계획 {NEXT_WEEK.next().label}" in panel
+    assert f"다음 주 계획 {NEXT_WEEK.label} " not in panel
 
 
 def test_status_change_and_add_return_panel_oob(client: TestClient, web_engine: Engine) -> None:
