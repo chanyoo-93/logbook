@@ -341,8 +341,9 @@ def test_update_project_only_given_fields_change(session: Session) -> None:
 def test_update_project_rejects_unknown_field_and_changes_nothing(session: Session) -> None:
     projects.create_project(session, "payment", "결제 서버", description="설명", color="#4f46e5")
 
-    with pytest.raises(TypeError, match="slug"):
-        projects.update_project(session, "payment", name="새 이름", slug="other")
+    # slug=는 위치 인자와 겹쳐 파이썬이 먼저 거부하므로, 필드 검사까지 가도록 다른 이름을 쓴다.
+    with pytest.raises(TypeError, match="unexpected field.*archived"):
+        projects.update_project(session, "payment", name="새 이름", archived=True)
 
     project = projects.get_project(session, "payment")
     assert (project.slug, project.name, project.color, project.description) == (
@@ -387,8 +388,8 @@ def test_update_project_rejects_invalid_color_before_changing_name(session: Sess
 def test_update_project_unknown_field_raises_type_error(session: Session) -> None:
     projects.create_project(session, "payment", "결제 서버")
 
-    with pytest.raises(TypeError, match="slug"):
-        projects.update_project(session, "payment", slug="other")
+    with pytest.raises(TypeError, match="unexpected field.*colour"):
+        projects.update_project(session, "payment", colour="#22c55e")
 
 
 def test_update_project_missing_slug_raises_not_found(session: Session) -> None:

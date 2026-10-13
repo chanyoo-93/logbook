@@ -356,7 +356,7 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(
             ["project", "edit", "payment", "--color", "#22c55e", "--no-color"],
             1,
-            "오류: --color와 --no-color",
+            "오류: --color 옵션과 --no-color 옵션",
             id="project-edit-conflict",
         ),
         pytest.param(["add", "--help"], 0, None, id="add-help"),
@@ -401,7 +401,7 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(
             ["task", "edit", "1", "--est", "1h", "--no-est"],
             1,
-            "오류: --est와 --no-est",
+            "오류: --est 옵션과 --no-est 옵션",
             id="task-edit-conflict",
         ),
         pytest.param(
