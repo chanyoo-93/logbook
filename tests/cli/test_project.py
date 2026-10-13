@@ -2,14 +2,16 @@
 
 import os
 from collections.abc import Callable
+from contextlib import AbstractContextManager
 from pathlib import Path
 
 import pytest
+from sqlalchemy.orm import Session
 from typer.testing import Result
 
 from logbook.cli import runtime
 from logbook.cli.commands.project import EDIT_NOTHING
-from logbook.core import platform
+from logbook.core import platform, services
 from tests.cli.helpers import tokens
 
 ARCHIVE_DEFAULT_WARNING = (
@@ -250,6 +252,23 @@ def test_edit_description_set_and_cleared(lb: Callable[..., Result], initialized
     assert second.stdout == "✔ 프로젝트 수정: payment (결제 서버) #4f46e5\n"
 
 
+def test_edit_name_and_no_description_together(
+    lb: Callable[..., Result],
+    initialized: Path,
+    open_db: Callable[[], AbstractContextManager[Session]],
+) -> None:
+    add_payment(lb)
+    lb("project", "edit", "payment", "--description", "결제 연동")
+
+    result = lb("project", "edit", "payment", "--name", "결제 API", "--no-description")
+
+    assert result.exit_code == 0, result.stderr
+    assert result.stdout == "✔ 프로젝트 수정: payment (결제 API) #4f46e5\n"
+    with open_db() as s:
+        project = services.get_project(s, "payment")
+        assert (project.name, project.description) == ("결제 API", None)
+
+
 def test_edit_uses_ascii_mark_when_console_lacks_unicode(
     lb: Callable[..., Result], initialized: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -267,11 +286,11 @@ def test_edit_uses_ascii_mark_when_console_lacks_unicode(
         (["payment"], EDIT_NOTHING),
         (
             ["payment", "--color", "#22c55e", "--no-color"],
-            "--color와 --no-color는 함께 쓸 수 없습니다. 하나만 지정하세요.",
+            "--color 옵션과 --no-color 옵션은 함께 쓸 수 없습니다. 하나만 지정하세요.",
         ),
         (
             ["payment", "--description", "x", "--no-description"],
-            "--description와 --no-description는 함께 쓸 수 없습니다. 하나만 지정하세요.",
+            "--description 옵션과 --no-description 옵션은 함께 쓸 수 없습니다. 하나만 지정하세요.",
         ),
         (["zzz", "--name", "x"], None),
         (["payment", "--name", " "], "프로젝트 이름이 비어 있습니다. 이름을 입력하세요."),

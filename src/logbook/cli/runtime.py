@@ -82,8 +82,8 @@ def settings() -> "Config":
     return load_config()
 
 
-# 옵션 이름(--est, --no-est 등)은 모두 모음으로 끝나게 읽힌다고 보고 '와'·'는'을 붙인다.
-CONFLICT_MESSAGE = "{}와 {}는 함께 쓸 수 없습니다. 하나만 지정하세요."
+# 옵션 이름의 받침 유무와 상관없이 맞도록 "옵션과/옵션은"으로 쓴다.
+CONFLICT_MESSAGE = "{} 옵션과 {} 옵션은 함께 쓸 수 없습니다. 하나만 지정하세요."
 
 UPGRADED = "데이터베이스를 업그레이드했습니다: v{old} {arrow} v{new}."
 UPGRADE_BACKUP = " 이전 데이터베이스 백업: {path}"
