@@ -44,6 +44,7 @@
 - **사용자 문구 규칙(Phase 3에서 정함):**
   - 변수 값 바로 뒤에 조사를 붙이지 않는다. 예: `옮겼습니다: 2026-W42 → 2026-W43`처럼 쓴다.
   - core 문구에는 `—` 같은 기호를 넣지 않는다. 웹 화면 문구는 `✔`·`—`·`→`를 그대로 쓴다.
+  - CLI 출력의 기호는 `render.ok_mark()`·`info_mark()`·`arrow()`로 만든다. 콘솔이 UTF-8이 아니면 ASCII로 바뀐다(`·`는 `-`, `→`는 `->`). 테스트 기대도 같은 함수로 만든다.
   - 식별자(테스트 함수 이름 포함)는 영어다.
 - **서브에이전트 실행 규칙(Phase 5에서 이어짐):**
   - 삭제 명령(rm, Remove-Item, rmdir, git clean)을 쓰지 않는다. 임시 파일은 매번 새 임시 폴더를 만들어 쓰고, 정리가 필요하면 보고만 한다.
@@ -69,7 +70,7 @@
 | `src/logbook/core/services/backup.py`, `backup_import.py` | 수정 | 내보내기 형식 2, `week_notes`, 형식 1 가져오기 유지 |
 | `src/logbook/core/taskstatus.py` | 수정 | `parse_status()`(web/api/tasks.py의 `_status`를 옮김) |
 | `src/logbook/core/services/__init__.py` | 수정 | 새 함수 공개 |
-| `src/logbook/cli/runtime.py` | 수정 | `announce_upgrade()`, `session()`이 업그레이드 알림을 넘긴다 |
+| `src/logbook/cli/runtime.py` | 수정 | `announce_upgrade()`, `session()`이 업그레이드 알림을 넘긴다, `CONFLICT_MESSAGE`(task.py에서 옮김) |
 | `src/logbook/cli/commands/init.py`, `serve.py`, `data.py` | 수정 | 백업 줄, 업그레이드 알림 전달, 특이사항 개수 |
 | `src/logbook/cli/commands/project.py` | 수정 | `lb project edit`, `lb project unarchive` |
 | `src/logbook/web/config_watch.py` | 생성 | `ConfigWatcher`, `ConfigSnapshot`, `restart_keys()` |
@@ -137,6 +138,7 @@ Phase 5 계획서(`2026-10-09-phase5-web-dashboard.md`)의 공통 규칙을 그�
   - `git.*`도 같이 바뀌지만 아직 쓰는 곳이 없다.
 - **다시 시작해야 반영되는 값:** `db_path`, `web.host`, `web.port`(`RESTART_KEYS`)
   - 이 값이 바뀌면 화면 위에 `RESTART_REQUIRED`를 보여 준다. 실행 중인 DB와 포트는 그대로 쓴다.
+  - 그래서 화면에 DB 경로를 보여 줄 때는 `cfg.db_path`가 아니라 실제로 연 DB(`ctx.engine.url.database`)를 쓴다. 다시 시작하기 전에는 두 값이 다를 수 있다.
 - **읽기 실패:** TOML 문법이 틀렸거나 값이 잘못됐으면 직전 설정으로 계속 동작한다. 화면 위에는 `CONFIG_RELOAD_FAILED`를 `role="alert"`로 보여 주고, 파일을 고치면 다음 요청에서 사라진다.
 - 알림은 전체 페이지(`base.html`)에만 나온다. HTMX 조각과 JSON API에는 싣지 않는다.
 - 테스트 fixture `web_ctx`·`client`는 지금처럼 watcher 없이 앱을 만든다. 자동 반영은 watcher를 넘긴 앱으로 따로 시험한다.
@@ -195,12 +197,17 @@ Phase 5 계획서(`2026-10-09-phase5-web-dashboard.md`)의 공통 규칙을 그�
   2. 응답이 2xx이고 요청이 POST·PATCH·DELETE면 대상 안의 `[data-focus]`로 옮긴다.
   3. 응답이 4xx이고 대상에 `is-editing`이 있으면 대상 안의 `[data-focus]`로 옮긴다.
   4. 그 밖(GET 필터·주 이동, 타이머 경과 갱신, 그 밖의 오류)은 포커스를 옮기지 않는다. 1분마다 오는 경과 갱신이 입력 중인 칸의 포커스를 뺏지 않게 한다.
+- htmx 2.0.11의 처리 순서(계획 검토에서 소스로 확인했다):
+  - outerHTML 교체에서 `htmx:afterSettle`의 `event.target`은 새로 들어온 요소다(id는 같다).
+  - OOB로 바뀐 요소에서도 같은 이벤트가 난다. OOB가 먼저, 본문 대상이 마지막이다.
+  - 그래서 OOB 영역에 `data-focus`가 있어도 본문 대상의 `data-focus`가 마지막 포커스가 된다. POST·PATCH·DELETE의 본문 대상이 되는 영역에는 모두 `data-focus`를 둔다(위 표). OOB 영역만 바꾸는 변경 응답은 만들지 않는다.
 - `app.js`는 `[name=duration]`, `#log-table-title`을 직접 가리키지 않는다. 대신 Phase 5 템플릿(빠른 기록, 기록 표, 기록 편집 행)에 `data-focus`를 붙인다.
 - Enter 저장·Esc 취소는 `tr.is-editing`에서 `.is-editing`(편집 행·편집 카드)으로 넓힌다. 저장은 `[hx-patch]`, 취소는 `[hx-get]` 버튼이다. 버튼·`textarea` 위의 키와 한글 조합 중의 키는 건드리지 않는다(Phase 5 규칙).
 
 ### CSS
 - 색은 토큰만 쓴다. `app.css`에서 `:root` 블록(밝은 테마, 어두운 테마) 밖에는 색 값(`#hex`, `rgb()`, `rgba()`, `hsl()`)을 쓰지 않는다. Task 6-11의 테스트가 확인한다. 새 화면은 6-11보다 먼저 만들므로 처음부터 토큰만 쓴다.
 - 새 화면도 320px 폭에서 페이지 전체에 가로 스크롤이 없어야 한다. 칸반은 720px 미만에서 한 열로 쌓는다.
+- 메뉴가 다섯 개(대시보드·기록·태스크·보고서·설정)로 늘어나므로 `.masthead__nav`에 `flex-wrap: wrap`을 더한다(Task 6-7).
 - 넓은 표(프로젝트 표)는 Phase 5의 `.table-wrap`처럼 표만 가로로 스크롤한다. 오류 문구는 행 안이 아니라 알림 영역(`#flash`)에 OOB로 넣는다(Phase 5 d495112와 같은 이유).
 
 ---
@@ -216,7 +223,7 @@ Phase 5 계획서(`2026-10-09-phase5-web-dashboard.md`)의 공통 규칙을 그�
 **Files:**
 - Modify: `src/logbook/core/models.py`, `src/logbook/core/db.py`, `src/logbook/cli/runtime.py`, `src/logbook/cli/commands/init.py`, `src/logbook/cli/commands/serve.py`, `src/logbook/web/server.py`
 - Create: `tests/core/test_db_migration_v2.py`
-- Modify tests: `tests/helpers.py`, `tests/core/test_db.py`, `tests/core/test_db_open.py`, `tests/core/test_models.py`, `tests/cli/test_init.py`, `tests/cli/test_runtime.py`, `tests/cli/test_serve.py`, `tests/web/test_server.py`
+- Modify tests: `tests/helpers.py`, `tests/core/test_db.py`, `tests/core/test_db_open.py`, `tests/core/test_models.py`, `tests/cli/test_init.py`, `tests/cli/test_runtime.py`, `tests/cli/test_serve.py`
 
 ```python
 # core/models.py (모듈 문서 문자열의 테이블 목록에 week_notes를 더한다)
@@ -267,10 +274,13 @@ def open_database(
 def initialize_database(path: Path | str, *, now: datetime | None = None) -> InitResult
 
 # cli/runtime.py
-UPGRADED = "데이터베이스를 업그레이드했습니다: v{old} → v{new}."
+UPGRADED = "데이터베이스를 업그레이드했습니다: v{old} {arrow} v{new}."
 UPGRADE_BACKUP = " 이전 데이터베이스 백업: {path}"
 def announce_upgrade(result: "InitResult") -> None:
-    """stderr에 업그레이드 한 줄을 쓴다(백업이 있으면 경로를 붙인다)."""
+    """stderr에 업그레이드 한 줄을 쓴다(백업이 있으면 경로를 붙인다). 화살표는 render.arrow()다."""
+
+# web/server.py (기존 인자는 그대로 두고 키워드 인자를 하나 더한다)
+def serve(..., on_upgrade: Callable[[InitResult], None] | None = None) -> None
 ```
 
 - **`init_db`:**
@@ -288,13 +298,21 @@ def announce_upgrade(result: "InitResult") -> None:
 - **`initialize_database`:** `init_db`의 결과를 그대로 돌려준다. 지금처럼 바깥에서 버전을 따로 읽지 않는다.
 - **CLI:**
   - `runtime.session(cfg)`는 `db.open_database(cfg.db_path, now=now(), on_upgrade=announce_upgrade)`를 부른다. 모든 명령이 이 경로로 DB를 연다.
-  - `announce_upgrade`는 `console.print_notice(UPGRADED + UPGRADE_BACKUP)`이다. 백업이 없으면 뒤 문장을 뺀다.
-  - `lb init`은 `initialize_database(cfg.db_path, now=runtime.now())`를 부른다. 업그레이드 줄 다음에 stdout으로 `ℹ 이전 데이터베이스 백업: {path}` 줄을 쓴다(`render.info_mark()`, 경로는 `Text`).
+  - `announce_upgrade`는 `console.print_notice(UPGRADED + UPGRADE_BACKUP)`이다. 백업이 없으면 뒤 문장을 뺀다. render는 함수 안에서 import한다.
+  - `lb init`은 `initialize_database(cfg.db_path, now=runtime.now())`를 부른다. 업그레이드 줄 다음에 stdout으로 `{info_mark} 이전 데이터베이스 백업: {path}` 줄을 쓴다(기호는 `render.info_mark()`, 경로는 `Text`).
   - `lb serve`는 `run_server(..., on_upgrade=runtime.announce_upgrade)`를 부른다. `web.server.serve`는 이 값을 받아 `db.open_database(cfg.db_path, now=now(), on_upgrade=on_upgrade)`에 넘긴다.
-- **기존 테스트 정리:**
-  - 가짜 마이그레이션을 쓰는 테스트는 버전 번호를 `db.SCHEMA_VERSION + 1`(필요하면 `+ 2`)로 바꾼다. 대상은 `tests/core/test_db.py`(231~377행 부근), `tests/core/test_db_open.py`(69·323·343행), `tests/cli/test_init.py`(100행)다.
+- **기존 테스트 정리(계획 검토에서 행까지 확인했다):** 고정 숫자 1·2를 `db.SCHEMA_VERSION` 기준으로 바꾼다.
+  - 가짜 마이그레이션은 `db.SCHEMA_VERSION + 1`을 쓴다. 순서·누락 테스트는 `+ 2`까지 쓴다.
+    - `tests/core/test_db.py`: 231~377행 부근. `== 2`(236·242행)와 `match="v3"`(302행)도 함께 옮긴다.
+    - `test_init_db_requires_every_migration`(298~306행)은 이제 실제 `MIGRATIONS[2]`가 있으므로 `SCHEMA_VERSION + 2`로 올리고 `+ 1` 단계만 넣는다. 오류 문구의 버전도 바뀐다.
+    - `tests/core/test_db_open.py`: 69·323·343행
+    - `tests/cli/test_init.py`: 100행. 106행의 기대 `(v1 → v2)`는 `(v2 → v3)`이 된다.
+  - 새 DB의 버전 단정을 바꾼다.
+    - `tests/core/test_db.py`: `TABLES`(18행)에 `week_notes`를 더한다. `== 1`과 `version_rows == [1]` 단정(168·195·198·199·205·206·208·226·228·283·306·336·337·355행)은 `db.SCHEMA_VERSION` 기준으로 쓴다.
+    - `tests/core/test_db_open.py`: `current_version == 1`(313·330·350행), 148행 `== 2`, 197행 `read_state`
+    - `tests/cli/test_init.py`: `(스키마 v1)`(48·91·193행)과 `(스키마 v1, 최신)`(72행)은 f-string으로 `SCHEMA_VERSION`을 쓴다.
   - `init_db`의 반환값을 정수로 비교하는 테스트는 `.version`으로 바꾼다.
-  - `InitResult(…)` 비교(`tests/core/test_db_open.py` 167·178·185행)는 새 필드 기본값 None으로 그대로 맞는다.
+  - `InitResult(…)` 비교: `tests/core/test_db_open.py` 167·178·185행은 새 필드 기본값 None으로 그대로 맞는다. 195행은 가짜 마이그레이션도 백업을 만들므로 `backup_path`를 포함해 비교한다.
 - **`tests/helpers.py`에 더함:** `make_v1_database(path: Path) -> None`
   - `create_all`로 만든 뒤 `week_notes`를 지우고 버전을 1로 둔다. 엔진은 닫는다.
   - 스키마 2는 v1에 테이블 하나를 더한 것이라 이렇게 만든 DB가 v1과 같다.
@@ -313,9 +331,9 @@ def announce_upgrade(result: "InitResult") -> None:
 | 잠금 안 재확인 | 바깥 `current_version`은 1을 돌려주게 하고 실제 DB는 2 | 백업하지 않음, `InitResult(2, 2)` (기존 `test_init_db_rechecks_version_under_lock` 방식) |
 | `open_database` | v1 DB, `on_upgrade`가 결과를 모음 | 한 번 불린다. 다시 열면 불리지 않는다 |
 | `initialize_database` | v1 DB | `InitResult(1, 2, 경로)` |
-| CLI | v1 DB에서 `lb log` | 종료 0, stderr에 `데이터베이스를 업그레이드했습니다: v1 → v2. 이전 데이터베이스 백업: …` 한 줄. 다음 실행에는 없다 |
-| CLI | v1 DB에서 `lb init` | 업그레이드 줄 다음에 `이전 데이터베이스 백업:` 줄 |
-| 서버 | `web.server.serve`에 `on_upgrade`를 넘김 | v1 DB면 서버 시작 전에 한 번 불린다(`tests/web/test_server.py`) |
+| CLI | v1 DB에서 `lb log` | 종료 0, stderr에 `데이터베이스를 업그레이드했습니다: v1 {arrow} v2. 이전 데이터베이스 백업: …` 한 줄(arrow는 `render.arrow()`). 다음 실행에는 없다 |
+| CLI | v1 DB에서 `lb init` | 업그레이드 줄 다음에 `{info_mark} 이전 데이터베이스 백업:` 줄 |
+| 서버 | v1 DB에서 `lb serve`(`tests/cli/test_serve.py`의 `fake_server`) | 서버 시작 줄보다 먼저 stderr에 업그레이드 줄이 한 번 |
 | 회귀 | 가짜 마이그레이션 테스트(번호를 옮긴 것) | 기존과 같은 기대 |
 
 - [ ] RED → GREEN → 커밋 `feat: week_notes 테이블과 스키마 2 마이그레이션, 마이그레이션 전 자동 백업 추가`
@@ -357,7 +375,7 @@ def done_tasks_in_week(
 ) -> list[Task]:
     """완료 시각의 로컬 날짜(tz 기준)가 week 안인 완료 태스크(project 함께 로드).
     최근 완료가 먼저, 같으면 id 순이다. project_slug가 없으면 보관 프로젝트는 뺀다(list_tasks와 같다)."""
-    # count_done_tasks와 범위 계산(_done_range)을 같이 쓴다.
+    # count_done_tasks 안의 범위 계산을 _done_range(week, tz) -> tuple[datetime, datetime]로 뽑아 두 함수가 같이 쓴다.
 
 # core/taskstatus.py
 STATUS_INVALID = "태스크 상태가 올바르지 않습니다: '{value}'. todo, doing, done, dropped 중 하나를 쓰세요."
@@ -408,7 +426,8 @@ def parse_status(text: str) -> TaskStatus:
 | 렌더링 | notes·risks를 쓰지 않는 사용자 템플릿 | 오류 없이 그린다 |
 | `lb report` | W40에 저장 | stdout에 `### 특이사항` |
 | `/api/report?format=json` | 저장 | `data.notes`, `data.risks` |
-| `next_week_plan` | 기존 `_plan` 테스트를 공개 이름으로 | 결과 같음, 보고서 4절 출력 같음 |
+| `next_week_plan` | 보고서 4절 출력(기존 테스트, 회귀) | 출력 그대로 |
+| `next_week_plan` | 직접 호출(신규): 다음 주 todo, 이번 주 doing, done·보관 프로젝트 태스크 | 4절과 같은 묶음·항목, 이번 주 건은 `carried=True`, done·보관은 없다 |
 | `done_tasks_in_week` | W40 완료 2건(완료 시각 다름), 지난주 완료 1건, 보관 프로젝트 완료 1건, todo 1건 | W40 두 건, 최근 완료가 먼저 |
 | `done_tasks_in_week` | 보관 프로젝트 slug를 줌 | 그 프로젝트의 W40 완료 |
 | `done_tasks_in_week` | `done_at = 2026-09-27T15:30Z`(KST 09-28 00:30) | `tz=+09:00`이면 W40, `tz=UTC`면 아님(`count_done_tasks`와 같다) |
@@ -448,14 +467,33 @@ FORMAT_TABLES: Mapping[int, tuple[str, ...]]  # 1: 앞의 네 테이블, 2: TABL
 
 - **내보내기:** 머리글은 `format: 2`, `schema_version: 2`다. week_notes 행은 마지막에 week 순으로 나온다.
 - **가져오기:**
-  - 머리글의 format이 `SUPPORTED_FORMATS`에 없으면 기존 문구로 거부한다. 문구 끝은 `이 버전의 logbook이 읽을 수 있는 형식: 1, 2`다.
-  - 형식마다 받는 테이블이 다르다. 형식 1 파일에 week_notes 행이 있으면 기존 '알 수 없는 테이블' 문구다. 이때 나열하는 테이블 목록은 그 형식의 것(`projects, tasks, worklogs, active_timer`)이다.
-  - 새 값 종류 `week`: `YYYY-Www` 형식이면서 실제로 있는 주차여야 한다(`Week(year, number)` 검증). 기대 값 설명은 `YYYY-Www 형식의 주차 (예: 2026-W41)`이다. risks·notes는 `str`, updated_at은 `datetime`이다.
-  - 중복 검사는 `KEY_FIELDS`의 키로 한다. week_notes가 겹치면 `{n}번째 줄: week_notes 행의 week가 중복됩니다: …`이고, 값 표기는 기존 slug 중복 문구와 같다.
+  - `_check_header`가 형식 번호를 돌려주고, 그 값을 `_ImportState.format`에 둔다. format이 `SUPPORTED_FORMATS`에 없으면 기존 문구로 거부한다. 문구 끝은 `이 버전의 logbook이 읽을 수 있는 형식: 1, 2`다.
+  - 형식마다 받는 테이블이 다르다(`FORMAT_TABLES[format]`).
+    - `_parse_envelope`와 `_check_order`가 이 목록을 쓴다. 모듈 상수 `_TABLE_LIST` 대신 형식별 목록 문자열을 만든다.
+    - 형식 1 파일에 week_notes 행이 있으면 기존 '알 수 없는 테이블' 문구다. 나열하는 목록은 형식 1의 것(`projects, tasks, worklogs, active_timer`)이다.
+  - 새 값 종류 `week`(`_to_week`):
+    - 문자열이고 `[0-9]{4}-W[0-9]{2}`에 맞아야 한다(`re.ASCII`, `fullmatch`).
+    - `Week(int(year), int(number))`가 내는 `InvalidInputError`는 `ValueError`로 바꿔 던진다. `_convert`는 `ValueError`만 '값이 올바르지 않습니다' 문구로 바꾸기 때문이다.
+    - `Week.label`이 입력과 같아야 한다.
+    - 기대 값 설명(`_EXPECTED["week"]`)은 `YYYY-Www 형식의 주차 (예: 2026-W41)`이다.
+  - 표에 더할 것: `MODELS["week_notes"]`, `_KINDS["week_notes"]`(week: `week`, risks·notes: `str`, updated_at: `datetime`), `_EXPECTED["week"]`, `_CONVERTERS["week"]`, `_REFERENCES["week_notes"] = ()`. 마지막 것이 없으면 `_check_references`가 KeyError를 낸다.
+  - 행 키 일반화
+    - `_ImportState.ids`는 `dict[str, set[object]]`로 바꾼다. week는 문자열이고 core는 mypy strict다.
+    - `_record`와 `_check_unique`는 `KEY_FIELDS[table]`로 키를 읽는다. active_timer 단일 행 검사는 그대로다.
+    - week_notes가 겹치면 `{n}번째 줄: week_notes 행의 week가 중복됩니다: …`이고, 값 표기는 기존 slug 중복 문구와 같다.
   - `_existing_common`은 week_notes 행도 '데이터가 있는 데이터베이스'로 센다.
   - 쓰기 순서는 `TABLE_ORDER`다.
-- **CLI:** `_print_done`의 요약 끝에 `특이사항 {counts.week_notes}`를 더한다. 예: `(프로젝트 2 · 태스크 5 · 기록 41 · 타이머 0 · 특이사항 3)`
-- `tests/core/backup_helpers.py`의 머리글은 형식 1 그대로 둔다. 그러면 기존 가져오기 테스트가 "형식 1 파일도 받는다"를 함께 확인한다. 형식 2 파일 도우미를 따로 더한다.
+- **CLI:** `_print_done`의 요약 끝에 `특이사항 {counts.week_notes}`를 더한다. 예: `(프로젝트 2 · 태스크 5 · 기록 41 · 타이머 0 · 특이사항 3)`(구분 기호는 `render.info_mark()`)
+- **시험 도우미:** `tests/core/backup_helpers.py`의 형식 1 머리글 도우미는 `schema_version`을 1로 고정한다.
+  - 지금은 `db.SCHEMA_VERSION`을 써서, 스키마 2가 되면 '형식 1 + 스키마 2'라는 없는 조합이 된다.
+  - 고정하면 기존 가져오기 테스트가 실제 형식 1 파일로 돈다.
+  - 형식 2 도우미(format 2, `schema_version=db.SCHEMA_VERSION`)를 따로 더한다.
+- **기존 테스트 정리(계획 검토에서 행까지 확인했다):**
+  - `BackupCounts`를 직접 만드는 곳에 `week_notes=0`을 더한다: `tests/core/test_services_backup.py` 39·47행, `tests/core/test_services_backup_import.py` 41·57행
+  - `tests/core/test_services_backup.py`: `HEADER_LINE`(20행)의 format을 2로, `FORMAT_VERSION == 1`(262행)을 2로 바꾼다. `tuple(MODELS) == TABLE_ORDER`(274행)는 MODELS에 더하면 그대로 맞는다.
+  - `tests/core/test_services_backup_import.py` 232~233행의 `set(_REFERENCES) == set(TABLE_ORDER)`는 `_REFERENCES`에 더하면 맞는다.
+  - `tests/core/test_services_backup_import_validation.py` 42행의 형식 문구 끝을 `1, 2`로 바꾼다.
+  - `tests/cli/test_data.py` 19·214·249행의 요약 문자열 끝에 ` · 특이사항 0`을 더한다.
 
 **테스트 케이스**
 
@@ -464,11 +502,11 @@ FORMAT_TABLES: Mapping[int, tuple[str, ...]]  # 1: 앞의 네 테이블, 2: TABL
 | 내보내기 | W41·W40 특이사항 | 머리글 format 2·schema_version 2, 끝에 week_notes 두 줄(W40, W41 순), 필드는 `WEEK_NOTE_FIELDS` |
 | 내보내기 개수 | 위 | `BackupCounts.week_notes == 2` |
 | 왕복 | 내보내기 → 새 DB 가져오기 | 모든 행이 같다(특이사항 포함) |
-| 형식 1 | 기존 도우미 파일 | 성공, `week_notes == 0` |
+| 형식 1 | 기존 도우미 파일(schema_version 1) | 성공, `week_notes == 0` |
 | 형식 1 + week_notes 줄 | 형식 1 머리글 뒤에 week_notes 행 | 알 수 없는 테이블 문구(형식 1 목록) |
 | 형식 3 | 머리글 format 3 | 지원하지 않는 형식 문구(`1, 2`) |
 | week 값 | `"2026-W53"` | 통과(2026년은 53주) |
-| week 값 | `"2027-W53"`, `"2026-w41"`, `41`, `"2026-41"` | `week_notes.week 값이 올바르지 않습니다: …` |
+| week 값 | `"2027-W53"`, `"2026-w41"`, `"2026-W5"`, `41`, `"2026-41"` | `week_notes.week 값이 올바르지 않습니다: …`(모두 같은 문구) |
 | 중복 | 같은 week 두 줄 | 중복 문구 |
 | 빈 DB 확인 | 특이사항만 있는 DB에 가져오기 | 데이터가 있는 DB 문구 |
 | CLI | `lb export`, `lb import` | 요약에 `특이사항 N` |
@@ -481,8 +519,8 @@ FORMAT_TABLES: Mapping[int, tuple[str, ...]]  # 1: 앞의 네 테이블, 2: TABL
 ## Task 6-4: core·CLI — 프로젝트 수정·보관 해제
 
 **Files:**
-- Modify: `src/logbook/core/services/projects.py`, `src/logbook/core/services/__init__.py`, `src/logbook/cli/commands/project.py`
-- Modify tests: `tests/core/test_services_projects.py`, `tests/cli/test_project.py`, `tests/cli/helpers.py`(가드 목록), `tests/cli/test_entry.py`
+- Modify: `src/logbook/core/services/projects.py`, `src/logbook/core/services/__init__.py`, `src/logbook/cli/commands/project.py`, `src/logbook/cli/commands/task.py`, `src/logbook/cli/runtime.py`
+- Modify tests: `tests/core/test_services_projects.py`, `tests/cli/test_project.py`, `tests/cli/test_entry.py`(명령별 import 가드 parametrize, 343행 부근부터)
 
 ```python
 # core/services/projects.py
@@ -504,18 +542,20 @@ lb project edit SLUG [--name 이름] [--color '#4f46e5'] [--description 설명] 
 lb project unarchive SLUG
 ```
 
-- `edit`의 검사는 DB·설정 없이 한다. SQLAlchemy를 로드하지 않으며, 가드 목록에 더한다.
+- `edit`의 검사는 DB·설정 없이 한다. SQLAlchemy를 로드하지 않는다.
+  - `tests/cli/test_entry.py`의 명령별 import 가드 parametrize에 `project-edit-help`, `project-unarchive-help`, `project-edit-nothing`, `project-edit-conflict` 줄을 더한다. `task-edit-nothing`·`task-edit-conflict` 줄과 같은 방식이다. `tests/cli/helpers.py`는 바꾸지 않는다.
+  - `lb task edit`처럼 (값 옵션, 비우기 옵션, 필드) 표(`_CLEARABLE`)로 충돌 검사와 비우기를 한 번에 한다: (`--color`, `--no-color`, color), (`--description`, `--no-description`, description)
   - 옵션을 하나도 주지 않으면 `EDIT_NOTHING`이다.
-  - 값과 비우기를 함께 주면 `EDIT_CONFLICT`다. 예: `--color`와 `--no-color`
-- `edit` 출력은 add와 같은 모양이다: `✔ 프로젝트 수정: payment (결제 서버) #4f46e5`. 색이 없으면 색을 뺀다.
-- `unarchive` 출력: `✔ 프로젝트 보관 해제: payment`. 이미 보관되지 않았으면 `ℹ 보관되지 않은 프로젝트입니다: payment`이다.
+  - 값과 비우기를 함께 주면 `CONFLICT_MESSAGE`다. `cli/commands/task.py`의 것을 `runtime.py`로 옮겨 두 명령이 함께 쓴다. task.py에서도 같은 이름으로 import해 둔다.
+- `edit` 출력은 add와 같은 모양이다: `{ok_mark} 프로젝트 수정: payment (결제 서버) #4f46e5`. 색이 없으면 색을 뺀다.
+- `unarchive` 출력은 `{ok_mark} 프로젝트 보관 해제: payment`다. 이미 보관되지 않았으면 `{info_mark} 보관되지 않은 프로젝트입니다: payment`이다(archive의 '이미 보관된 프로젝트입니다' 줄과 같은 모양).
 - `project_app`의 help는 `프로젝트를 추가·조회·수정·보관합니다.`로 바꾼다.
 - `--no-color`의 help는 `색상을 비웁니다.`다. 출력 색과 헷갈리지 않게 설명을 붙인다.
 
-| 상수(cli.commands.project) | 문구 |
+| 상수(모듈) | 문구 |
 |---|---|
-| `EDIT_NOTHING` | `바꿀 항목을 하나 이상 지정하세요: --name, --color, --description, --no-color, --no-description` |
-| `EDIT_CONFLICT` | `{option}과 {clear_option}은 함께 쓸 수 없습니다.` (옵션 이름은 고정 문자열이라 조사 규칙의 예외다) |
+| `EDIT_NOTHING`(cli.commands.project) | `바꿀 항목을 하나 이상 지정하세요. 예: lb project edit payment --color '#22c55e'` (`lb task edit`의 `NOTHING_TO_CHANGE_MESSAGE`와 같은 모양) |
+| `CONFLICT_MESSAGE`(cli.runtime, task.py에서 옮김) | `{}와 {}는 함께 쓸 수 없습니다. 하나만 지정하세요.` (기존 문구 그대로) |
 
 **테스트 케이스**
 
@@ -542,7 +582,7 @@ lb project unarchive SLUG
 **Files:**
 - Create: `src/logbook/web/config_watch.py`, `tests/web/test_config_watch.py`, `tests/web/test_config_reload.py`
 - Modify: `src/logbook/web/context.py`, `src/logbook/web/app.py`, `src/logbook/web/server.py`, `src/logbook/web/security.py`, `src/logbook/web/pages/templating.py`, `src/logbook/web/templates/base.html`, `src/logbook/web/static/css/app.css`
-- Modify tests: `tests/web/test_context.py`, `tests/web/test_static.py`, `tests/web/test_security.py`, `tests/web/test_server.py`
+- Modify tests: `tests/web/test_context.py`, `tests/web/test_static.py`, `tests/web/test_security.py`, `tests/cli/test_serve.py`(서버가 watcher를 만들어 넘기는지, `fake_server` 사용)
 
 ```python
 # web/config_watch.py
@@ -557,7 +597,7 @@ class ConfigSnapshot:
     notice_error: bool = False
 
 class ConfigWatcher:
-    """설정 파일의 (st_mtime_ns, st_size)가 바뀌면 다시 읽는다. 여러 스레드가 함께 불러도 된다(Lock)."""
+    """설정 파일 내용(바이트)이 바뀌면 다시 읽는다. 여러 스레드가 함께 불러도 된다(Lock)."""
     def __init__(
         self, path: Path, initial: Config, *, loader: Callable[[Path], Config] = load_config
     ) -> None
@@ -580,15 +620,24 @@ class WebContext:
         """cfg와 알림을 스냅숏 값으로 바꾼 사본(dataclasses.replace)."""
 
 def get_context(request: Request) -> WebContext:
-    """요청마다 한 번 만든 맥락을 request.state에 두고 돌려준다. watcher가 있으면 그 요청의 설정 스냅숏을 쓴다."""
+    """요청의 맥락. watcher가 없으면 app.state.ctx를 그대로(같은 객체) 돌려준다.
+
+    watcher가 있으면 그 요청의 설정 스냅숏으로 만든 맥락을 request.state에 두고 돌려준다.
+    app.state.watcher와 request.state의 값은 getattr(…, None)로 읽는다(최소 앱 테스트에는 없다).
+    """
 
 # web/app.py
 def create_app(ctx: WebContext, *, watcher: ConfigWatcher | None = None) -> FastAPI
     # app.state.ctx = ctx, app.state.watcher = watcher
 ```
 
-- **서명:** `path.stat()`의 `(st_mtime_ns, st_size)`다. `OSError`면 None으로 본다. 파일이 없으면 `load_config`가 기본값을 쓴다.
-- **다시 읽기:** 서명이 바뀐 요청에서만 `loader(path)`를 부른다. 성공·실패와 상관없이 새 서명을 기억하므로, 같은 상태의 파일을 요청마다 다시 읽지 않는다.
+- **서명:** 파일 바이트의 sha256이다. 설정 파일은 수백 바이트라 요청마다 읽어도 비용이 작다.
+  - 수정 시각을 쓰지 않으므로 파일 시스템의 시각 정밀도와 상관없다. 같은 크기로 값만 바꾼 경우(포트 8765 → 8766)도 잡는다.
+  - 읽기에 실패하면(`OSError`, 없는 파일 포함) 서명은 None이다. 파일이 없으면 `load_config`가 기본값을 쓴다.
+  - 첫 서명은 생성자에서 잰다. 그래서 파일을 그대로 두면 loader를 한 번도 부르지 않는다.
+- **다시 읽기:** 서명은 `loader(path)`를 부르기 전에 잰다. 서명이 바뀐 요청에서만 loader를 부른다.
+  - 읽는 사이에 파일이 또 바뀌면 다음 요청에서 다시 읽는다.
+  - 성공·실패와 상관없이 새 서명을 기억하므로, 같은 내용의 파일을 요청마다 다시 읽지 않는다.
   - 실패(`LogbookError`): 직전 `cfg`를 그대로 쓴다. 알림은 `CONFIG_RELOAD_FAILED.format(error=str(error))`, `notice_error=True`다.
   - 성공: `restart_keys(initial, new)`가 있으면 알림은 `RESTART_REQUIRED`(`notice_error=False`)이고, 없으면 알림이 없다. `cfg`는 새 값이다. 핸들러는 DB 경로·포트를 `cfg`에서 읽지 않으므로(엔진과 소켓은 시작할 때 정해진다) 새 값을 그대로 둔다.
 - **화면:** `templating._shared_context`에 `config_notice`, `config_notice_error`를 더한다. `base.html`은 머리 다음에 다음 줄을 둔다.
@@ -604,7 +653,8 @@ def create_app(ctx: WebContext, *, watcher: ConfigWatcher | None = None) -> Fast
 | 대상 | 케이스 | 기대 |
 |---|---|---|
 | `ConfigWatcher` | 파일 그대로 두고 여러 번 | loader 0회, `initial` |
-| `ConfigWatcher` | `[categories]`에 `ops = "운영"` 추가(`os.utime`으로 st_mtime_ns를 확실히 바꾼다) | 새 cfg, 알림 없음 |
+| `ConfigWatcher` | `[categories]`에 `ops = "운영"` 추가 | 새 cfg, 알림 없음 |
+| `ConfigWatcher` | 같은 크기로 포트만 바꿈(8765 → 8766) | 감지한다, 재시작 알림 |
 | `ConfigWatcher` | TOML 문법 오류 | 이전 cfg, `notice_error`, 알림에 core 문구 포함. 다시 불러도 loader는 1회 |
 | `ConfigWatcher` | 다시 고침 | 새 cfg, 알림 없음 |
 | `ConfigWatcher` | `db_path`, `[web] port` 바꿈 | 알림 `…: db_path, web.port. …`, `notice_error=False`, cfg는 새 값 |
@@ -616,9 +666,11 @@ def create_app(ctx: WebContext, *, watcher: ConfigWatcher | None = None) -> Fast
 | 앱 | 설정을 깨뜨린 뒤 HTMX `GET /logs` | 조각에 알림 없음 |
 | 앱 | 한 요청에서 핸들러와 템플릿 | 같은 스냅숏(`get_context`가 `request.state`의 값을 돌려준다) |
 | 앱 | watcher 없는 앱(기존 fixture) | 알림 없음, 기존 동작 그대로 |
+| 맥락 | `app.state.watcher`가 없는 최소 앱(기존 `test_get_context_reads_app_state`) | `app.state.ctx`와 같은 객체 |
 | 정적 | `GET /static/css/app.css` | `Cache-Control: no-cache`, ETag 있음, CSP 등 보안 헤더 |
 | 정적 | 같은 ETag로 `If-None-Match` | 304, 보안 헤더 |
 | 페이지 | `GET /` | `Cache-Control: no-store`(그대로) |
+| 서버 | `lb serve`(`fake_server`) | `create_app`에 설정 파일 경로의 `ConfigWatcher`가 넘어간다 |
 
 - [ ] RED → GREEN → 커밋 `feat: 웹 대시보드가 설정 파일 변경을 재시작 없이 반영하고 정적 파일을 매번 확인하게 함`
 
@@ -660,7 +712,7 @@ def timer_panel_context(
     ctx: WebContext,
     now: datetime,
     *,
-    values: TimerStartValues = TimerStartValues(),
+    values: TimerStartValues | None = None,  # None이면 빈 값. 기본값에서 만들면 ruff B008에 걸린다
     message: str = "",
     is_error: bool = False,
 ) -> dict[str, Any]:
@@ -785,6 +837,7 @@ class TaskFormValues:
 def task_board(s: Session, ctx: WebContext, project: str, *, message: str = "", is_error: bool = False) -> TaskBoardView
 ```
 
+- **메뉴:** `base.html`에 `태스크`(`active == "tasks"`)를 더하고, `.masthead__nav`에 `flex-wrap: wrap`을 더한다(공통 규칙 CSS).
 - **열:** 이번 주는 `week_of(ctx.today(), cfg.week_start)`로 정한다.
   - 할 일·진행 중: `list_tasks(project_slug=…, statuses=(TODO, DOING))`를 상태로 나눈다. 순서는 계획 주차, id다.
   - 이번 주 완료: `done_tasks_in_week(s, this_week, tz=now.tzinfo, project_slug=…)`
@@ -803,7 +856,7 @@ def task_board(s: Session, ctx: WebContext, project: str, *, message: str = "", 
   - `hx-target="#task-board"`, `hx-swap="outerHTML"`
 - **`GET /tasks?project=`:**
   - 페이지 구성: 추가 폼(`#task-form`), 필터(`#task-filters`, 프로젝트 선택), 보드(`#task-board`)
-  - 필터를 바꾸면 `hx-get="/tasks"`, `hx-target="#task-board"`, `hx-push-url="true"`로 보낸다. HTMX 응답은 보드 조각이다.
+  - 필터를 바꾸면 `hx-get="/tasks"`, `hx-target="#task-board"`, `hx-push-url="true"`로 보낸다. HTMX 응답은 보드 조각이다. Task 6-8부터는 계획 패널 OOB도 함께 보내 두 영역이 같은 필터를 쓴다.
   - 없는 프로젝트: 전체 페이지는 오류 문구와 함께 그린다(logs와 같다). HTMX면 오류를 던져 알림 영역에 쓴다.
   - 필터 선택지는 보관 프로젝트를 포함한다(`project_choices`). 보관 프로젝트를 고르면 그 태스크가 보인다(list_tasks 규칙).
 - **`POST /tasks/{id}/status`** (form: `status`, `version`, `project`):
@@ -813,6 +866,7 @@ def task_board(s: Session, ctx: WebContext, project: str, *, message: str = "", 
   - 오류는 던져서 알림 영역에 쓴다(Phase 5 삭제 409와 같다). 보드는 그대로다.
 - **`POST /tasks`** (form: `title`, `task_project`, `task_category`, `estimate`, `week`, `project`(필터)):
   - 추가 폼 필드 이름은 필터의 `project`와 겹치지 않게 `task_project`·`task_category`로 쓴다(Phase 5 편집 행의 `log_project`와 같은 이유).
+  - 프로젝트 선택지는 보관 프로젝트를 뺀다(`project_choices(s, archived=False)`). 보관 프로젝트로 추가하는 400 시험은 직접 POST로 한다.
   - 값 해석:
     - 프로젝트: 비면 `cfg.default_project`
     - 카테고리: 비면 None
@@ -846,7 +900,8 @@ def task_board(s: Session, ctx: WebContext, project: str, *, message: str = "", 
 | 상태 | 다른 버전(CLI로 제목 수정) | 409 `TASK_CHANGED`(알림 조각), DB 그대로 |
 | 상태 | status `x` / 없는 태스크 | 400 `STATUS_INVALID` / 404 core 문구 |
 | 추가 | 제목+프로젝트+카테고리+예상+주차 `next` | 폼은 프로젝트·카테고리·주차 유지(제목·예상 빔), `TASK_ADDED`, OOB 보드에 새 카드 |
-| 추가 | 제목 비움 / 예상 `abc` / 보관 프로젝트 | 400 각 문구, 입력값 유지, OOB 보드 없음 |
+| 추가 | 제목 비움 / 예상 `abc` / 보관 프로젝트(직접 POST) | 400 각 문구, 입력값 유지, OOB 보드 없음 |
+| 추가 폼 | 프로젝트 선택지 | 보관 프로젝트가 없다 |
 | 추가 | 프로젝트 비움 | `default_project`에 추가 |
 | 보안 | 다른 출처에서 `POST /tasks` | 403 |
 
@@ -894,7 +949,7 @@ def plan_panel(s: Session, ctx: WebContext, project: str, *, message: str = "", 
 
 - **편집 카드:** `GET /tasks/{id}/edit`가 `<article id="task-{id}" class="card is-editing">`를 돌려준다. `GET /tasks/{id}/card`는 보기 카드를 돌려준다(취소).
   - 입력: 제목(`data-focus`), 카테고리 선택('없음' 포함), 예상(텍스트), 주차(텍스트, placeholder `this, next, 2026-W43`), 숨긴 version
-  - 저장: `hx-patch="/tasks/{id}"`, `hx-include="closest .card, #task-filters"`
+  - 저장: `hx-patch="/tasks/{id}"`, `hx-include="closest .card, #task-filters"`, `hx-target="#task-board"`, `hx-swap="outerHTML"`, `hx-sync="this:drop"`, `hx-disabled-elt="this"`
   - 취소: `hx-get="/tasks/{id}/card"`
 - **`PATCH /tasks/{id}`** (form: `title`, `task_category`, `estimate`, `week`, `version`, `project`):
   - 세션 전에 예상(`parse_duration(…, max_minutes=None)`)과 주차(`parse_week`)를 해석한다. 빈 값은 None이다.
@@ -915,12 +970,13 @@ def plan_panel(s: Session, ctx: WebContext, project: str, *, message: str = "", 
   - 계획이 없으면 `계획된 태스크가 없습니다.`다.
   - 이월 버튼은 이월 후보가 있을 때만 보인다.
     - `hx-post="/tasks/carry"`, `hx-vals='{{ {"ids": ids_text}|tojson }}'`(쉼표로 이은 id), `hx-include="#task-filters"`
-    - `hx-target="#task-plan"`, `hx-confirm="{{ plan.carry_confirm }}"`
+    - `hx-target="#task-plan"`, `hx-swap="outerHTML"`, `hx-sync="this:drop"`, `hx-disabled-elt="this"`, `hx-confirm="{{ plan.carry_confirm }}"`
 - **`POST /tasks/carry`** (form: `ids`, `project`):
   - 각 id를 `parse_id`로 읽는다. 하나도 없으면 `CARRY_EMPTY`다.
   - `carry_tasks(s, this_week, ids)`를 부른다. 그사이 바뀐 태스크는 서비스가 건너뛴다.
   - 응답은 계획 패널(결과 줄 `CARRIED`, 건너뛴 것이 있으면 `CARRY_SKIPPED`를 붙인다)과 보드 OOB다. 카드의 주차 꼬리표가 바뀐다.
-- Task 6-7의 응답들(상태 변경, 추가)에 계획 패널 OOB를 더한다.
+  - 옮긴 건수가 0이면 성공 줄을 쓰지 않는다. `ConflictError(CARRY_NONE)`로 보고, 지금 상태로 계획 패널과 보드 OOB를 다시 그려 409로 돌려준다(`render_error`). 화면을 열어 둔 채 주가 바뀐 경우가 여기에 해당한다.
+- Task 6-7의 응답들(필터 GET의 HTMX 응답, 상태 변경, 추가)에 계획 패널 OOB를 더한다. 필터 GET에서는 패널도 같은 필터를 쓴다.
 
 | 상수(pages.tasks) | 문구 |
 |---|---|
@@ -929,6 +985,7 @@ def plan_panel(s: Session, ctx: WebContext, project: str, *, message: str = "", 
 | `CARRIED` | `✔ {count}건을 옮겼습니다: {this} → {next}` |
 | `CARRY_SKIPPED` | ` {count}건은 그사이 바뀌어 옮기지 않았습니다.` |
 | `CARRY_EMPTY` | `옮길 태스크가 없습니다.` |
+| `CARRY_NONE` | `옮긴 태스크가 없습니다. 그사이 상태나 계획 주차가 바뀌었습니다. 패널을 지금 상태로 다시 표시했습니다.` |
 
 **테스트 케이스**
 
@@ -948,7 +1005,10 @@ def plan_panel(s: Session, ctx: WebContext, project: str, *, message: str = "", 
 | 이월 | 표시된 id로 POST | 계획 주차가 다음 주로 바뀜, `CARRIED`, OOB 보드 꼬리표 `다음 주` |
 | 이월 | 확인 사이에 한 건이 done | `CARRY_SKIPPED` 포함 |
 | 이월 | `ids` 비움 / `ids=x` | 400 `CARRY_EMPTY` / 400 ID 문구 |
+| 이월 | 화면을 연 뒤 주가 바뀜(시계를 7일 옮긴 뒤 POST) | 409 `CARRY_NONE`, 패널은 지금 상태 |
 | 응답 | 상태 변경·추가·수정 | 계획 패널 OOB 포함 |
+| 응답 | 필터 GET(HTMX) `?project=payment` | 계획 패널 OOB가 같은 필터(payment 묶음만) |
+| 버튼 | 이월, 편집 카드 저장 | `hx-swap="outerHTML"`. 저장은 `hx-target="#task-board"` |
 | 키보드 | `app.js` | `.is-editing` 안의 Enter·Esc 규칙(공통 규칙, 테스트는 정적 파일 내용 확인 정도) |
 
 - [ ] RED → GREEN → 커밋 `feat: 태스크 카드 수정과 다음 주 계획 패널·이월`
@@ -959,7 +1019,7 @@ def plan_panel(s: Session, ctx: WebContext, project: str, *, message: str = "", 
 
 **Files:**
 - Create: `src/logbook/web/reporting.py`, `src/logbook/web/pages/report.py`, `src/logbook/web/templates/report.html`, `partials/report_nav.html`, `partials/report_body.html`, `src/logbook/web/static/js/report.js`, `tests/web/test_report_page.py`, `tests/web/test_report_notes.py`, `tests/web/test_report_download.py`
-- Modify: `src/logbook/web/api/report.py`, `src/logbook/web/pages/__init__.py`, `src/logbook/web/templates/base.html`(메뉴 `보고서`), `src/logbook/web/errors.py`(`NOTES_CHANGED`), `src/logbook/web/static/css/app.css`, `tests/web/test_api_report.py`(회귀), `tests/core/test_report_render.py`(휠 포함 목록에 `logbook/web/static/js/report.js`)
+- Modify: `src/logbook/web/api/report.py`, `src/logbook/web/pages/__init__.py`, `src/logbook/web/templates/base.html`(메뉴 `보고서`), `src/logbook/web/errors.py`(`NOTES_CHANGED`), `src/logbook/web/static/css/app.css`, `tests/web/test_api_report.py`(회귀), `tests/core/test_report_render.py`(휠 포함 목록에 `logbook/web/static/js/report.js`), `tests/web/test_static.py`(MIME 목록 54~58행과 LF 검사 목록 169~175행에 `report.js`)
 
 ```python
 # web/reporting.py (API와 화면 공용)
@@ -1049,6 +1109,7 @@ class ReportBodyView:
 | 보안 | 다른 출처에서 `POST /report/notes` | 403 |
 | API 회귀 | `GET /api/report`(md, json) | 기존 기대 + json의 notes·risks |
 | 휠 | 포함 목록 | `logbook/web/static/js/report.js` |
+| 정적 | `GET /static/js/report.js` | `text/javascript`, UTF-8, CR 없음(test_static 목록) |
 
 - [ ] RED → GREEN → 커밋 `feat: 보고서 화면(미리보기·복사·내려받기·특이사항 입력)`
 
@@ -1068,7 +1129,8 @@ def project_version(project: Project) -> str
 class ProjectRowView:
     slug: str
     name: str
-    color: str          # '#4f46e5' 또는 ''
+    color: str          # 견본에 쓸 색: #[0-9a-fA-F]{6}에 맞을 때만 값, 아니면 ''
+    color_text: str     # 표에 글자로 보여 줄 원래 값(없으면 '')
     description: str    # 또는 ''
     archived: bool
     is_common: bool     # 보관 버튼을 두지 않는다
@@ -1098,7 +1160,7 @@ class ProjectSectionView:
 @dataclass(frozen=True)
 class SettingsInfoView:
     config_file: str   # str(Path) 그대로(Windows 역슬래시)
-    db_path: str
+    db_path: str       # 실제로 연 DB(ctx.engine.url.database). cfg.db_path가 아니다(공통 규칙)
     categories: tuple[Choice, ...]  # (key, 라벨), 설정 순서
     default_project: str
     week_start: str
@@ -1111,8 +1173,8 @@ class SettingsInfoView:
     - 모두 읽기만 한다. 안내 문구 `CATEGORY_NOTE`를 함께 보여 준다.
     - 설정 자동 반영(Task 6-5) 덕분에 설정 파일을 고치고 새로 고치면 바뀐 값이 보인다.
 - **표의 열:** slug, 이름, 색, 설명, 상태(사용 중·보관), 동작
-  - 색은 견본 `<svg class="swatch" width="14" height="14" aria-hidden="true"><rect width="14" height="14" fill="{{ row.color }}"/></svg>`와 hex 글자로 보여 준다.
-    - core가 `#RRGGBB`만 받고 자동 이스케이프도 되므로 값을 그대로 넣어도 된다.
+  - 색은 견본 `<svg class="swatch" width="14" height="14" aria-hidden="true"><rect width="14" height="14" fill="{{ row.color }}"/></svg>`와 글자(`color_text`)로 보여 준다.
+    - 견본은 뷰가 `#[0-9a-fA-F]{6}`로 확인한 색에만 그린다. `lb import`는 색 형식을 검사하지 않아 다른 문자열이 DB에 있을 수 있다. 그런 값은 견본 없이 글자로만 보여 준다(자동 이스케이프).
     - SVG 표시 속성(`fill`)은 CSP의 인라인 스타일이 아니다. 색이 실제로 보이는지는 메인 세션이 Edge 헤드리스로 확인한다.
   - 동작: 수정, 보관(common은 없음, 확인 창) 또는 보관 해제
   - 표는 `.table-wrap` 안에 둔다(좁은 화면에서는 표만 가로로 스크롤한다).
@@ -1133,6 +1195,7 @@ class SettingsInfoView:
   - 버전을 확인한 뒤 `archive_project`·`unarchive_project`를 부른다. 응답은 구역이다.
   - 보관한 프로젝트가 `cfg.default_project`면 결과 줄 끝에 `DEFAULT_ARCHIVED`를 붙인다.
   - common 보관 요청은 core 문구(400)다. 화면에는 버튼이 없다.
+- **버튼과 폼의 HTMX 속성:** 추가 폼은 `hx-post="/settings/projects"`, 편집 행의 저장과 보관·해제 버튼은 각 경로로 보낸다. 모두 `hx-target="#project-section"`, `hx-swap="outerHTML"`, `hx-sync="this:drop"`, `hx-disabled-elt`를 둔다. 편집 행의 취소만 `hx-target="closest tr"`이다.
 - slug는 `[a-z0-9_-]`라 id와 CSS 선택자에 그대로 쓸 수 있다. 경로의 잘못된 slug는 `get_project`의 NotFoundError(404, 알림)다.
 
 | 상수(pages.settings) | 문구 |
@@ -1164,6 +1227,8 @@ class SettingsInfoView:
 | 보관 해제 | 같은 버전 | 사용 중으로, `PROJECT_UNARCHIVED` |
 | 보관·해제 | 다른 버전 | 409 |
 | 설정 반영 | watcher 앱에서 카테고리를 더한 뒤 새로 고침 | 새 카테고리 표시 |
+| 설정 반영 | watcher 앱에서 `db_path`를 바꾼 뒤 새로 고침 | 화면의 DB 경로는 실제로 연 DB 그대로, 위에 재시작 알림 |
+| 견본 | 가져오기로 들어간 잘못된 색(`red`) | 견본 없음, 글자 `red` |
 | 보안 | 다른 출처에서 쓰기 | 403 |
 
 - [ ] RED → GREEN → 커밋 `feat: 설정 화면(프로젝트 추가·수정·보관·보관 해제, 카테고리 확인)`
@@ -1175,10 +1240,12 @@ class SettingsInfoView:
 **Files:**
 - Modify: `src/logbook/web/static/css/app.css`, `src/logbook/web/templates/base.html`, `src/logbook/web/errors.py`(`_error_page`), `src/logbook/web/static/js/dashboard.js`
 - Create: `tests/web/test_theme.py`
-- Modify tests: `tests/web/test_errors.py`, `tests/web/test_dashboard.py`
+- Modify tests: `tests/web/test_errors.py`, `tests/web/test_dashboard.py`, `tests/web/test_static.py`(161~166행의 색 리터럴 테스트를 test_theme.py로 옮긴다)
 
 - `:root`에 `color-scheme: light dark;`를 더해 폼 컨트롤·스크롤바도 테마를 따르게 한다.
-- `@media (prefers-color-scheme: dark) { :root { … } }`에 같은 이름의 토큰을 모두 다시 정한다. 시작 값은 아래와 같고, 대비 테스트가 통과하도록 조정할 수 있다.
+- `@media screen and (prefers-color-scheme: dark) { :root { … } }`에 아래 색 토큰 12개를 다시 정한다. 시작 값은 아래와 같고, 대비 테스트가 통과하도록 조정할 수 있다.
+  - `screen`으로 한정하므로 인쇄는 밝은 토큰을 쓴다(기존 `@media print`, 744~756행). 어두운 OS에서 인쇄해도 흰 종이에 흰 글자가 나오지 않는다.
+  - 글꼴·간격 같은 색이 아닌 토큰은 다시 정하지 않는다.
 
 | 토큰 | 밝은 테마(기존) | 어두운 테마 |
 |---|---|---|
@@ -1200,13 +1267,16 @@ class SettingsInfoView:
 - 데이터 색(프로젝트 색, `CHART_PALETTE`)은 바꾸지 않는다. 어두운 바탕에서 약한 색이 있을 수 있다(후속 항목 4).
 - 토큰 밖의 색 값이 Phase 5 CSS에 남아 있으면 이 Task에서 토큰으로 옮긴다.
 
-**테스트 케이스(`tests/web/test_theme.py`, CSS를 정규식으로 읽는다)**
+- **테스트의 블록 찾기:** 파일 맨 앞의 첫 `:root {`부터 짝이 맞는 `}`까지가 밝은 블록이다. `@media screen and (prefers-color-scheme: dark) {` 안의 `:root {…}`가 어두운 블록이다. 중괄호 짝을 세는 작은 함수로 자른다.
+
+**테스트 케이스(`tests/web/test_theme.py`)**
 
 | 대상 | 케이스 | 기대 |
 |---|---|---|
-| 토큰 | 밝은 `:root`, 어두운 `:root` | 같은 토큰 이름 집합 |
+| 토큰 | 밝은 블록, 어두운 블록 | 위 표의 색 토큰 12개가 두 블록에 모두 있다 |
 | 대비 | 두 테마의 (ink, bg), (ink, surface), (ink-muted, surface), (ink-muted, bg), (accent, surface), (accent-ink, accent), (danger, surface), (ok, surface) | WCAG 대비 4.5 이상 |
-| 하드코딩 | `:root` 블록 밖 | `#hex`, `rgb(`, `rgba(`, `hsl(` 없음 |
+| 하드코딩 | 두 `:root` 블록을 잘라낸 나머지 | `#hex`, `rgb(`, `rgba(`, `hsl(` 없음. 기존 `test_app_css_uses_color_literals_only_in_the_token_block`(test_static.py 161~166행)은 이 테스트로 옮기고 지운다 |
+| 인쇄 | 어두운 블록의 미디어 쿼리 | `screen`으로 한정 |
 | `color-scheme` | `:root` | `color-scheme: light dark` |
 | meta | `GET /`, 오류 페이지 | `<meta name="color-scheme" content="light dark">` |
 
@@ -1221,22 +1291,22 @@ class SettingsInfoView:
   - 설정 자동 반영: 바로 반영되는 값과 다시 시작해야 하는 값
   - 업데이트 시 DB 업그레이드와 백업 파일(위치, 이름, 되돌리는 방법)
   - `lb project edit`, `lb project unarchive`
-  - 내보내기 형식 2(형식 1 파일도 가져온다)
-  - 보고서 템플릿 값 `data.notes`, `data.risks`와 3절 예시
+  - 내보내기 형식 2(형식 1 파일도 가져온다). 144·147행의 내보내기 대상 설명에 특이사항을 더한다.
+  - 보고서 템플릿 값 `data.notes`, `data.risks`와 3절 예시. 96행의 '저장 기능은 이후 단계에서 추가합니다'를 고친다.
   - JSON API 추가(`GET /api/timer`, `POST /api/timer/cancel`)
 - [ ] **SPEC:**
+  - 2장 데이터 모델: week_notes를 테이블 설명에 더하고, 스키마 버전 2와 마이그레이션 전 백업을 설명한다(62~63행 schema_version 절). 6장 395행의 '추가 데이터' 문장은 지우거나 2장 참조로 바꾼다.
   - 3장: 설정 자동 반영(웹)
-  - 4장 또는 데이터 절: 스키마 2와 마이그레이션 전 백업
-  - 5장: `lb project edit|unarchive`, 내보내기 형식 2
-  - 6장: Phase 6 화면 동작(태스크·보고서·설정), 타이머 시작·취소, 버전 확인 대상, 정적 파일 캐시, API 추가. "추가 데이터"는 구현됨으로 고친다. "Phase 6에 남은 것"은 후속 항목 목록으로 바꾼다.
-  - 7장: 3절 형식
+  - 5장: `lb project edit|unarchive`. 내보내기 설명(251행: 형식 버전, 머리글 예시, 행 순서)과 성공 출력 예시(253행)를 형식 2로 고친다.
+  - 6장: Phase 6 화면 동작(태스크·보고서·설정), 타이머 시작·취소, 버전 확인 대상, 정적 파일 캐시, API 추가. "Phase 6에 남은 것"은 후속 항목 목록으로 바꾼다.
+  - 7장: 3절 형식(456행 문장 포함)
 - [ ] **ROADMAP:** Phase 6 네 항목을 `[x]`로 바꾼다.
 - [ ] **CLAUDE.md·AGENTS.md(같은 내용):** 디렉터리 구조에 새 모듈을 더한다(`core/services/week_notes.py`, `web/config_watch.py`, `web/reporting.py`, `web/pages/tasks.py`·`task_views.py`·`report.py`·`settings.py`, `static/js/report.js`). 허용 core 진입점은 바뀌지 않는다.
 - [ ] **자동 확인(이 PC, 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`):**
   - v1 DB(develop `44ddf9f`로 만든 임시 DB 복사본)에서 `lb log`를 실행한다. 업그레이드 알림이 나오고, 백업 파일이 생기고, 데이터가 그대로인지 본다.
   - `lb project edit`·`unarchive`, `lb export`(형식 2), 그 파일을 새 DB에 `lb import`
 - [ ] **화면 확인(메인 세션, Edge 헤드리스, `ui-visual-verification` 기준):**
-  - 다섯 화면(`/`, `/logs`, `/tasks`, `/report`, `/settings`) × 밝은·어두운 테마 × 1280px·375px 스크린샷을 찍는다. 어두운 테마는 `--force-dark-mode` 또는 `--blink-settings=preferredColorScheme=0`으로 켜고, 둘 중 동작하는 것을 기록한다.
+  - 다섯 화면(`/`, `/logs`, `/tasks`, `/report`, `/settings`) × 밝은·어두운 테마 × 1280px·375px 스크린샷을 찍는다. 320px도 한 장씩 찍어 머리 메뉴 줄바꿈과 태스크·설정 표를 본다. 어두운 테마는 `--force-dark-mode` 또는 `--blink-settings=preferredColorScheme=0`으로 켜고, 둘 중 동작하는 것을 기록한다.
   - 카드 수정·상태 변경·이월, 특이사항 저장 흐름에서 결과 줄·오류 알림이 보이는 자리(뷰포트·가로 스크롤 안)에 있는지 잰다.
   - 프로젝트 색 견본이 보이는지 본다.
 - [ ] **브라우저 확인(사용자, Windows·macOS, 절차는 PR 댓글):**
@@ -1260,7 +1330,8 @@ class SettingsInfoView:
 - 백업이 실패하면 만들다 만 파일을 지운다.
 - `textarea`는 줄바꿈을 CRLF로 보낸다(HTML 규격). 저장할 때 LF로 바꾼다.
 - 다운로드 파일 이름은 ASCII이고, 내용은 UTF-8·LF다.
-- 설정 파일 변경은 `st_mtime_ns`와 `st_size`로 감지한다. 파일 시스템마다 시각 정밀도가 달라 크기도 함께 본다. 테스트는 `os.utime`으로 시각을 확실히 바꾼다.
+- 설정 파일 변경은 파일 내용의 해시로 감지한다. 파일 시스템마다 다른 수정 시각 정밀도에 기대지 않는다.
+- 어두운 테마는 `screen`에만 적용한다. 인쇄는 OS 테마와 상관없이 밝은 토큰이다.
 - 경로 표시(설정 화면)는 `str(Path)` 그대로다(Windows는 역슬래시).
 - 복사는 Clipboard API가 기본이다. 127.0.0.1·localhost는 보안 컨텍스트다. 실패하면 선택 후 `execCommand("copy")`로 대신한다.
 
@@ -1274,11 +1345,12 @@ class SettingsInfoView:
 4. **업그레이드 알림:** core는 출력하지 않는다. `open_database(on_upgrade=…)` 콜백으로 넘기고, CLI·서버가 stderr에 쓴다.
 5. **보고서 3절:** `### 특이사항`·`### 리스크`이고, 빈 칸은 뺀다. 둘 다 비면 `(작성하세요)`다. `ReportData`의 새 필드에는 기본값이 있어 사용자 템플릿과 기존 코드가 깨지지 않는다.
 6. **내보내기 형식 2:** 행 키를 일반화한다(`KEY_FIELDS`). 형식 1 파일도 계속 가져온다.
-7. **설정 자동 반영:** 요청별 스냅숏으로 반영한다. 읽기에 실패하면 직전 설정으로 동작하고, DB·주소·포트는 다시 시작해야 한다.
+7. **설정 자동 반영:** 요청별 스냅숏으로 반영한다. 변경은 파일 내용 해시로 감지한다. 읽기에 실패하면 직전 설정으로 동작하고, DB·주소·포트는 다시 시작해야 한다. 화면의 DB 경로는 실제로 연 DB다.
 8. **정적 파일 캐시:** 게이트에서는 `?v=버전`을 말했지만 `Cache-Control: no-cache` + ETag(304)로 바꿨다. 서버를 띄운 채 CSS를 고쳐도 새로 고침만으로 반영되고, 코드가 단순하다.
 9. **버전 확인 확대:** 태스크, 특이사항, 프로젝트, 타이머 취소에 409를 둔다. `content_version`을 함께 쓴다. 타이머 정지는 Phase 5처럼 버전을 보지 않는다.
 10. **다음 주 계획 패널:** 보고서 4절과 같은 함수(`next_week_plan`)를 써서 두 화면이 같은 내용을 보인다.
 11. **칸반:** 완료 열은 이번 주에 완료한 것만이다. 중단한 태스크는 보이지 않고, 상태는 버튼으로 바꾼다(끌어 놓기는 키보드로 쓸 수 없다).
+    - 완료 열은 보관 프로젝트를 빼고(list_tasks와 같다), 보고서 1절의 완료 태스크 수는 보관 프로젝트를 포함한다(Phase 4 규칙). 그래서 두 수가 다를 수 있다.
 12. **프로젝트 추가 폼:** CLI `lb project add`와 같은 항목(slug·이름·색)이다. 설명은 수정에서 넣는다. 색 입력은 텍스트다(비우면 색 없음).
 13. **다크모드:** 토큰만 바꾼다. 대비 테스트와 색 값 하드코딩 금지 테스트로 지킨다.
 14. **화면 상태 이름:** 한국어(할 일·진행·완료·중단, 보고서와 같다)다. CLI 출력은 그대로다.
@@ -1302,6 +1374,24 @@ class SettingsInfoView:
 - 첫 실제 마이그레이션 전에 DB를 자동 백업한다. 내보내기는 형식 2이고, 가져오기는 형식 1도 받는다.
 
 2026-10-13 설계 요약 승인: 게이트 뒤 보여 준 설계 요약(화면별 동작, 설정 자동 반영 방식, 정적 파일 캐시 방식 변경, 진행 방식)을 사용자가 승인했다.
+
+## 계획 검토 (2026-10-13)
+
+- 리뷰어 2명(core·CLI, 웹)과 검증 1명(fact-verifier)이 검토했다. 모두 Sonnet/medium이다.
+- 지적 28건을 26묶음으로 정리했고, 모두 맞거나 일부 맞다는 판정이라 전부 반영했다(major 8묶음, minor 18묶음, critical 없음).
+- 검토로 바뀐 설계
+  - 설정 변경 감지를 수정 시각·크기에서 파일 내용 해시로 바꿨다. 같은 크기로 값만 바꾼 경우도 잡는다.
+  - 어두운 테마는 화면(`screen`)에만 적용한다. 어두운 OS에서 인쇄해도 밝은 토큰을 쓴다.
+  - 설정 화면의 DB 경로는 실제로 연 DB에서 읽는다.
+  - 프로젝트 색 견본은 형식을 확인한 색에만 그린다(가져오기는 색 형식을 검사하지 않는다).
+  - 이월이 0건이면 성공 줄 대신 409로 알리고 패널을 지금 상태로 다시 그린다(화면을 연 채 주가 바뀐 경우 등).
+  - 태스크 필터를 바꾸면 계획 패널도 같은 필터로 바뀐다.
+- 나머지는 실제 코드에 맞춘 보완이다.
+  - 바뀌어야 하는 기존 테스트의 파일·행
+  - 가져오기 코드의 id·형식 1 전제
+  - CLI 기호(`info_mark`·`arrow`)와 `CONFLICT_MESSAGE` 공용화
+  - 버튼의 `hx-swap`, ruff B008, `get_context`의 최소 앱 호환
+  - 문서 갱신 위치
 
 ## 후속 항목 (Phase 6 범위 밖, 기록만)
 
