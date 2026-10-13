@@ -45,10 +45,10 @@ CLI만 필요하면 Phase 4까지, 웹 대시보드까지 원하면 Phase 6까�
 - [x] `/logs` 필터·인라인 수정
 
 ## Phase 6. 웹 대시보드 — 계획·보고서
-- [ ] `/tasks` 칸반 + 다음 주 계획 패널 + 예상 대비 실제
-- [ ] `week_notes` 테이블 + `/report` 미리보기·복사·다운로드
-- [ ] `/settings` 프로젝트 관리
-- [ ] 다크모드 대응 CSS
+- [x] `/tasks` 칸반 + 다음 주 계획 패널 + 예상 대비 실제
+- [x] `week_notes` 테이블 + `/report` 미리보기·복사·다운로드
+- [x] `/settings` 프로젝트 관리
+- [x] 다크모드 대응 CSS
 
 ## Phase 7. 선택 기능
 - [ ] LLM 문장 다듬기 (`--polish`, `ANTHROPIC_API_KEY` 있을 때만)

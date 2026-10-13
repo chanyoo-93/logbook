@@ -37,7 +37,7 @@ src/logbook/
     models.py    # SQLAlchemy 모델
     taskstatus.py# 태스크 상태와 상태 목록 파서 (SQLAlchemy 없음)
     db.py        # 엔진/세션, 스키마 생성 및 마이그레이션, DB 진입점(open_database·initialize_database)
-    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer, report, backup, backup_import)
+    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer, report, week_notes, backup, backup_import)
     duration.py  # "1h30m", "1.5h", "90m" 파싱/포맷
     weeks.py     # ISO 주차 계산 (YYYY-Www)와 시각·날짜 표기(clock_label, total_label, full_day)
     ids.py       # ID 파싱·검증 (parse_id, check_id, MAX_ID)
@@ -60,11 +60,14 @@ src/logbook/
     security.py  # Host 검사, 교차 출처 쓰기 차단, 보안 헤더(CSP)
     errors.py    # 오류 → HTTP 상태·JSON 봉투·HTMX 알림 변환
     app.py       # FastAPI 앱 조립
+    config_watch.py # 설정 파일 자동 반영(내용 해시로 변경을 감지하고 요청마다 설정 스냅숏을 돌려줌)
+    reporting.py # 보고서 화면·내려받기 공용 처리(내려받기 파일 이름 등)
     server.py    # 루프백 소켓을 열고 uvicorn 실행 (`lb serve`가 호출)
     api/         # JSON API (/api/*): logs, tasks, stats, report, timer
-    pages/       # 화면 라우트 (대시보드, 기록, 타이머), panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText)
+    pages/       # 화면 라우트 (대시보드, 기록, 타이머, 태스크·보고서·설정), tasks.py·task_views.py(칸반·계획 패널), report.py, settings.py, panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText)
     templates/   # Jinja2 + HTMX
-    static/      # 최소한의 CSS와 JS, vendor/에 htmx·Chart.js 로컬 파일 (CDN 없음)
+    static/      # 최소한의 CSS와 JS(js/report.js 포함), vendor/에 htmx·Chart.js 로컬 파일 (CDN 없음)
+                 # css/: app.css(색 토큰 :root 두 벌은 여기에만), dashboard·logs·tasks·report·settings·responsive.css (base.html이 이 순서로 링크)
 tests/
 docs/
 ```
