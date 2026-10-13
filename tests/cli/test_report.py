@@ -104,6 +104,24 @@ def test_report_prints_rendered_markdown(lb: Callable[..., Result], seeded: Path
     assert result.stderr == ""
 
 
+def test_report_prints_saved_week_note(
+    lb: Callable[..., Result], seeded: Path, open_db: OpenDb
+) -> None:
+    with open_db() as s:
+        services.save_week_note(
+            s,
+            parse_week("2026-W40", today=runtime.today(), week_start="monday"),
+            notes="- 배포 일정 확정",
+            risks="",
+        )
+
+    result = run_ok(lb, "report")
+
+    assert "### 특이사항\n- 배포 일정 확정\n" in result.stdout
+    assert "(작성하세요)" not in result.stdout
+    assert result.stdout == expected_report()
+
+
 def test_report_last_week_title(lb: Callable[..., Result], seeded: Path) -> None:
     result = run_ok(lb, "report", "-w", "last")
 

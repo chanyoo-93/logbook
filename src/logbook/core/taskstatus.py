@@ -34,6 +34,19 @@ def parse_statuses(text: str) -> tuple[TaskStatus, ...]:
     return tuple(result)
 
 
+STATUS_INVALID = (
+    "태스크 상태가 올바르지 않습니다: '{value}'. todo, doing, done, dropped 중 하나를 쓰세요."
+)
+
+
+def parse_status(text: str) -> TaskStatus:
+    """상태 하나(앞뒤 공백·대소문자 무시)."""
+    try:
+        return TaskStatus(text.strip().lower())
+    except ValueError:
+        raise InvalidInputError(STATUS_INVALID.format(value=echo_input(text))) from None
+
+
 def _is_status(value: str) -> bool:
     return value in {status.value for status in TaskStatus}
 

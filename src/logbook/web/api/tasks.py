@@ -9,10 +9,10 @@ from fastapi import APIRouter, Query
 from starlette.responses import JSONResponse
 
 from logbook.core import services
-from logbook.core.duration import echo_input, parse_duration
+from logbook.core.duration import parse_duration
 from logbook.core.errors import InvalidInputError
 from logbook.core.ids import parse_id
-from logbook.core.taskstatus import OPEN_STATUSES, TaskStatus, parse_statuses
+from logbook.core.taskstatus import OPEN_STATUSES, parse_status, parse_statuses
 from logbook.core.weeks import parse_date, parse_week
 from logbook.web.api.envelope import ok
 from logbook.web.api.schemas import TaskCreate, TaskPatch, changed_fields, optional_text
@@ -28,9 +28,6 @@ DEFAULT_STATUSES = ",".join(status.value for status in OPEN_STATUSES)
 NOTHING_TO_CHANGE = (
     "바꿀 항목을 하나 이상 지정하세요: title, category, estimate, week, due, ref, "
     "description, status"
-)
-STATUS_INVALID = (
-    "태스크 상태가 올바르지 않습니다: '{value}'. todo, doing, done, dropped 중 하나를 쓰세요."
 )
 NULLABLE_FIELDS = frozenset({"category", "estimate", "week", "due", "ref", "description"})
 
@@ -86,7 +83,7 @@ def update_task(task_id: str, body: TaskPatch, ctx: Ctx) -> JSONResponse:
         raise InvalidInputError(NOTHING_TO_CHANGE)
     # 값 해석 오류는 세션을 열기 전에 모두 낸다.
     fields = _task_fields(body, sent, ctx)
-    status = _status(body.status) if body.status is not None else None
+    status = parse_status(body.status) if body.status is not None else None
     with ctx.session() as s:
         if fields:
             services.update_task(s, the_id, allowed_categories=tuple(ctx.cfg.categories), **fields)
@@ -128,10 +125,3 @@ def _week(text: str | None, today: date, week_start: WeekStart) -> Week | None:
 
 def _date(text: str | None, today: date, week_start: WeekStart) -> date | None:
     return None if text is None else parse_date(text, today=today, week_start=week_start)
-
-
-def _status(text: str) -> TaskStatus:
-    try:
-        return TaskStatus(text.strip().lower())
-    except ValueError:
-        raise InvalidInputError(STATUS_INVALID.format(value=echo_input(text))) from None

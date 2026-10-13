@@ -239,13 +239,42 @@ def _local_midnight(day: date, tz: tzinfo) -> datetime:
     return datetime.combine(day, time.min, tzinfo=tz)
 
 
+def _done_range(week: Week, tz: tzinfo) -> tuple[datetime, datetime]:
+    """주 범위의 로컬 자정 구간 [시작, 다음 주 시작)."""
+    return (
+        _local_midnight(week.start, tz),
+        _local_midnight(week.end + timedelta(days=1), tz),
+    )
+
+
 def count_done_tasks(s: Session, week: Week, *, tz: tzinfo) -> int:
     """완료 시각의 로컬 날짜(tz 기준)가 주 범위 안인 완료 태스크 수(보관 프로젝트 포함)."""
-    first = _local_midnight(week.start, tz)
-    after = _local_midnight(week.end + timedelta(days=1), tz)
+    first, after = _done_range(week, tz)
     count = s.scalar(
         select(func.count(Task.id)).where(
             Task.status == TaskStatus.DONE, Task.done_at >= first, Task.done_at < after
         )
     )
     return count or 0
+
+
+def done_tasks_in_week(
+    s: Session, week: Week, *, tz: tzinfo, project_slug: str | None = None
+) -> list[Task]:
+    """완료 시각의 로컬 날짜(tz 기준)가 week 안인 완료 태스크(project 함께 로드).
+
+    최근 완료가 먼저, 같으면 id 순이다.
+    project_slug가 없으면 보관 프로젝트는 뺀다(list_tasks와 같다).
+    """
+    first, after = _done_range(week, tz)
+    query = (
+        select(Task)
+        .options(joinedload(Task.project))
+        .where(Task.status == TaskStatus.DONE, Task.done_at >= first, Task.done_at < after)
+        .order_by(Task.done_at.desc(), Task.id)
+    )
+    if project_slug is not None:
+        query = query.where(Task.project_id == get_project(s, project_slug).id)
+    else:
+        query = query.where(Task.project.has(Project.archived.is_(False)))
+    return list(s.scalars(query))

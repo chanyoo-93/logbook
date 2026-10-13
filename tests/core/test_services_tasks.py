@@ -804,3 +804,54 @@ def test_count_done_tasks_week_boundaries_are_local_midnight(
     _done(seeded, done_at)
 
     assert services.count_done_tasks(seeded, W40, tz=KST) == expected
+
+
+# --- done_tasks_in_week ---
+
+
+def test_done_tasks_in_week_lists_week_done_latest_first(seeded: Session) -> None:
+    early = _done(seeded, datetime(2026, 9, 29, 3, tzinfo=UTC))
+    late = _done(seeded, datetime(2026, 10, 3, 3, tzinfo=UTC))
+    _done(seeded, datetime(2026, 9, 21, 3, tzinfo=UTC))  # 앞 주
+    _done(seeded, None, status=TaskStatus.TODO)
+    services.archive_project(seeded, "search")
+    _done(seeded, datetime(2026, 10, 1, 3, tzinfo=UTC), project="search")  # 보관 프로젝트
+
+    tasks = services.done_tasks_in_week(seeded, W40, tz=UTC)
+
+    assert _ids(tasks) == [late.id, early.id]
+
+
+def test_done_tasks_in_week_same_time_orders_by_id(seeded: Session) -> None:
+    at = datetime(2026, 9, 30, 3, tzinfo=UTC)
+    first = _done(seeded, at)
+    second = _done(seeded, at)
+
+    assert _ids(services.done_tasks_in_week(seeded, W40, tz=UTC)) == [first.id, second.id]
+
+
+def test_done_tasks_in_week_project_slug_includes_archived(seeded: Session) -> None:
+    services.archive_project(seeded, "search")
+    task = _done(seeded, datetime(2026, 10, 1, 3, tzinfo=UTC), project="search")
+    _done(seeded, datetime(2026, 10, 1, 3, tzinfo=UTC), project="payment")
+
+    tasks = services.done_tasks_in_week(seeded, W40, tz=UTC, project_slug="search")
+
+    assert _ids(tasks) == [task.id]
+
+
+def test_done_tasks_in_week_uses_local_date_of_tz(seeded: Session) -> None:
+    task = _done(seeded, datetime(2026, 9, 27, 15, 30, tzinfo=UTC))
+
+    assert _ids(services.done_tasks_in_week(seeded, W40, tz=KST)) == [task.id]
+    assert services.done_tasks_in_week(seeded, W40, tz=UTC) == []
+
+
+def test_done_tasks_in_week_loads_project(seeded: Session) -> None:
+    _done(seeded, datetime(2026, 9, 29, 3, tzinfo=UTC))
+    seeded.expunge_all()
+
+    tasks = services.done_tasks_in_week(seeded, W40, tz=UTC)
+    seeded.expunge_all()
+
+    assert tasks[0].project.slug == "payment"

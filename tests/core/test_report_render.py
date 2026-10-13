@@ -171,6 +171,48 @@ def test_no_author_drops_author_line() -> None:
     assert text.startswith("# 주간업무보고 (2026-09-28 ~ 2026-10-04)\n\n## 1.")
 
 
+SECTION3_EMPTY = "## 3. 특이사항 / 리스크\n(작성하세요)\n\n## 4. 다음 주 계획"
+
+
+def test_notes_empty_keeps_placeholder() -> None:
+    assert SECTION3_EMPTY in render_markdown(three_project_data())
+
+
+def test_notes_only_shows_notes_subsection() -> None:
+    text = render_markdown(replace(three_project_data(), notes="- 배포 일정 확정"))
+    assert "## 3. 특이사항 / 리스크\n### 특이사항\n- 배포 일정 확정\n\n## 4." in text
+    assert "(작성하세요)" not in text
+    assert "### 리스크" not in text
+
+
+def test_notes_and_risks_are_separated_by_blank_line() -> None:
+    data = replace(three_project_data(), notes="- 일정\n- 인력", risks="- 지연 가능")
+    text = render_markdown(data)
+    assert (
+        "## 3. 특이사항 / 리스크\n### 특이사항\n- 일정\n- 인력\n\n### 리스크\n- 지연 가능\n\n## 4."
+        in text
+    )
+
+
+def test_risks_only_shows_risks_subsection() -> None:
+    text = render_markdown(replace(three_project_data(), risks="- 지연 가능"))
+    assert "## 3. 특이사항 / 리스크\n### 리스크\n- 지연 가능\n\n## 4." in text
+    assert "### 특이사항" not in text
+    assert "(작성하세요)" not in text
+
+
+def test_user_template_without_notes_still_renders(tmp_path: Path) -> None:
+    path = write_template(tmp_path, b"{{ data.title }}")
+    data = replace(three_project_data(), notes="x", risks="y")
+    assert render_markdown(data, template_path=path) == "주간업무보고 (2026-09-28 ~ 2026-10-04)\n"
+
+
+def test_user_template_can_use_notes_and_risks(tmp_path: Path) -> None:
+    path = write_template(tmp_path, b"{{ data.notes }}|{{ data.risks }}")
+    data = replace(three_project_data(), notes="a", risks="b")
+    assert render_markdown(data, template_path=path) == "a|b\n"
+
+
 def test_no_plan_shows_placeholder() -> None:
     text = render_markdown(replace(three_project_data(), plan=()))
     assert text.endswith("## 4. 다음 주 계획\n계획된 태스크가 없습니다.\n")

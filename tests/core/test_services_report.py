@@ -436,6 +436,38 @@ def test_plan_item_estimate_and_title(seeded: Session) -> None:
     )
 
 
+# --- 특이사항·리스크 ---
+
+
+def test_report_carries_week_note_only_for_its_week(seeded: Session) -> None:
+    services.save_week_note(seeded, FIXED, notes="배포 일정 확정", risks="인력 부족")
+
+    this_week = _report(seeded)
+    next_week = _report(seeded, FIXED.next())
+
+    assert (this_week.notes, this_week.risks) == ("배포 일정 확정", "인력 부족")
+    assert (next_week.notes, next_week.risks) == ("", "")
+
+
+# --- next_week_plan ---
+
+
+def test_next_week_plan_is_public_and_matches_report_plan(seeded: Session) -> None:
+    next_todo = _task(seeded, "다음 할 일", planned_week=FIXED.next())
+    carried = _task(seeded, "이월", planned_week=FIXED)
+    services.set_task_status(seeded, carried.id, TaskStatus.DOING)
+    _finish(seeded, _task(seeded, "이번 완료", planned_week=FIXED))
+    _task(seeded, "보관됨", "admin", planned_week=FIXED.next())
+    services.archive_project(seeded, "admin")
+
+    plan = services.next_week_plan(seeded, FIXED)
+
+    assert plan == _report(seeded).plan
+    assert [(g.project, [(i.task_id, i.carried) for i in g.items]) for g in plan] == [
+        ("payment", [(next_todo.id, False), (carried.id, True)])
+    ]
+
+
 # --- 쿼리 수 ---
 
 

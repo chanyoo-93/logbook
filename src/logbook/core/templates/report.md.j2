@@ -33,7 +33,20 @@
 {% endfor %}
 
 ## 3. 특이사항 / 리스크
+{% if not data.notes and not data.risks %}
 (작성하세요)
+{% endif %}
+{% if data.notes %}
+### 특이사항
+{{ data.notes }}
+{% endif %}
+{% if data.notes and data.risks %}
+
+{% endif %}
+{% if data.risks %}
+### 리스크
+{{ data.risks }}
+{% endif %}
 
 ## 4. 다음 주 계획
 {% if not data.plan %}

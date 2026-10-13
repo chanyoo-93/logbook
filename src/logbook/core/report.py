@@ -71,6 +71,8 @@ class ReportData:
     matrix: tuple[MatrixRow, ...]
     sections: tuple[ProjectSection, ...]
     plan: tuple[PlanGroup, ...]
+    notes: str = ""  # 3절 특이사항(정리된 텍스트, 없으면 '')
+    risks: str = ""  # 3절 리스크
 
 
 NO_VALUE = "-"

@@ -21,7 +21,7 @@ from logbook.core.services.projects import (
     is_valid_slug,
     list_projects,
 )
-from logbook.core.services.report import weekly_report
+from logbook.core.services.report import next_week_plan, weekly_report
 from logbook.core.services.stats import (
     DailyProjectResult,
     MatrixResult,
@@ -38,6 +38,7 @@ from logbook.core.services.tasks import (
     carry_tasks,
     count_done_tasks,
     create_task,
+    done_tasks_in_week,
     get_task,
     list_tasks,
     set_task_status,
@@ -55,6 +56,7 @@ from logbook.core.services.timer import (
     start_timer,
     stop_timer,
 )
+from logbook.core.services.week_notes import clean_note_text, get_week_note, save_week_note
 from logbook.core.services.worklogs import (
     add_worklog,
     day_total_minutes,
@@ -115,4 +117,9 @@ __all__ = [
     "stats_by",
     "stats_matrix",
     "weekly_report",
+    "next_week_plan",
+    "clean_note_text",
+    "get_week_note",
+    "save_week_note",
+    "done_tasks_in_week",
 ]
