@@ -19,7 +19,7 @@
 - **스키마:** `week_notes(week, risks, notes, updated_at)`를 스키마 2로 추가한다.
   - 마이그레이션은 고정 DDL로 쓴다.
   - 적용 직전에 같은 폴더에 DB 백업을 만든다. 업데이트 뒤 처음 실행한 `lb` 명령이 사용자의 실제 DB를 바꾸기 때문이다.
-- **설정 자동 반영:** 요청이 올 때 설정 파일의 수정 시각과 크기를 보고, 바뀌었으면 다시 읽는다. 한 요청은 처음 받은 설정 하나만 쓴다(요청별 스냅숏).
+- **설정 자동 반영:** 요청이 올 때 설정 파일 내용의 해시를 보고, 바뀌었으면 다시 읽는다. 한 요청은 처음 받은 설정 하나만 쓴다(요청별 스냅숏).
 - **버전 확인:** 화면에서 바꾸는 요청은 화면이 본 값의 버전을 함께 보낸다. 그사이 값이 바뀌었으면 409로 막는다(Phase 5 기록 화면과 같은 방식).
   - 대상: 태스크 상태 변경·수정, 특이사항 저장, 프로젝트 수정·보관, 타이머 취소
 - **다크모드:** `prefers-color-scheme: dark`에서 CSS 색 토큰만 바꾼다. OS 테마가 바뀌면 차트는 CSS 변수를 다시 읽어 그린다.
@@ -336,7 +336,7 @@ def serve(..., on_upgrade: Callable[[InitResult], None] | None = None) -> None
 | 서버 | v1 DB에서 `lb serve`(`tests/cli/test_serve.py`의 `fake_server`) | 서버 시작 줄보다 먼저 stderr에 업그레이드 줄이 한 번 |
 | 회귀 | 가짜 마이그레이션 테스트(번호를 옮긴 것) | 기존과 같은 기대 |
 
-- [ ] RED → GREEN → 커밋 `feat: week_notes 테이블과 스키마 2 마이그레이션, 마이그레이션 전 자동 백업 추가`
+- [x] RED → GREEN → 커밋 `feat: week_notes 테이블과 스키마 2 마이그레이션, 마이그레이션 전 자동 백업 추가`
 
 ---
 
@@ -435,7 +435,7 @@ def parse_status(text: str) -> TaskStatus:
 | `parse_status` | `"x"`, `""` | `STATUS_INVALID` 문구 |
 | API 회귀 | `PATCH /api/tasks/1` `{"status": "x"}` | 400, 기존 문구 그대로 |
 
-- [ ] RED → GREEN → 커밋 `feat: 보고서 특이사항·리스크 저장과 3절 출력, 다음 주 계획·이번 주 완료 조회 공개`
+- [x] RED → GREEN → 커밋 `feat: 보고서 특이사항·리스크 저장과 3절 출력, 다음 주 계획·이번 주 완료 조회 공개`
 
 ---
 
@@ -512,7 +512,7 @@ FORMAT_TABLES: Mapping[int, tuple[str, ...]]  # 1: 앞의 네 테이블, 2: TABL
 | CLI | `lb export`, `lb import` | 요약에 `특이사항 N` |
 | 회귀 | `FORMAT_VERSION` 단정 | 1 → 2 |
 
-- [ ] RED → GREEN → 커밋 `feat: 내보내기 형식 2에 특이사항을 담고 형식 1 파일도 계속 가져오기`
+- [x] RED → GREEN → 커밋 `feat: 내보내기 형식 2에 특이사항을 담고 형식 1 파일도 계속 가져오기`
 
 ---
 
@@ -573,7 +573,7 @@ lb project unarchive SLUG
 | `lb project unarchive` | 보관됨, 사용 중 | 두 출력 |
 | 가드 | `lb project edit --help`, `lb project unarchive --help` | 웹·SQLAlchemy 로드 안 함 |
 
-- [ ] RED → GREEN → 커밋 `feat: 프로젝트 수정·보관 해제 서비스와 lb project edit·unarchive 추가`
+- [x] RED → GREEN → 커밋 `feat: 프로젝트 수정·보관 해제 서비스와 lb project edit·unarchive 추가`
 
 ---
 
@@ -672,7 +672,7 @@ def create_app(ctx: WebContext, *, watcher: ConfigWatcher | None = None) -> Fast
 | 페이지 | `GET /` | `Cache-Control: no-store`(그대로) |
 | 서버 | `lb serve`(`fake_server`) | `create_app`에 설정 파일 경로의 `ConfigWatcher`가 넘어간다 |
 
-- [ ] RED → GREEN → 커밋 `feat: 웹 대시보드가 설정 파일 변경을 재시작 없이 반영하고 정적 파일을 매번 확인하게 함`
+- [x] RED → GREEN → 커밋 `feat: 웹 대시보드가 설정 파일 변경을 재시작 없이 반영하고 정적 파일을 매번 확인하게 함`
 
 ---
 
@@ -776,7 +776,7 @@ def timer_panel_context(
 | 버전 | `content_version` | 기존 `worklog_version` 결과와 같다(회귀) |
 | 버전 | `timer_version` | 시작 시각·메모가 다르면 다르다 |
 
-- [ ] RED → GREEN → 커밋 `feat: 대시보드에서 타이머 시작·취소, API에 타이머 상태 조회·취소 추가`
+- [x] RED → GREEN → 커밋 `feat: 대시보드에서 타이머 시작·취소, API에 타이머 상태 조회·취소 추가`
 
 ---
 
@@ -905,7 +905,7 @@ def task_board(s: Session, ctx: WebContext, project: str, *, message: str = "", 
 | 추가 | 프로젝트 비움 | `default_project`에 추가 |
 | 보안 | 다른 출처에서 `POST /tasks` | 403 |
 
-- [ ] RED → GREEN → 커밋 `feat: 태스크 화면 칸반과 상태 변경·추가`
+- [x] RED → GREEN → 커밋 `feat: 태스크 화면 칸반과 상태 변경·추가`
 
 ---
 
@@ -1011,7 +1011,7 @@ def plan_panel(s: Session, ctx: WebContext, project: str, *, message: str = "", 
 | 버튼 | 이월, 편집 카드 저장 | `hx-swap="outerHTML"`. 저장은 `hx-target="#task-board"` |
 | 키보드 | `app.js` | `.is-editing` 안의 Enter·Esc 규칙(공통 규칙, 테스트는 정적 파일 내용 확인 정도) |
 
-- [ ] RED → GREEN → 커밋 `feat: 태스크 카드 수정과 다음 주 계획 패널·이월`
+- [x] RED → GREEN → 커밋 `feat: 태스크 카드 수정과 다음 주 계획 패널·이월`
 
 ---
 
@@ -1111,7 +1111,7 @@ class ReportBodyView:
 | 휠 | 포함 목록 | `logbook/web/static/js/report.js` |
 | 정적 | `GET /static/js/report.js` | `text/javascript`, UTF-8, CR 없음(test_static 목록) |
 
-- [ ] RED → GREEN → 커밋 `feat: 보고서 화면(미리보기·복사·내려받기·특이사항 입력)`
+- [x] RED → GREEN → 커밋 `feat: 보고서 화면(미리보기·복사·내려받기·특이사항 입력)`
 
 ---
 
@@ -1231,7 +1231,7 @@ class SettingsInfoView:
 | 견본 | 가져오기로 들어간 잘못된 색(`red`) | 견본 없음, 글자 `red` |
 | 보안 | 다른 출처에서 쓰기 | 403 |
 
-- [ ] RED → GREEN → 커밋 `feat: 설정 화면(프로젝트 추가·수정·보관·보관 해제, 카테고리 확인)`
+- [x] RED → GREEN → 커밋 `feat: 설정 화면(프로젝트 추가·수정·보관·보관 해제, 카테고리 확인)`
 
 ---
 
@@ -1280,13 +1280,13 @@ class SettingsInfoView:
 | `color-scheme` | `:root` | `color-scheme: light dark` |
 | meta | `GET /`, 오류 페이지 | `<meta name="color-scheme" content="light dark">` |
 
-- [ ] RED → GREEN → 커밋 `feat: 다크모드(OS 설정을 따르는 색 토큰, 테마가 바뀌면 차트를 다시 그림)`
+- [x] RED → GREEN → 커밋 `feat: 다크모드(OS 설정을 따르는 색 토큰, 테마가 바뀌면 차트를 다시 그림)`
 
 ---
 
 ## Task 6-12: 문서 마무리와 Phase 6 완료
 
-- [ ] **README:**
+- [x] **README:**
   - 웹 대시보드: 태스크·보고서·설정 화면, 타이머 시작·취소, 다크모드(OS 설정)
   - 설정 자동 반영: 바로 반영되는 값과 다시 시작해야 하는 값
   - 업데이트 시 DB 업그레이드와 백업 파일(위치, 이름, 되돌리는 방법)
@@ -1294,18 +1294,18 @@ class SettingsInfoView:
   - 내보내기 형식 2(형식 1 파일도 가져온다). 144·147행의 내보내기 대상 설명에 특이사항을 더한다.
   - 보고서 템플릿 값 `data.notes`, `data.risks`와 3절 예시. 96행의 '저장 기능은 이후 단계에서 추가합니다'를 고친다.
   - JSON API 추가(`GET /api/timer`, `POST /api/timer/cancel`)
-- [ ] **SPEC:**
+- [x] **SPEC:**
   - 2장 데이터 모델: week_notes를 테이블 설명에 더하고, 스키마 버전 2와 마이그레이션 전 백업을 설명한다(62~63행 schema_version 절). 6장 395행의 '추가 데이터' 문장은 지우거나 2장 참조로 바꾼다.
   - 3장: 설정 자동 반영(웹)
   - 5장: `lb project edit|unarchive`. 내보내기 설명(251행: 형식 버전, 머리글 예시, 행 순서)과 성공 출력 예시(253행)를 형식 2로 고친다.
   - 6장: Phase 6 화면 동작(태스크·보고서·설정), 타이머 시작·취소, 버전 확인 대상, 정적 파일 캐시, API 추가. "Phase 6에 남은 것"은 후속 항목 목록으로 바꾼다.
   - 7장: 3절 형식(456행 문장 포함)
-- [ ] **ROADMAP:** Phase 6 네 항목을 `[x]`로 바꾼다.
-- [ ] **CLAUDE.md·AGENTS.md(같은 내용):** 디렉터리 구조에 새 모듈을 더한다(`core/services/week_notes.py`, `web/config_watch.py`, `web/reporting.py`, `web/pages/tasks.py`·`task_views.py`·`report.py`·`settings.py`, `static/js/report.js`). 허용 core 진입점은 바뀌지 않는다.
-- [ ] **자동 확인(이 PC, 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`):**
+- [x] **ROADMAP:** Phase 6 네 항목을 `[x]`로 바꾼다.
+- [x] **CLAUDE.md·AGENTS.md(같은 내용):** 디렉터리 구조에 새 모듈을 더한다(`core/services/week_notes.py`, `web/config_watch.py`, `web/reporting.py`, `web/pages/tasks.py`·`task_views.py`·`report.py`·`settings.py`, `static/js/report.js`). 허용 core 진입점은 바뀌지 않는다.
+- [x] **자동 확인(이 PC, 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`):**
   - v1 DB(develop `44ddf9f`로 만든 임시 DB 복사본)에서 `lb log`를 실행한다. 업그레이드 알림이 나오고, 백업 파일이 생기고, 데이터가 그대로인지 본다.
   - `lb project edit`·`unarchive`, `lb export`(형식 2), 그 파일을 새 DB에 `lb import`
-- [ ] **화면 확인(메인 세션, Edge 헤드리스, `ui-visual-verification` 기준):**
+- [x] **화면 확인(메인 세션, Edge 헤드리스, `ui-visual-verification` 기준):**
   - 다섯 화면(`/`, `/logs`, `/tasks`, `/report`, `/settings`) × 밝은·어두운 테마 × 1280px·375px 스크린샷을 찍는다. 320px도 한 장씩 찍어 머리 메뉴 줄바꿈과 태스크·설정 표를 본다. 어두운 테마는 `--force-dark-mode` 또는 `--blink-settings=preferredColorScheme=0`으로 켜고, 둘 중 동작하는 것을 기록한다.
   - 카드 수정·상태 변경·이월, 특이사항 저장 흐름에서 결과 줄·오류 알림이 보이는 자리(뷰포트·가로 스크롤 안)에 있는지 잰다.
   - 프로젝트 색 견본이 보이는지 본다.
@@ -1400,6 +1400,33 @@ class SettingsInfoView:
   - 버튼의 `hx-swap`, ruff B008, `get_context`의 최소 앱 호환
   - 문서 갱신 위치
 
+## 구현 기록 (2026-10-13)
+
+- 진행
+  - Task마다 구현 1명과 통합 검토 1명을 두었고, 모두 Sonnet이다. 6-1~6-11은 모두 첫 검토에서 통과해 수정·재검토가 없었다.
+  - 이어서 정리 1명, 문서 1명, 최종 리뷰 1명, 최종 리뷰 수정 1명을 두었다. 모두 합쳐 에이전트 26명이다.
+  - 최종 리뷰는 critical·major 없이 minor 12건이었다.
+- 계획과 달라진 것
+  - **스타일 파일**
+    - `app.css`(1266줄)를 순서와 내용을 그대로 둔 채 8개 파일로 나눴다: app, dashboard, logs, components, tasks, report, settings, responsive.
+    - 목록은 `web/assets.py`의 `STYLESHEETS` 한 곳에 있고, `base.html`과 오류 페이지가 같이 쓴다.
+    - 색 리터럴 금지 검사는 모든 CSS 파일을 본다.
+  - **색 형식 검사:** core에 `services.is_valid_color`를 공개했고, 웹 색 견본이 이것을 쓴다.
+  - **옵션 충돌 문구:** "{} 옵션과 {} 옵션은 함께 쓸 수 없습니다. 하나만 지정하세요."로 바꿨다. 예전 문구는 `--description`에서 조사가 틀렸다.
+  - **가져오기:** week_notes에서 두 칸이 모두 빈 행과 정리되지 않은 값(CRLF, 앞뒤 공백)을 거부한다.
+  - **마이그레이션 테스트:** v1 DB는 develop `44ddf9f`로 만든 DDL을 고정해 쓴다(`tests/helpers.py`의 `V1_DDL`).
+  - **기존 버그 수정:** UTC보다 앞선 시간대에서 `0001-W01` 보고서가 OverflowError로 끝났다. 완료 범위의 하한을 UTC 최솟값으로 맞춰 고쳤다.
+- 화면 확인(Edge 헤드리스)
+  - 어두운 테마는 `--blink-settings=preferredColorScheme=0`으로 켰다.
+  - Edge 헤드리스 창은 500px 아래로 줄지 않고, 배율 플래그도 CSS 폭을 바꾸지 않는다.
+    - 그래서 320·375px는 같은 화면을 세로 구간별 iframe으로 나란히 놓고 쟀다.
+    - iframe을 쓰려고 확인 스크립트 안에서만 `frame-ancestors`를 풀었다.
+  - 다음 문제를 찾아 927aaf0에서 고쳤다.
+    - 320px에서 주 이동 줄과 대시보드 요일 차트가 가로로 넘쳤다.
+    - 계획 패널에 안쪽 여백이 없었다.
+    - 편집 카드의 입력 칸이 꾸밈 없는 기본 모양이었다.
+- 자동 확인(이 PC): v1 DB 업그레이드를 확인했다. 안내가 한 번 나오고, `.v1-…bak`이 생기고, 데이터가 그대로다. `lb project edit`·`unarchive`, 형식 2 내보내기와 가져오기도 확인했다.
+
 ## 후속 항목 (Phase 6 범위 밖, 기록만)
 
 1. **웹 전용 오류 문구:** core 문구의 CLI 안내가 웹에도 보인다(Phase 5 후속 1). 예: 타이머 시작 실패의 `'lb stop'으로 저장하거나`
@@ -1414,3 +1441,8 @@ class SettingsInfoView:
 10. **Phase 4 후속 항목:** 그대로 유지한다(git-collect, LLM, 가져오기 병합, DST, 템플릿 샌드박스, 오프라인 휠 테스트).
 11. **LAN 공개:** 비목표다(SPEC 1).
 12. **오래된 마이그레이션 백업 정리:** 자동으로 지우지 않는다. 필요하면 정리 명령이나 안내를 더한다.
+13. **마지막 주의 보고서:** `9999-W51` 보고서는 다음 주(`9999-W52`)가 지원 범위 밖이라 400이다. 마지막 주에서는 4절을 비우는 방법이 있다.
+14. **스타일 파일의 공용 규칙:** 다른 화면도 쓰는 공용 규칙이 화면 이름의 파일에 들어 있다.
+    - 표와 구역(`.panel`)은 dashboard.css에 있다.
+    - 필터, 주 이동, 편집 행, 작은 버튼은 logs.css에 있다.
+    - 공용 파일로 옮기면 캐스케이드 순서가 바뀌므로 화면 확인과 함께 한다.
