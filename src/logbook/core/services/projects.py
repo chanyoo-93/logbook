@@ -149,8 +149,14 @@ def _validate_slug(slug: str) -> None:
         )
 
 
+def is_valid_color(value: str) -> bool:
+    """색상 형식('#'과 16진수 6자리)에 맞는지."""
+    # fullmatch: '$'가 끝의 줄바꿈 앞에서도 맞는 것을 막는다.
+    return _COLOR_RE.fullmatch(value) is not None
+
+
 def _validate_color(color: str | None) -> None:
-    if color is not None and _COLOR_RE.fullmatch(color) is None:
+    if color is not None and not is_valid_color(color):
         raise InvalidInputError(
             f"색상이 올바르지 않습니다: '{color}'. '#4f46e5'처럼 '#'과 16진수 6자리로 입력하세요."
         )

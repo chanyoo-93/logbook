@@ -285,6 +285,18 @@ def test_is_valid_slug_rejects_invalid(slug: str) -> None:
     assert projects.is_valid_slug(slug) is False
 
 
+@pytest.mark.parametrize("color", ["#4f46e5", "#ABCDEF", "#000000"])
+def test_is_valid_color_accepts_hex6(color: str) -> None:
+    assert projects.is_valid_color(color) is True
+
+
+@pytest.mark.parametrize(
+    "color", ["", "4f46e5", "#4f46e", "#4f46e55", "#gggggg", "#4f46e5\n", "#４f46e5"]
+)
+def test_is_valid_color_rejects_invalid(color: str) -> None:
+    assert projects.is_valid_color(color) is False
+
+
 def test_package_reexports_project_services() -> None:
     assert services.create_project is projects.create_project
     assert services.get_project is projects.get_project
@@ -295,6 +307,7 @@ def test_package_reexports_project_services() -> None:
     assert services.COMMON_SLUG == projects.COMMON_SLUG
     assert services.SLUG_PATTERN == projects.SLUG_PATTERN
     assert services.is_valid_slug is projects.is_valid_slug
+    assert services.is_valid_color is projects.is_valid_color
     assert set(services.__all__) >= {
         "COMMON_SLUG",
         "SLUG_PATTERN",

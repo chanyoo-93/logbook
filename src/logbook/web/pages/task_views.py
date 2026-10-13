@@ -38,7 +38,6 @@ DROP_CONFIRM = (
     "중단할까요? 중단한 태스크는 이 화면에 보이지 않습니다."
 )
 CARRY_CONFIRM = "이번 주의 할 일·진행 태스크를 다음 주로 옮길까요?\n{this} → {next}, {count}건"
-PLAN_EMPTY = "계획된 태스크가 없습니다."
 COLUMN_TITLES = (("todo", "할 일"), ("doing", "진행 중"), ("done", "이번 주 완료"))
 THIS_WEEK_TAG = "이번 주"
 NEXT_WEEK_TAG = "다음 주"

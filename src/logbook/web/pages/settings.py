@@ -6,7 +6,6 @@
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -49,8 +48,6 @@ ARCHIVE_CONFIRM = (
 CATEGORY_NOTE = (
     "카테고리와 기본값은 설정 파일에서 바꿉니다. 저장한 뒤 화면을 새로 고치면 반영됩니다."
 )
-
-_SWATCH_COLOR = re.compile(r"#[0-9a-fA-F]{6}", re.ASCII)
 
 
 def project_version(project: Project) -> str:
@@ -124,7 +121,7 @@ def project_row(project: Project) -> ProjectRowView:
     return ProjectRowView(
         slug=project.slug,
         name=project.name,
-        color=color if _SWATCH_COLOR.fullmatch(color) else "",
+        color=color if services.is_valid_color(color) else "",
         color_text=color,
         description=project.description or "",
         archived=project.archived,
