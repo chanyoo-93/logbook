@@ -68,7 +68,13 @@ def test_layout_rule_is_declared(file_name: str, selector: str, declaration: str
 
 
 def test_dashboard_charts_become_a_single_shrinkable_column_below_720px() -> None:
-    # 넓은 화면의 .charts는 dashboard.css가 정하고, 좁은 화면 덮어쓰기는 tasks.css 끝 블록에 있다.
-    narrow = _media_block(_read("tasks.css"), NARROW_QUERY)
+    # 넓은 화면의 .charts는 dashboard.css가 정하고, 좁은 화면 덮어쓰기는 responsive.css에 있다.
+    narrow = _media_block(_read("responsive.css"), NARROW_QUERY)
 
     assert "grid-template-columns: minmax(0, 1fr)" in _declarations(narrow, ".charts")
+
+
+def test_task_board_stacks_into_one_column_below_720px() -> None:
+    narrow = _media_block(_read("tasks.css"), NARROW_QUERY)
+
+    assert "grid-template-columns: 1fr" in _declarations(narrow, ".board__columns")

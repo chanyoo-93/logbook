@@ -1,4 +1,4 @@
-/* 태스크 화면: 추가 폼, 칸반 보드, 카드. 끝의 좁은 화면(719px 미만) 블록에는 머리·대시보드(.masthead__week, .stats, .charts) 규칙도 있다 */
+/* 태스크 화면: 추가 폼, 칸반 보드, 카드, 다음 주 계획 패널 */
 .task-form {
   margin-top: var(--space-4);
   padding: var(--space-3) var(--space-4);
@@ -256,45 +256,10 @@
   margin-top: var(--space-3);
 }
 
-/* 좁은 화면: 한 열 */
+/* 좁은 화면: 칸반을 한 열로 쌓는다 */
 @media (max-width: 719px) {
   .board__columns {
     grid-template-columns: 1fr;
-  }
-
-  .masthead__week {
-    width: 100%;
-    margin-left: 0;
-  }
-
-  .stats {
-    grid-template-columns: 1fr;
-  }
-
-  .stat {
-    border-left: 0;
-    border-top: 1px solid var(--rule);
-  }
-
-  .stat:first-child {
-    border-top: 0;
-  }
-
-  .charts {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .charts__side {
-    border-top: 1px solid var(--rule);
-    border-left: 0;
-  }
-
-  .chart__frame--bar {
-    height: 16rem;
-  }
-
-  .chart__frame--donut {
-    height: 11rem;
   }
 }
 
