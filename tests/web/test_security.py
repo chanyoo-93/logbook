@@ -117,11 +117,11 @@ def test_cross_site_write_treats_every_unsafe_method_alike(method: str) -> None:
     assert result is True
 
 
-def test_security_headers_add_no_store_except_static() -> None:
+def test_security_headers_use_no_cache_for_static_and_no_store_elsewhere() -> None:
     page = dict(security_headers("/logs"))
     static = dict(security_headers("/static/css/app.css"))
     assert page["Cache-Control"] == "no-store"
-    assert "Cache-Control" not in static
+    assert static["Cache-Control"] == "no-cache"
     for name in ("Content-Security-Policy", "X-Content-Type-Options", "X-Frame-Options"):
         assert page[name] == static[name]
     assert page["Content-Security-Policy"] == EXPECTED_CSP

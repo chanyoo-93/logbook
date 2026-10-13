@@ -17,6 +17,7 @@ from logbook.core import db
 from logbook.core.config import Config
 from logbook.core.errors import LogbookError
 from logbook.web.app import create_app
+from logbook.web.config_watch import ConfigWatcher
 from logbook.web.context import WebContext
 
 BIND_ADDRESS = "127.0.0.1"
@@ -73,7 +74,9 @@ def serve(
         engine.dispose()
         raise
     try:
-        server = build_server(create_app(WebContext(cfg, engine, config_file, now)))
+        watcher = ConfigWatcher(config_file, cfg)
+        ctx = WebContext(cfg, engine, config_file, now)
+        server = build_server(create_app(ctx, watcher=watcher))
         url = f"http://{cfg.web.host}:{port}"
         on_ready(url)
         if open_browser:

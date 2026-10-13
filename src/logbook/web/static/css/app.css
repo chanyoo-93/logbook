@@ -165,6 +165,22 @@ a {
   font-size: var(--text-sm);
 }
 
+/* 설정 파일 알림: 전체 페이지 머리 아래에만 나온다. */
+.config-notice {
+  max-width: var(--content-max);
+  margin: var(--space-3) auto 0;
+  padding: var(--space-2) var(--gutter);
+  border-left: 4px solid var(--ink-muted);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+.config-notice--error {
+  border-left-color: var(--danger);
+  color: var(--danger);
+}
+
 /* skip link가 포커스를 옮기는 대상이라 큰 윤곽선은 그리지 않는다. */
 main:focus-visible {
   outline: none;

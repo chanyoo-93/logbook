@@ -36,10 +36,14 @@ TEMPLATES = Jinja2Templates(env=_environment())
 
 
 def _shared_context(request: Request) -> dict[str, Any]:
-    """모든 템플릿이 쓰는 값. 머리에 보여 줄 이번 주 표기."""
+    """모든 템플릿이 쓰는 값. 머리에 보여 줄 이번 주 표기와 설정 알림."""
     ctx = get_context(request)
     week = week_of(ctx.today(), ctx.cfg.week_start)
-    return {"current_week": week_heading(week)}
+    return {
+        "current_week": week_heading(week),
+        "config_notice": ctx.config_notice,
+        "config_notice_error": ctx.config_notice_error,
+    }
 
 
 def render(

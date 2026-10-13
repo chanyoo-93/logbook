@@ -16,6 +16,7 @@ from typer.testing import Result
 
 from logbook.cli import render
 from logbook.web import server as web_server
+from logbook.web.config_watch import ConfigWatcher
 from tests.cli.helpers import assert_rejected, lb_env, run_lb
 from tests.helpers import make_v1_database
 
@@ -388,3 +389,21 @@ def test_real_server_exits_zero_on_sigint(
 
     assert proc.returncode == 0
     assert out.decode("utf-8").replace("\r\n", "\n").endswith(STOP_LINE)
+
+
+def test_serve_passes_a_config_watcher_to_the_app(
+    lb: Callable[..., Result],
+    initialized: Path,
+    tmp_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_server: FakeServer,
+) -> None:
+    built: list[Any] = []
+    monkeypatch.setattr(web_server, "build_server", lambda app: built.append(app) or fake_server)
+
+    result = lb("serve")
+
+    assert result.exit_code == 0, result.stderr
+    watcher = built[0].state.watcher
+    assert isinstance(watcher, ConfigWatcher)
+    assert watcher.current().cfg.db_path == initialized

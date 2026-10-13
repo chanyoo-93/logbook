@@ -23,6 +23,9 @@
     <p class="masthead__week">이번 주 {{ current_week }}</p>
   </div>
 </header>
+{% if config_notice %}
+<p class="config-notice{% if config_notice_error %} config-notice--error{% endif %}" role="{{ 'alert' if config_notice_error else 'status' }}">{{ config_notice }}</p>
+{% endif %}
 <main id="main" tabindex="-1">
 {% block content %}{% endblock %}
 </main>

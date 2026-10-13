@@ -67,8 +67,24 @@ def test_static_files_are_served_with_type_and_security_headers(
     assert response.headers["content-type"] == content_type
     assert response.headers["x-content-type-options"] == "nosniff"
     assert "default-src 'self'" in response.headers["content-security-policy"]
-    assert "cache-control" not in response.headers
+    assert response.headers["cache-control"] == "no-cache"
+    assert response.headers["etag"]
     assert response.content
+
+
+def test_static_conditional_request_gets_304_with_security_headers(client: TestClient) -> None:
+    etag = client.get("/static/css/app.css").headers["etag"]
+
+    response = client.get("/static/css/app.css", headers={"If-None-Match": etag})
+
+    assert response.status_code == 304
+    assert response.headers["cache-control"] == "no-cache"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "default-src 'self'" in response.headers["content-security-policy"]
+
+
+def test_pages_stay_no_store(client: TestClient) -> None:
+    assert client.get("/").headers["cache-control"] == "no-store"
 
 
 def test_static_favicon_is_svg(client: TestClient) -> None:
