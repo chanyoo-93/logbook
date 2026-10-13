@@ -22,7 +22,7 @@ from logbook.web.context import TASK_LABEL, Ctx, WebContext
 from logbook.web.errors import RECORD_CHANGED, ConflictError
 from logbook.web.htmx import is_htmx
 from logbook.web.pages.forms import FormText, QueryText
-from logbook.web.pages.panels import RESULT_MARK
+from logbook.web.pages.panels import NO_CHANGE, RESULT_MARK
 from logbook.web.pages.templating import render, render_error
 from logbook.web.pages.views import (
     LogEditValues,
@@ -50,7 +50,6 @@ TABLE_TEMPLATE = "partials/log_table_response.html"
 ROW_TEMPLATE = "partials/log_row.html"
 EDIT_TEMPLATE = "partials/log_edit_row.html"
 DEFAULT_WEEK = "this"
-NO_CHANGE = "바뀐 내용이 없습니다."
 UPDATED = f"{RESULT_MARK} 수정했습니다: {{record}}"
 DELETED = f"{RESULT_MARK} 삭제했습니다: {{record}}"
 LOG_LABEL = "기록"

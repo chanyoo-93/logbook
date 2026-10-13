@@ -32,6 +32,7 @@ METHOD_NOT_ALLOWED = "이 주소는 {method} 요청을 받지 않습니다: {pat
 BODY_FIELD_INVALID = "요청 본문이 올바르지 않습니다: '{field}' ({reason})."
 BODY_NOT_JSON = "요청 본문을 JSON으로 읽을 수 없습니다. UTF-8로 인코딩한 JSON 객체를 보내세요."
 BODY_NOT_OBJECT = "요청 본문은 JSON 객체여야 합니다. Content-Type: application/json으로 보내세요."
+TIMER_CHANGED = "다른 곳에서 타이머가 바뀌었습니다. 패널에 지금 타이머를 다시 표시했습니다."
 RECORD_CHANGED = "다른 곳에서 기록이 바뀌었습니다: #{id}. 목록을 새로 고친 뒤 다시 시도하세요."
 VALUE_INVALID = "요청 값이 올바르지 않습니다: '{field}' ({reason})."
 INTERNAL_ERROR = (

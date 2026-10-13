@@ -13,16 +13,21 @@ from logbook.core.ids import parse_id
 from logbook.core.weeks import week_of
 from logbook.web.context import TASK_LABEL, Ctx, WebContext
 from logbook.web.pages.forms import FormText
-from logbook.web.pages.panels import quick_form_context, refreshed_panels, result_line
+from logbook.web.pages.panels import (
+    CATEGORY_REQUIRED,
+    quick_form_context,
+    refreshed_panels,
+    result_line,
+    timer_panel_context,
+)
 from logbook.web.pages.summary import build_summary
 from logbook.web.pages.templating import render, render_error
-from logbook.web.pages.views import RECENT_LIMIT, QuickFormValues, log_row, timer_view
+from logbook.web.pages.views import RECENT_LIMIT, QuickFormValues, log_row
 
 router = APIRouter()
 
 QUICK_FORM_TEMPLATE = "partials/quick_form_response.html"
 DURATION_REQUIRED = "시간을 입력하세요. 예: 2h, 90m, 1:30"
-CATEGORY_REQUIRED = "카테고리를 고르세요. 태스크를 고르면 태스크의 카테고리를 씁니다."
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -31,8 +36,7 @@ def dashboard(request: Request, ctx: Ctx) -> HTMLResponse:
     week = week_of(now.date(), ctx.cfg.week_start)
     with ctx.session() as s:
         summary = build_summary(s, ctx, week, now)
-        timer = services.get_timer(s)
-        timer_data = timer_view(timer, now) if timer is not None else None
+        timer_panel = timer_panel_context(s, ctx, now)
         rows = [log_row(log) for log in services.recent_worklogs(s, limit=RECENT_LIMIT)]
         form = quick_form_context(s, ctx, QuickFormValues())
     return render(
@@ -41,7 +45,7 @@ def dashboard(request: Request, ctx: Ctx) -> HTMLResponse:
         {
             "active": "dashboard",
             "summary": summary,
-            "timer": timer_data,
+            **timer_panel,
             "rows": rows,
             **form,
         },

@@ -29,6 +29,10 @@ RECENT_LIMIT = 10
 NO_TASK = "-"
 ARCHIVED_MARK = " (보관)"
 DELETE_CONFIRM = "삭제할 기록: {record}\n삭제할까요?"
+CANCEL_CONFIRM = (
+    "버릴 타이머: {scope} — {note} (시작 {started} · 경과 {elapsed})\n"
+    "버릴까요? 기록은 남지 않습니다."
+)
 LOGS_PATH = "/logs"
 # 버전 문자열에서 필드를 가르는 구분자(필드 값에 나올 수 없는 제어 문자)
 _FIELD_SEPARATOR = "\x1f"
@@ -57,15 +61,36 @@ class TimerView:
     task: str | None  # '#43'
     started: str  # 오늘이면 '09:30', 아니면 '09-30 (수) 22:10'
     elapsed: str  # '1h 25m'
+    version: str  # timer_version
+    cancel_confirm: str  # 취소 확인 창 문구
+
+
+@dataclass(frozen=True)
+class TimerStartValues:
+    """타이머 시작 폼에 채워 둘 값. 입력 문자열 그대로이고 비어 있으면 '자동'이다."""
+
+    note: str = ""
+    project: str = ""
+    category: str = ""
+    task: str = ""
+
+
+def content_version(*fields: object) -> str:
+    """화면이 본 값이 그사이 바뀌었는지 가리는 값: 필드를 구분자로 이어 sha256한 앞 16자.
+
+    None은 빈 문자열로 본다. 구분자 덕분에 ('a', 'bc')와 ('ab', 'c')는 다른 값이다.
+    """
+    text = _FIELD_SEPARATOR.join("" if value is None else str(value) for value in fields)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:_VERSION_LENGTH]
 
 
 def worklog_version(log: WorkLog) -> str:
     """화면이 본 기록이 그사이 바뀌었는지 가리는 값.
 
-    id·date·minutes·note·project_id·category·task_id·created_at를 구분자로 이어 sha256한 앞 16자.
+    id·date·minutes·note·project_id·category·task_id·created_at로 만든다.
     SQLite가 id를 다시 쓰는 경우에도 created_at이 달라서 다른 기록으로 가려진다.
     """
-    fields = (
+    return content_version(
         log.id,
         log.date.isoformat(),
         log.minutes,
@@ -75,8 +100,17 @@ def worklog_version(log: WorkLog) -> str:
         log.task_id,
         log.created_at.isoformat(),
     )
-    text = _FIELD_SEPARATOR.join("" if value is None else str(value) for value in fields)
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:_VERSION_LENGTH]
+
+
+def timer_version(timer: ActiveTimer) -> str:
+    """화면이 본 타이머가 그사이 바뀌었는지 가리는 값(취소 요청이 확인한다)."""
+    return content_version(
+        timer.started_at.isoformat(),
+        timer.project_id,
+        timer.category,
+        timer.note,
+        timer.task_id,
+    )
 
 
 def record_text(log: WorkLog, *, with_date: bool) -> str:
@@ -107,12 +141,19 @@ def log_row(log: WorkLog) -> LogRowView:
 
 def timer_view(timer: ActiveTimer, now: datetime) -> TimerView:
     """진행 중인 타이머. DB의 시각은 UTC라서 now의 시간대로 바꿔 표기한다."""
+    scope = f"{timer.project.slug}/{timer.category}"
+    started = clock_label(timer.started_at.astimezone(now.tzinfo), now.date())
+    elapsed = format_duration(services.elapsed_minutes(timer.started_at, now))
     return TimerView(
-        scope=f"{timer.project.slug}/{timer.category}",
+        scope=scope,
         note=timer.note,
         task=f"#{timer.task_id}" if timer.task_id is not None else None,
-        started=clock_label(timer.started_at.astimezone(now.tzinfo), now.date()),
-        elapsed=format_duration(services.elapsed_minutes(timer.started_at, now)),
+        started=started,
+        elapsed=elapsed,
+        version=timer_version(timer),
+        cancel_confirm=CANCEL_CONFIRM.format(
+            scope=scope, note=timer.note, started=started, elapsed=elapsed
+        ),
     )
 
 
@@ -220,7 +261,7 @@ def _neighbor_url(week: Week, values: LogFilter, *, forward: bool) -> str | None
         return None
 
 
-def _project_choices(s: Session, *, keep: str = "", archived: bool = True) -> tuple[Choice, ...]:
+def project_choices(s: Session, *, keep: str = "", archived: bool = True) -> tuple[Choice, ...]:
     """프로젝트 선택지. archived=False면 보관 프로젝트는 keep(현재 값)만 남긴다."""
     return tuple(
         Choice(p.slug, f"{p.slug} — {p.name}{ARCHIVED_MARK if p.archived else ''}")
@@ -229,7 +270,7 @@ def _project_choices(s: Session, *, keep: str = "", archived: bool = True) -> tu
     )
 
 
-def _category_choices(cfg: Config, current: str) -> tuple[Choice, ...]:
+def category_choices(cfg: Config, current: str) -> tuple[Choice, ...]:
     """설정 카테고리에 현재 값(설정에서 빠졌을 수 있다)을 더한다."""
     choices = [Choice(key, f"{key} — {label}") for key, label in cfg.categories.items()]
     if current and current not in cfg.categories:
@@ -245,8 +286,8 @@ def log_filter_view(s: Session, cfg: Config, week: Week | None, values: LogFilte
         next_url=None if week is None else _neighbor_url(week, values, forward=True),
         project=values.project,
         category=values.category,
-        projects=_project_choices(s),
-        categories=_category_choices(cfg, values.category),
+        projects=project_choices(s),
+        categories=category_choices(cfg, values.category),
     )
 
 
@@ -289,8 +330,8 @@ def log_edit_view(
     return LogEditView(
         id=log.id,
         values=values,
-        projects=_project_choices(s, keep=log.project.slug, archived=False),
-        categories=_category_choices(cfg, log.category),
+        projects=project_choices(s, keep=log.project.slug, archived=False),
+        categories=category_choices(cfg, log.category),
         tasks=tuple(tasks),
         error=error,
     )

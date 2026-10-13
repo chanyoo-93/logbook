@@ -241,7 +241,8 @@ def test_recent_logs_empty_message(client: TestClient) -> None:
 def test_timer_idle_message(client: TestClient) -> None:
     timer = by_id(_get(client), "timer").text
 
-    assert "진행 중인 타이머가 없습니다. 터미널에서 lb start로 시작하세요." in timer
+    assert "진행 중인 타이머가 없습니다." in timer
+    assert "터미널에서 lb start로 시작하세요." not in timer
 
 
 def test_timer_running(client: TestClient, web_engine: Engine, clock: Clock) -> None:

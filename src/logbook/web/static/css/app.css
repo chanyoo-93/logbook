@@ -605,8 +605,58 @@ main {
   color: var(--ink);
 }
 
-.timer .btn {
+.timer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
   margin-left: auto;
+}
+
+.timer-start {
+  flex: 1 1 100%;
+}
+
+.timer-start__fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+
+.timer-start__field {
+  min-width: 0;
+}
+
+.timer-start__field--note {
+  flex: 1 1 14rem;
+}
+
+.timer-start__field--project,
+.timer-start__field--category,
+.timer-start__field--task {
+  flex: 0 1 11rem;
+}
+
+.timer-start input,
+.timer-start select {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--ink-muted);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+}
+
+.timer-start input:hover,
+.timer-start select:hover {
+  border-color: var(--ink);
+}
+
+.timer-start input:focus-visible,
+.timer-start select:focus-visible {
+  border-color: var(--accent);
 }
 
 .timer .form-message {
