@@ -162,15 +162,16 @@ def _to_slug(value: object) -> str:
 
 
 def _to_week(value: object) -> str:
-    """'2026-W41' 꼴이고 실제로 있는 주차(Week.label과 같은 표기)."""
+    """'2026-W41' 꼴이고 실제로 있는 주차.
+
+    패턴이 4자리-W2자리를 강제하고 Week.label도 같은 자릿수로 쓰므로 표기는 따로 비교하지 않는다.
+    """
     if type(value) is not str or _WEEK_PATTERN.fullmatch(value) is None:
         raise ValueError(value)
     try:
-        week = Week(int(value[:4]), int(value[6:]))
+        Week(int(value[:4]), int(value[6:]))
     except InvalidInputError:
         raise ValueError(value) from None
-    if week.label != value:
-        raise ValueError(value)
     return value
 
 

@@ -6,6 +6,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 
 from logbook.core.report import TEMPLATE_NAME
+from logbook.core.weeks import Week
+from logbook.web.pages.report import _neighbor_url
 from tests.helpers import FIXED_NOW
 from tests.web.helpers import (
     add_log,
@@ -55,6 +57,15 @@ def test_report_page_last_week_has_neighbor_links(client: TestClient) -> None:
     assert "/report?week=2026-W40" in hrefs
 
 
+def test_neighbor_url_is_none_beyond_the_supported_range() -> None:
+    # /report 화면은 범위 끝 주를 그리지 못한다(0001-W01은 시간대에 따라 UTC 변환이 넘치고,
+    # 9999년 마지막 주는 다음 주 계획 계산이 실패한다). 그래서 링크 규칙은 함수로 확인한다.
+    assert _neighbor_url(Week(1, 1), forward=False) is None
+    assert _neighbor_url(Week(1, 1), forward=True) == "/report?week=0001-W02"
+    assert _neighbor_url(Week(9999, 51), forward=True) is None
+    assert _neighbor_url(Week(9999, 51), forward=False) == "/report?week=9999-W50"
+
+
 def test_report_page_rejects_bad_week_with_full_page(client: TestClient) -> None:
     response = client.get("/report", params={"week": "abc"})
 
@@ -90,3 +101,8 @@ def test_report_page_broken_user_template_still_renders(client: TestClient, tmp_
     assert response.status_code == 200
     assert "보고서 템플릿을 읽지 못했습니다" in response.text
     assert by_id(response.text, "report-notes").tag == "form"
+    # 미리보기가 없으므로 복사·내려받기 버튼은 숨는다.
+    elements = parse_html(response.text)
+    assert not [e for e in elements if "data-copy-target" in e.attrs]
+    assert not [e for e in elements if str(e.attrs.get("href", "")).startswith("/report/download")]
+    assert not [e for e in elements if e.attrs.get("id") == "report-markdown"]

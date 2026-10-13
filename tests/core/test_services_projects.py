@@ -338,6 +338,21 @@ def test_update_project_only_given_fields_change(session: Session) -> None:
     assert (project.name, project.color, project.description) == ("새 이름", "#4f46e5", "설명")
 
 
+def test_update_project_rejects_unknown_field_and_changes_nothing(session: Session) -> None:
+    projects.create_project(session, "payment", "결제 서버", description="설명", color="#4f46e5")
+
+    with pytest.raises(TypeError, match="slug"):
+        projects.update_project(session, "payment", name="새 이름", slug="other")
+
+    project = projects.get_project(session, "payment")
+    assert (project.slug, project.name, project.color, project.description) == (
+        "payment",
+        "결제 서버",
+        "#4f46e5",
+        "설명",
+    )
+
+
 @pytest.mark.parametrize(
     ("fields", "message"),
     [
