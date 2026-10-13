@@ -1,6 +1,8 @@
-"""프로젝트 생성·조회·목록·보관 유스케이스."""
+"""프로젝트 생성·조회·목록·수정·보관 유스케이스."""
 
 import re
+from collections.abc import Callable
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -29,9 +31,7 @@ def create_project(
 ) -> Project:
     """새 프로젝트를 만든다. 입력이 잘못되었거나 slug가 이미 있으면 InvalidInputError."""
     _validate_slug(slug)
-    clean_name = name.strip()
-    if not clean_name:
-        raise InvalidInputError("프로젝트 이름이 비어 있습니다. 이름을 입력하세요.")
+    clean_name = _clean_name(name)
     _validate_color(color)
     if _find_project(s, slug) is not None:
         raise InvalidInputError(_duplicate_message(slug))
@@ -91,6 +91,34 @@ def archive_project(s: Session, slug: str) -> Project:
     return project
 
 
+def update_project(s: Session, slug: str, **fields: Any) -> Project:
+    """넘긴 필드만 create_project와 같은 규칙으로 검증해 고친다.
+
+    color·description의 None은 값을 비운다.
+
+    필드: name, color, description. 그 밖의 이름은 TypeError. slug는 바꿀 수 없다.
+    보관된 프로젝트도 고칠 수 있다. 모든 값을 검증한 뒤에만 바꾼다.
+    """
+    unknown = sorted(set(fields) - set(_UPDATE_VALIDATORS))
+    if unknown:
+        raise TypeError(f"update_project() got unexpected field(s): {', '.join(unknown)}")
+    project = get_project(s, slug)
+    changes = {name: _UPDATE_VALIDATORS[name](value) for name, value in fields.items()}
+    for name, value in changes.items():
+        setattr(project, name, value)
+    s.flush()
+    return project
+
+
+def unarchive_project(s: Session, slug: str) -> Project:
+    """보관을 해제한다. 보관되어 있지 않아도 그대로 반환한다."""
+    project = get_project(s, slug)
+    if project.archived:
+        project.archived = False
+        s.flush()
+    return project
+
+
 def ensure_common_project(s: Session) -> Project:
     """common 프로젝트가 없으면 만들고, 있으면 그대로 반환한다.
 
@@ -126,6 +154,25 @@ def _validate_color(color: str | None) -> None:
         raise InvalidInputError(
             f"색상이 올바르지 않습니다: '{color}'. '#4f46e5'처럼 '#'과 16진수 6자리로 입력하세요."
         )
+
+
+def _clean_name(name: str | None) -> str:
+    clean = strip_or_none(name)
+    if clean is None:
+        raise InvalidInputError("프로젝트 이름이 비어 있습니다. 이름을 입력하세요.")
+    return clean
+
+
+def _checked_color(color: str | None) -> str | None:
+    _validate_color(color)
+    return color
+
+
+_UPDATE_VALIDATORS: dict[str, Callable[[Any], Any]] = {
+    "name": _clean_name,
+    "color": _checked_color,
+    "description": strip_or_none,
+}
 
 
 def _not_found_message(slug: str) -> str:

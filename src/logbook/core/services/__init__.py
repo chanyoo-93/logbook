@@ -20,6 +20,8 @@ from logbook.core.services.projects import (
     get_project,
     is_valid_slug,
     list_projects,
+    unarchive_project,
+    update_project,
 )
 from logbook.core.services.report import next_week_plan, weekly_report
 from logbook.core.services.stats import (
@@ -82,6 +84,8 @@ __all__ = [
     "get_project",
     "is_valid_slug",
     "list_projects",
+    "unarchive_project",
+    "update_project",
     "actual_minutes_by_task",
     "carry_candidates",
     "carry_tasks",

@@ -306,3 +306,114 @@ def test_package_reexports_project_services() -> None:
         "is_valid_slug",
         "list_projects",
     }
+
+
+def test_update_project_strips_and_stores_fields(session: Session) -> None:
+    projects.create_project(session, "payment", "결제 서버")
+
+    project = projects.update_project(
+        session, "payment", name=" 새 이름 ", color="#22c55e", description=" 설명 "
+    )
+
+    assert (project.name, project.color, project.description) == ("새 이름", "#22c55e", "설명")
+
+
+@pytest.mark.parametrize("description", [None, "  "], ids=["none", "blank"])
+def test_update_project_clears_color_and_description(
+    session: Session, description: str | None
+) -> None:
+    projects.create_project(session, "payment", "결제 서버", description="설명", color="#4f46e5")
+
+    project = projects.update_project(session, "payment", color=None, description=description)
+
+    assert project.color is None
+    assert project.description is None
+
+
+def test_update_project_only_given_fields_change(session: Session) -> None:
+    projects.create_project(session, "payment", "결제 서버", description="설명", color="#4f46e5")
+
+    project = projects.update_project(session, "payment", name="새 이름")
+
+    assert (project.name, project.color, project.description) == ("새 이름", "#4f46e5", "설명")
+
+
+@pytest.mark.parametrize(
+    ("fields", "message"),
+    [
+        ({"name": ""}, "프로젝트 이름이 비어 있습니다. 이름을 입력하세요."),
+        ({"name": None}, "프로젝트 이름이 비어 있습니다. 이름을 입력하세요."),
+        ({"name": "  "}, "프로젝트 이름이 비어 있습니다. 이름을 입력하세요."),
+        ({"color": "red"}, "색상이 올바르지 않습니다: 'red'."),
+    ],
+    ids=["empty-name", "none-name", "blank-name", "bad-color"],
+)
+def test_update_project_rejects_invalid_values_without_changing_others(
+    session: Session, fields: dict[str, str | None], message: str
+) -> None:
+    projects.create_project(session, "payment", "결제 서버", description="설명")
+
+    with pytest.raises(InvalidInputError, match=message):
+        projects.update_project(session, "payment", description="바뀜", **fields)
+
+    project = projects.get_project(session, "payment")
+    assert (project.name, project.description) == ("결제 서버", "설명")
+
+
+def test_update_project_rejects_invalid_color_before_changing_name(session: Session) -> None:
+    projects.create_project(session, "payment", "결제 서버")
+
+    with pytest.raises(InvalidInputError):
+        projects.update_project(session, "payment", name="새 이름", color="red")
+
+    assert projects.get_project(session, "payment").name == "결제 서버"
+
+
+def test_update_project_unknown_field_raises_type_error(session: Session) -> None:
+    projects.create_project(session, "payment", "결제 서버")
+
+    with pytest.raises(TypeError, match="slug"):
+        projects.update_project(session, "payment", slug="other")
+
+
+def test_update_project_missing_slug_raises_not_found(session: Session) -> None:
+    with pytest.raises(NotFoundError, match="lb project list"):
+        projects.update_project(session, "paymnt", name="x")
+
+
+def test_update_project_edits_archived_project(session: Session) -> None:
+    projects.create_project(session, "payment", "결제 서버")
+    projects.archive_project(session, "payment")
+
+    project = projects.update_project(session, "payment", name="새 이름")
+
+    assert project.name == "새 이름"
+    assert project.archived is True
+
+
+def test_unarchive_project_clears_archived_flag(session: Session) -> None:
+    projects.create_project(session, "payment", "결제 서버")
+    projects.archive_project(session, "payment")
+
+    project = projects.unarchive_project(session, "payment")
+
+    assert project.archived is False
+    assert [p.slug for p in projects.list_projects(session)] == ["payment"]
+
+
+def test_unarchive_project_keeps_active_and_common(session: Session) -> None:
+    projects.create_project(session, "payment", "결제 서버")
+    projects.ensure_common_project(session)
+
+    assert projects.unarchive_project(session, "payment").archived is False
+    assert projects.unarchive_project(session, projects.COMMON_SLUG).archived is False
+
+
+def test_unarchive_project_missing_slug_raises_not_found(session: Session) -> None:
+    with pytest.raises(NotFoundError):
+        projects.unarchive_project(session, "paymnt")
+
+
+def test_project_edit_functions_are_exported() -> None:
+    assert services.update_project is projects.update_project
+    assert services.unarchive_project is projects.unarchive_project

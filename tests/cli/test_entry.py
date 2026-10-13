@@ -348,6 +348,17 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(["init", "--help"], 0, None, id="init-help"),
         pytest.param(["project"], 2, None, id="project-no-args"),
         pytest.param(["project", "--help"], 0, None, id="project-help"),
+        pytest.param(["project", "edit", "--help"], 0, None, id="project-edit-help"),
+        pytest.param(["project", "unarchive", "--help"], 0, None, id="project-unarchive-help"),
+        pytest.param(
+            ["project", "edit", "payment"], 1, "오류: 바꿀 항목을", id="project-edit-nothing"
+        ),
+        pytest.param(
+            ["project", "edit", "payment", "--color", "#22c55e", "--no-color"],
+            1,
+            "오류: --color와 --no-color",
+            id="project-edit-conflict",
+        ),
         pytest.param(["add", "--help"], 0, None, id="add-help"),
         pytest.param(["add", "1h"], 2, None, id="add-missing-note"),
         pytest.param(["add", "abc", "x"], 1, "오류: 시간 형식이", id="add-bad-duration"),
