@@ -1,0 +1,134 @@
+"""설정 화면 GET /settings 테스트: 프로젝트 표, 설정 정보, 설정 자동 반영."""
+
+from collections.abc import Iterator
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import Engine
+
+from logbook.core import db, services
+from logbook.core.config import load_config
+from logbook.web.app import create_app
+from logbook.web.config_watch import ConfigWatcher
+from logbook.web.context import WebContext
+from logbook.web.pages.settings import CATEGORY_NOTE
+from tests.web.conftest import LOCAL_BASE_URL
+from tests.web.helpers import (
+    add_project,
+    all_by_tag,
+    by_class,
+    by_id,
+    inline_code_violations,
+    parse_html,
+)
+
+
+def _row_ids(html: str) -> list[str]:
+    ids = [str(e.attrs.get("id")) for e in all_by_tag(html, "tr")]
+    return [i for i in ids if i.startswith("project-")]
+
+
+def test_settings_page_lists_projects_and_info(
+    client: TestClient, web_engine: Engine, web_ctx: WebContext
+) -> None:
+    add_project(web_engine, "payment", "결제", color="#4f46e5")
+    add_project(web_engine, "old", "옛 프로젝트", archived=True)
+
+    response = client.get("/settings")
+
+    html = response.text
+    assert response.status_code == 200
+    current = [
+        e for e in parse_html(html) if e.tag == "a" and e.attrs.get("aria-current") == "page"
+    ]
+    assert [e.attrs.get("href") for e in current] == ["/settings"]
+    assert _row_ids(html) == ["project-common", "project-old", "project-payment"]
+    assert by_id(html, "project-section").tag == "section"
+    assert by_id(html, "project-payment").text.startswith("payment 결제")
+    assert "#4f46e5" in by_id(html, "project-payment").text
+    assert "보관" in by_id(html, "project-old").text
+    assert "dev — 개발" in html
+    assert str(web_ctx.config_file) in html
+    assert str(web_ctx.engine.url.database) in html
+    assert CATEGORY_NOTE in html
+    assert by_class(html, "table-wrap")
+    assert inline_code_violations(html) == []
+
+
+def test_common_row_has_no_archive_button(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "payment", "결제")
+
+    html = client.get("/settings").text
+
+    archive_urls = [
+        str(e.attrs["hx-post"])
+        for e in parse_html(html)
+        if e.tag == "button" and "hx-post" in e.attrs and "/archive" in str(e.attrs["hx-post"])
+    ]
+    assert "/settings/projects/payment/archive" in archive_urls
+    assert "/settings/projects/common/archive" not in archive_urls
+
+
+def test_invalid_color_from_import_has_no_swatch(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "legacy", "가져온 것")
+    with db.session_scope(web_engine) as s:
+        services.get_project(s, "legacy").color = "red"
+    add_project(web_engine, "ok", "정상", color="#00ff00")
+
+    html = client.get("/settings").text
+
+    assert "red" in by_id(html, "project-legacy").text
+    swatches = [e for e in by_class(html, "swatch") if e.tag == "svg"]
+    rects = [e.attrs.get("fill") for e in parse_html(html) if e.tag == "rect"]
+    assert len(swatches) == 1
+    assert rects == ["#00ff00"]
+
+
+@pytest.fixture
+def config_file(web_ctx: WebContext) -> Path:
+    path = web_ctx.config_file
+    path.write_text("[web]\nport = 8765\n", encoding="utf-8")
+    return path
+
+
+@pytest.fixture
+def watched_client(web_ctx: WebContext, config_file: Path) -> Iterator[TestClient]:
+    watcher = ConfigWatcher(config_file, load_config(config_file))
+    with TestClient(create_app(web_ctx, watcher=watcher), base_url=LOCAL_BASE_URL) as c:
+        yield c
+
+
+def test_added_category_shows_after_reload(watched_client: TestClient, config_file: Path) -> None:
+    config_file.write_text(
+        '[web]\nport = 8765\n[categories]\ndev = "개발"\nops = "운영"\n', encoding="utf-8"
+    )
+
+    html = watched_client.get("/settings").text
+
+    assert "ops" in html
+    assert "운영" in html
+
+
+def test_changed_db_path_shows_running_db_and_restart_notice(
+    watched_client: TestClient,
+    config_file: Path,
+    web_ctx: WebContext,
+    tmp_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("LOGBOOK_DB")  # 환경변수가 설정 파일 값보다 우선하므로 지운다
+    other = tmp_home / "other.db"
+    config_file.write_text(
+        f'db_path = "{other.as_posix()}"\n[web]\nport = 8765\n', encoding="utf-8"
+    )
+
+    html = watched_client.get("/settings").text
+
+    assert str(web_ctx.engine.url.database) in html
+    assert "other.db" not in html
+    notices = [
+        e for e in all_by_tag(html, "p") if "config-notice" in str(e.attrs.get("class") or "")
+    ]
+    assert len(notices) == 1
+    assert "db_path" in notices[0].text

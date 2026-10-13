@@ -38,6 +38,9 @@ NOTES_CHANGED = (
     "다른 곳에서 특이사항이 바뀌었습니다: {week}. 미리보기에 지금 저장된 내용이 있습니다. "
     "입력한 내용으로 바꾸려면 다시 저장하세요."
 )
+PROJECT_CHANGED = (
+    "다른 곳에서 프로젝트가 바뀌었습니다: {slug}. 목록을 새로 고친 뒤 다시 시도하세요."
+)
 RECORD_CHANGED = "다른 곳에서 기록이 바뀌었습니다: #{id}. 목록을 새로 고친 뒤 다시 시도하세요."
 VALUE_INVALID = "요청 값이 올바르지 않습니다: '{field}' ({reason})."
 INTERNAL_ERROR = (
