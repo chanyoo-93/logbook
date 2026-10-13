@@ -445,12 +445,49 @@ def _invariant_cases() -> Iterator[Any]:
         id="다른 프로젝트 태스크의 타이머",
     )
 
+    unclean = "(줄바꿈은 LF이고 줄 끝 공백과 앞뒤 빈 줄이 없는 정리된 값이어야 합니다)."
+    empty = "(risks와 notes가 모두 비어 있는 행은 둘 수 없습니다)."
+    yield pytest.param(
+        "week_notes",
+        line("week_notes", risks="", notes=""),
+        f'week_notes.notes 값이 올바르지 않습니다: "" {empty}',
+        id="두 칸이 모두 빔",
+    )
+    yield pytest.param(
+        "week_notes",
+        line("week_notes", risks="", notes="  \n"),
+        f'week_notes.notes 값이 올바르지 않습니다: "  \\n" {unclean}',
+        id="공백뿐인 칸",
+    )
+    yield pytest.param(
+        "week_notes",
+        line("week_notes", notes="가\r\n나"),
+        f'week_notes.notes 값이 올바르지 않습니다: "가\\r\\n나" {unclean}',
+        id="CRLF",
+    )
+    yield pytest.param(
+        "week_notes",
+        line("week_notes", risks=" 리스크 \n"),
+        f'week_notes.risks 값이 올바르지 않습니다: " 리스크 \\n" {unclean}',
+        id="끝 공백과 빈 줄",
+    )
+
 
 @pytest.mark.parametrize(("table", "bad", "suffix"), list(_invariant_cases()))
 def test_invariant_errors(fresh: Session, table: str, bad: str, suffix: str) -> None:
     lines = [*PREFIX[table], bad]
 
     rejects(fresh, lines, f"{len(lines)}번째 줄: {suffix}")
+
+
+def test_allows_week_note_with_only_one_cleaned_field(fresh: Session) -> None:
+    lines = [
+        *PREFIX["week_notes"],
+        line("week_notes", week="2026-W41", risks="", notes="가\n  들여쓴 줄"),
+        line("week_notes", week="2026-W42", risks="리스크", notes=""),
+    ]
+
+    assert services.import_records(fresh, lines).week_notes == 2
 
 
 def test_rejects_archived_common_project(fresh: Session) -> None:

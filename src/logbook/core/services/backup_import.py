@@ -29,6 +29,7 @@ from logbook.core.services.backup import (
     BackupCounts,
 )
 from logbook.core.services.projects import COMMON_SLUG, is_valid_slug
+from logbook.core.services.week_notes import clean_note_text
 from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import Week
 
@@ -396,11 +397,28 @@ def _check_invariants(
             f"{_show(row['done_at'])} "
             "(status가 done이면 시각, 아니면 null이어야 합니다)."
         )
+    if table == "week_notes":
+        _check_week_note(n, values, row)
     task_id = values.get("task_id")
     if task_id is not None and state.task_projects[task_id] != values["project_id"]:
         raise InvalidInputError(
             f"{n}번째 줄: {table}.task_id 값이 올바르지 않습니다: {task_id} "
             "(그 태스크의 project_id와 같은 프로젝트여야 합니다)."
+        )
+
+
+def _check_week_note(n: int, values: dict[str, Any], row: dict[str, Any]) -> None:
+    """week_notes 행은 '행이 있다 = 쓴 내용이 있다'이고, 값은 저장할 때 정리한 모양이어야 한다."""
+    for name in ("risks", "notes"):
+        if clean_note_text(values[name]) != values[name]:
+            raise InvalidInputError(
+                f"{n}번째 줄: week_notes.{name} 값이 올바르지 않습니다: {_show(row[name])} "
+                "(줄바꿈은 LF이고 줄 끝 공백과 앞뒤 빈 줄이 없는 정리된 값이어야 합니다)."
+            )
+    if not values["risks"] and not values["notes"]:
+        raise InvalidInputError(
+            f"{n}번째 줄: week_notes.notes 값이 올바르지 않습니다: {_show(row['notes'])} "
+            "(risks와 notes가 모두 비어 있는 행은 둘 수 없습니다)."
         )
 
 
