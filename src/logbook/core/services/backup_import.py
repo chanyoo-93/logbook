@@ -6,6 +6,7 @@
 
 import datetime as dt
 import json
+import re
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
@@ -18,23 +19,29 @@ from sqlalchemy.orm import Session
 from logbook.core import db
 from logbook.core.duration import MAX_MINUTES, echo_input
 from logbook.core.errors import InvalidInputError
-from logbook.core.models import ActiveTimer, Project, Task, WorkLog
+from logbook.core.models import ActiveTimer, Project, Task, WeekNote, WorkLog
 from logbook.core.services.backup import (
     EXPORT_TYPE,
     FIELDS,
-    FORMAT_VERSION,
+    KEY_FIELDS,
     MODELS,
     TABLE_ORDER,
     BackupCounts,
 )
 from logbook.core.services.projects import COMMON_SLUG, is_valid_slug
 from logbook.core.taskstatus import TaskStatus
+from logbook.core.weeks import Week
 
 MAX_SQLITE_INTEGER = 2**63 - 1
 BOM = chr(0xFEFF)
 _MIN_UTC_DATE = dt.date(1, 1, 2)
 _MAX_UTC_DATE = dt.date(9999, 12, 30)
-_TABLE_LIST = ", ".join(TABLE_ORDER)
+SUPPORTED_FORMATS = (1, 2)
+# 형식별로 받는 테이블. 형식 1은 week_notes가 생기기 전의 파일이다.
+FORMAT_TABLES: Mapping[int, tuple[str, ...]] = MappingProxyType(
+    {1: TABLE_ORDER[:4], 2: TABLE_ORDER}
+)
+_WEEK_PATTERN = re.compile(r"[0-9]{4}-W[0-9]{2}", re.ASCII)
 _INT_RANGE = f"1 이상 {MAX_SQLITE_INTEGER} 이하의 정수"
 _SLUG_RULE = "영문 소문자나 숫자로 시작하고 영문 소문자·숫자·'-'·'_'만 쓴 32자 이하 문자열"
 _STATUS_VALUES = tuple(status.value for status in TaskStatus)
@@ -86,6 +93,12 @@ _KINDS: Mapping[str, Mapping[str, str]] = MappingProxyType(
             "note": "str",
             "started_at": "datetime",
         },
+        "week_notes": {
+            "week": "week",
+            "risks": "str",
+            "notes": "str",
+            "updated_at": "datetime",
+        },
     }
 )
 
@@ -96,6 +109,7 @@ _EXPECTED: Mapping[str, str] = MappingProxyType(
         "minutes": f"1 이상 {MAX_MINUTES} 이하의 정수",
         "timer_id": "1",
         "slug": _SLUG_RULE,
+        "week": "YYYY-Www 형식의 주차 (예: 2026-W41)",
         "status": f"{', '.join(_STATUS_VALUES)} 중 하나",
         "bool": "true 또는 false",
         "str": "문자열",
@@ -114,6 +128,7 @@ _REFERENCES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
         "tasks": (("project_id", "projects"),),
         "worklogs": (("project_id", "projects"), ("task_id", "tasks")),
         "active_timer": (("project_id", "projects"), ("task_id", "tasks")),
+        "week_notes": (),
     }
 )
 
@@ -142,6 +157,19 @@ def _to_timer_id(value: object) -> int:
 
 def _to_slug(value: object) -> str:
     if type(value) is not str or not is_valid_slug(value):
+        raise ValueError(value)
+    return value
+
+
+def _to_week(value: object) -> str:
+    """'2026-W41' 꼴이고 실제로 있는 주차(Week.label과 같은 표기)."""
+    if type(value) is not str or _WEEK_PATTERN.fullmatch(value) is None:
+        raise ValueError(value)
+    try:
+        week = Week(int(value[:4]), int(value[6:]))
+    except InvalidInputError:
+        raise ValueError(value) from None
+    if week.label != value:
         raise ValueError(value)
     return value
 
@@ -195,6 +223,7 @@ _CONVERTERS: Mapping[str, Callable[[object], Any]] = MappingProxyType(
         "minutes": _to_minutes,
         "timer_id": _to_timer_id,
         "slug": _to_slug,
+        "week": _to_week,
         "status": _to_status,
         "bool": _to_bool,
         "str": _to_str,
@@ -216,7 +245,8 @@ class _ImportState:
     """파일을 앞에서부터 읽으며 쌓는 검증 상태. 이 모듈 안에서만 쓴다."""
 
     last_table: str | None = None
-    ids: dict[str, set[int]] = field(default_factory=lambda: {t: set() for t in TABLE_ORDER})
+    format: int = SUPPORTED_FORMATS[-1]
+    ids: dict[str, set[object]] = field(default_factory=lambda: {t: set() for t in TABLE_ORDER})
     slugs: set[str] = field(default_factory=set)
     task_projects: dict[int, int] = field(default_factory=dict)
     has_common: bool = False
@@ -231,7 +261,8 @@ def _load_object(text: str) -> Any:
         raise ValueError(text) from error
 
 
-def _check_header(text: str | None) -> None:
+def _check_header(text: str | None) -> int:
+    """머리글을 검사하고 형식 번호를 돌려준다."""
     if text is None:
         raise InvalidInputError("logbook 내보내기 파일이 아닙니다 (내용이 없습니다).")
     try:
@@ -245,10 +276,10 @@ def _check_header(text: str | None) -> None:
             f"logbook 내보내기 파일이 아닙니다 (첫 줄의 type 값: {_show(header['type'])})."
         )
     version = header.get("format")
-    if type(version) is not int or version != FORMAT_VERSION:
+    if type(version) is not int or version not in SUPPORTED_FORMATS:
         raise InvalidInputError(
             f"지원하지 않는 내보내기 형식 버전입니다: {_show(version)}. "
-            f"이 버전의 logbook이 읽을 수 있는 형식: {FORMAT_VERSION}"
+            f"이 버전의 logbook이 읽을 수 있는 형식: {', '.join(map(str, SUPPORTED_FORMATS))}"
         )
     schema = header.get("schema_version")
     if type(schema) is not int or schema < 1:
@@ -258,9 +289,10 @@ def _check_header(text: str | None) -> None:
             f"더 새로운 logbook에서 내보낸 파일입니다 (스키마 {schema}). "
             "logbook을 업데이트한 뒤 가져오세요."
         )
+    return version
 
 
-def _parse_envelope(n: int, text: str) -> tuple[str, dict[str, Any]]:
+def _parse_envelope(n: int, text: str, tables: tuple[str, ...]) -> tuple[str, dict[str, Any]]:
     """한 줄을 {"table", "row"} 봉투로 읽는다(검사 1~3단계)."""
     try:
         record = _load_object(text)
@@ -277,20 +309,21 @@ def _parse_envelope(n: int, text: str) -> tuple[str, dict[str, Any]]:
             "형식이어야 합니다."
         )
     table = record["table"]
-    if table not in FIELDS:
+    if table not in tables:
         raise InvalidInputError(
             f"{n}번째 줄: 알 수 없는 테이블입니다: {_show(table)}. "
-            f"{_TABLE_LIST} 중 하나여야 합니다."
+            f"{', '.join(tables)} 중 하나여야 합니다."
         )
     return table, record["row"]
 
 
 def _check_order(n: int, table: str, state: _ImportState) -> None:
+    tables = FORMAT_TABLES[state.format]
     previous = state.last_table
     if previous is not None and TABLE_ORDER.index(table) < TABLE_ORDER.index(previous):
         raise InvalidInputError(
             f"{n}번째 줄: 테이블 순서가 올바르지 않습니다: {table} 행이 {previous} 행 뒤에 "
-            f"있습니다. {_TABLE_LIST} 순서여야 합니다."
+            f"있습니다. {', '.join(tables)} 순서여야 합니다."
         )
     state.last_table = table
 
@@ -326,8 +359,11 @@ def _convert_fields(n: int, table: str, row: dict[str, Any]) -> dict[str, Any]:
 def _check_unique(n: int, table: str, values: dict[str, Any], state: _ImportState) -> None:
     if table == "active_timer" and state.ids[table]:
         raise InvalidInputError(f"{n}번째 줄: active_timer 행은 하나만 있을 수 있습니다.")
-    if values["id"] in state.ids[table]:
-        raise InvalidInputError(f"{n}번째 줄: {table} 행의 id가 중복됩니다: {values['id']}.")
+    key = KEY_FIELDS[table]
+    if values[key] in state.ids[table]:
+        raise InvalidInputError(
+            f"{n}번째 줄: {table} 행의 {key}가 중복됩니다: {_show(values[key])}."
+        )
     if table == "projects" and values["slug"] in state.slugs:
         raise InvalidInputError(
             f"{n}번째 줄: projects.slug 값이 중복됩니다: {_show(values['slug'])}."
@@ -369,14 +405,14 @@ def _check_invariants(
 
 def _record(n: int, text: str, state: _ImportState) -> None:
     """데이터 줄 하나를 검사 순서대로 검증하고 상태에 반영한다."""
-    table, row = _parse_envelope(n, text)
+    table, row = _parse_envelope(n, text, FORMAT_TABLES[state.format])
     _check_order(n, table, state)
     _check_field_names(n, table, row)
     values = _convert_fields(n, table, row)
     _check_unique(n, table, values, state)
     _check_references(n, table, values, state)
     _check_invariants(n, table, values, row, state)
-    state.ids[table].add(values["id"])
+    state.ids[table].add(values[KEY_FIELDS[table]])
     if table == "projects":
         state.slugs.add(values["slug"])
         state.has_common = state.has_common or values["slug"] == COMMON_SLUG
@@ -394,7 +430,7 @@ def _parse_lines(lines: Iterable[str]) -> _ImportState:
         if not text:
             continue
         if not header_seen:
-            _check_header(text)
+            state.format = _check_header(text)
             header_seen = True
             continue
         _record(n, text, state)
@@ -410,7 +446,8 @@ def _existing_common(s: Session) -> Project | None:
     projects = s.scalars(select(Project)).all()
     has_other_project = any(project.slug != COMMON_SLUG for project in projects)
     has_rows = any(
-        s.scalar(select(func.count()).select_from(model)) for model in (Task, WorkLog, ActiveTimer)
+        s.scalar(select(func.count()).select_from(model))
+        for model in (Task, WorkLog, ActiveTimer, WeekNote)
     )
     if has_other_project or has_rows:
         raise InvalidInputError(
@@ -452,4 +489,5 @@ def import_records(s: Session, lines: Iterable[str]) -> BackupCounts:
         tasks=len(state.objects["tasks"]),
         worklogs=len(state.objects["worklogs"]),
         timers=len(state.objects["active_timer"]),
+        week_notes=len(state.objects["week_notes"]),
     )

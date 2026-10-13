@@ -1,6 +1,6 @@
 """전체 데이터 JSONL 내보내기.
 
-형식(버전 1)은 공개 계약이다. 필드 목록은 모델 컬럼에서 만들지 않고 아래 튜플로 고정한다.
+형식(버전 2)은 공개 계약이다. 필드 목록은 모델 컬럼에서 만들지 않고 아래 튜플로 고정한다.
 컬럼이 늘면 형식을 의도적으로 바꾸고 FORMAT_VERSION을 올린다.
 """
 
@@ -16,11 +16,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from logbook.core import db
-from logbook.core.models import ActiveTimer, Project, Task, WorkLog
+from logbook.core.models import ActiveTimer, Project, Task, WeekNote, WorkLog
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 EXPORT_TYPE = "logbook-export"
-TABLE_ORDER = ("projects", "tasks", "worklogs", "active_timer")
+TABLE_ORDER = ("projects", "tasks", "worklogs", "active_timer", "week_notes")
 
 PROJECT_FIELDS = ("id", "slug", "name", "description", "color", "archived", "created_at")
 TASK_FIELDS = (
@@ -51,6 +51,7 @@ WORKLOG_FIELDS = (
     "created_at",
 )
 TIMER_FIELDS = ("id", "project_id", "task_id", "category", "note", "started_at")
+WEEK_NOTE_FIELDS = ("week", "risks", "notes", "updated_at")
 
 FIELDS: Mapping[str, tuple[str, ...]] = MappingProxyType(
     {
@@ -58,6 +59,18 @@ FIELDS: Mapping[str, tuple[str, ...]] = MappingProxyType(
         "tasks": TASK_FIELDS,
         "worklogs": WORKLOG_FIELDS,
         "active_timer": TIMER_FIELDS,
+        "week_notes": WEEK_NOTE_FIELDS,
+    }
+)
+
+# 행을 가리는 키. 내보내기 순서도 이 키 순이다.
+KEY_FIELDS: Mapping[str, str] = MappingProxyType(
+    {
+        "projects": "id",
+        "tasks": "id",
+        "worklogs": "id",
+        "active_timer": "id",
+        "week_notes": "week",
     }
 )
 
@@ -68,6 +81,7 @@ MODELS: Mapping[str, type[Any]] = MappingProxyType(
         "tasks": Task,
         "worklogs": WorkLog,
         "active_timer": ActiveTimer,
+        "week_notes": WeekNote,
     }
 )
 
@@ -84,6 +98,7 @@ class BackupCounts:
     tasks: int
     worklogs: int
     timers: int
+    week_notes: int
 
 
 def _encode_value(value: object) -> object:
@@ -120,7 +135,7 @@ def export_records(s: Session, *, now: dt.datetime) -> tuple[list[str], BackupCo
     counts: dict[str, int] = {}
     for table in TABLE_ORDER:
         model = MODELS[table]
-        records = s.scalars(select(model).order_by(model.id)).all()
+        records = s.scalars(select(model).order_by(getattr(model, KEY_FIELDS[table]))).all()
         lines.extend(_row_line(table, record) for record in records)
         counts[table] = len(records)
     return lines, BackupCounts(
@@ -128,4 +143,5 @@ def export_records(s: Session, *, now: dt.datetime) -> tuple[list[str], BackupCo
         tasks=counts["tasks"],
         worklogs=counts["worklogs"],
         timers=counts["active_timer"],
+        week_notes=counts["week_notes"],
     )

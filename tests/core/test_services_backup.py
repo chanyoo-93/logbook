@@ -9,7 +9,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from logbook.core import db, services
-from logbook.core.models import ActiveTimer, Base, Project, Task, WorkLog
+from logbook.core.models import ActiveTimer, Base, Project, Task, WeekNote, WorkLog
 from logbook.core.services import backup
 
 from .backup_helpers import LS, NEL, NOW, PS, populate
@@ -17,7 +17,7 @@ from .backup_helpers import LS, NEL, NOW, PS, populate
 KST = timezone(timedelta(hours=9))
 
 HEADER_LINE = (
-    '{"exported_at": "2026-10-08T03:00:00+00:00", "format": 1, '
+    '{"exported_at": "2026-10-08T03:00:00+00:00", "format": 2, '
     f'"schema_version": {db.SCHEMA_VERSION}, "type": "logbook-export"}}'
 )
 
@@ -36,7 +36,7 @@ def test_empty_db_exports_only_common_project(session: Session) -> None:
     assert len(lines) == 2
     assert json.loads(lines[1])["table"] == "projects"
     assert json.loads(lines[1])["row"]["slug"] == "common"
-    assert counts == services.BackupCounts(projects=1, tasks=0, worklogs=0, timers=0)
+    assert counts == services.BackupCounts(projects=1, tasks=0, worklogs=0, timers=0, week_notes=0)
 
 
 def test_exports_all_tables_and_fields_including_nulls(session: Session) -> None:
@@ -44,7 +44,7 @@ def test_exports_all_tables_and_fields_including_nulls(session: Session) -> None
 
     lines, counts = services.export_records(session, now=NOW)
 
-    assert counts == services.BackupCounts(projects=2, tasks=2, worklogs=2, timers=1)
+    assert counts == services.BackupCounts(projects=2, tasks=2, worklogs=2, timers=1, week_notes=2)
     rows = _rows(lines)
     by_table: dict[str, list[dict[str, Any]]] = {}
     for record in rows:
@@ -132,8 +132,9 @@ def test_lines_follow_table_order_then_id(session: Session) -> None:
     tables = [r["table"] for r in records]
     assert tables == sorted(tables, key=backup.TABLE_ORDER.index)
     for table in backup.TABLE_ORDER:
-        ids = [r["row"]["id"] for r in records if r["table"] == table]
-        assert ids == sorted(ids)
+        key = backup.KEY_FIELDS[table]
+        keys = [r["row"][key] for r in records if r["table"] == table]
+        assert keys == sorted(keys)
     assert [r["row"]["id"] for r in records if r["table"] == "projects"] == [1, 2, 5]
 
 
@@ -253,14 +254,15 @@ def test_field_tuples_match_model_columns() -> None:
         "tasks": Task,
         "worklogs": WorkLog,
         "active_timer": ActiveTimer,
+        "week_notes": WeekNote,
     }
     for table, model in models.items():
         assert set(backup.FIELDS[table]) == set(model.__table__.columns.keys()), table
         assert list(backup.FIELDS[table]) == list(model.__table__.columns.keys()), table
-    # week_notes 내보내기는 Task 6-4(형식 2)에서 더한다. 그때 이 제외를 지운다.
-    assert set(backup.TABLE_ORDER) == set(Base.metadata.tables) - {"schema_version", "week_notes"}
+    assert set(backup.TABLE_ORDER) == set(Base.metadata.tables) - {"schema_version"}
     assert set(backup.FIELDS) == set(backup.TABLE_ORDER)
-    assert backup.FORMAT_VERSION == 1
+    assert backup.FORMAT_VERSION == 2
+    assert backup.WEEK_NOTE_FIELDS == ("week", "risks", "notes", "updated_at")
 
 
 def test_separator_escapes_cover_exactly_three_characters() -> None:
@@ -277,10 +279,32 @@ def test_models_mapping_follows_table_order() -> None:
     assert backup.MODELS["tasks"] is Task
     assert backup.MODELS["worklogs"] is WorkLog
     assert backup.MODELS["active_timer"] is ActiveTimer
+    assert backup.MODELS["week_notes"] is WeekNote
+
+
+def test_week_notes_export_header_order_and_fields(session: Session) -> None:
+    populate(session)
+
+    lines, counts = services.export_records(session, now=NOW)
+
+    header = json.loads(lines[0])
+    assert (header["format"], header["schema_version"]) == (2, 2)
+    assert counts.week_notes == 2
+    tail = [json.loads(line) for line in lines[-2:]]
+    assert [r["table"] for r in tail] == ["week_notes", "week_notes"]
+    assert [r["row"]["week"] for r in tail] == ["2026-W40", "2026-W41"]
+    for record in tail:
+        assert tuple(record["row"]) == tuple(sorted(backup.WEEK_NOTE_FIELDS))
+    assert tail[1]["row"] == {
+        "week": "2026-W41",
+        "risks": "",
+        "notes": "W41 특이사항",
+        "updated_at": "2026-10-08T01:00:00+00:00",
+    }
 
 
 def test_constant_tables_are_read_only() -> None:
-    for table in (backup.FIELDS, backup.SEPARATOR_ESCAPES, backup.MODELS):
+    for table in (backup.FIELDS, backup.SEPARATOR_ESCAPES, backup.MODELS, backup.KEY_FIELDS):
         assert isinstance(table, MappingProxyType)
 
 

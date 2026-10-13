@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 def _print_done(verb: str, path_text: str, counts: "BackupCounts") -> None:
-    """'✔ 내보냈습니다: 경로 (프로젝트 2 · 태스크 5 · 기록 41 · 타이머 0)' 한 줄."""
+    """'✔ 내보냈습니다: 경로 (프로젝트 2 · 태스크 5 · 기록 41 · 타이머 0 · 특이사항 3)' 한 줄."""
     from rich.text import Text
 
     dot = f" {render.info_mark()} "
@@ -24,6 +24,7 @@ def _print_done(verb: str, path_text: str, counts: "BackupCounts") -> None:
             f"태스크 {counts.tasks}",
             f"기록 {counts.worklogs}",
             f"타이머 {counts.timers}",
+            f"특이사항 {counts.week_notes}",
         )
     )
     console.print_line(render.ok_mark(), f" {verb}: ", Text(path_text), f" ({summary})")
