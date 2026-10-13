@@ -214,7 +214,7 @@ Phase 5 계획서(`2026-10-09-phase5-web-dashboard.md`)의 공통 규칙을 그�
 
 ## Task 6-0: 계획 문서 저장
 
-- [ ] 이 문서를 커밋한다: `docs: Phase 6 웹 대시보드(계획·보고서) 구현 계획 추가`
+- [x] 이 문서를 커밋한다: `docs: Phase 6 웹 대시보드(계획·보고서) 구현 계획 추가`
 
 ---
 
@@ -1319,7 +1319,7 @@ class SettingsInfoView:
   - 절차서 규칙([[manual-check-procedures]])을 지킨다: 새 터미널마다 임시 DB 환경변수, 동작이 일어나는 순서, 행은 ID로 가리킨다. 이번 Task부터 정적 파일은 no-cache라 Ctrl+F5 안내가 필요 없다.
   - 업그레이드 시험은 임시 DB 복사본으로 한다. 실제 DB는 사용자가 원할 때 업그레이드하고, 그때 백업 위치를 안내한다.
 - [ ] **전체 검증:** `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy src/logbook/core`, `uv run mypy src/logbook`, `uv run pytest`(커버리지: 전체, core·web 100% 유지), GitHub Actions `windows-latest`·`macos-latest`
-- [ ] **PR:** develop 대상, `Closes #<이슈 번호>`
+- [ ] **PR:** develop 대상, `Closes #13`
 
 ---
 
@@ -1374,6 +1374,13 @@ class SettingsInfoView:
 - 첫 실제 마이그레이션 전에 DB를 자동 백업한다. 내보내기는 형식 2이고, 가져오기는 형식 1도 받는다.
 
 2026-10-13 설계 요약 승인: 게이트 뒤 보여 준 설계 요약(화면별 동작, 설정 자동 반영 방식, 정적 파일 캐시 방식 변경, 진행 방식)을 사용자가 승인했다.
+
+2026-10-13 이슈 게이트(모두 추천안):
+- 이슈 #13을 만들었다.
+- 구현은 서브에이전트 방식이다.
+  - Task마다 구현 1명과 통합 검토 1명(명세·품질을 함께 본다)을 두고, 끝에 최종 리뷰 1명을 둔다.
+  - 약 24개다. 검토에서 고칠 것이 나오면 그만큼 늘어난다.
+- 모두 Sonnet이고 effort는 medium이다. 6-1(마이그레이션·백업)·6-7(칸반) 구현과 최종 리뷰만 high다.
 
 ## 계획 검토 (2026-10-13)
 
