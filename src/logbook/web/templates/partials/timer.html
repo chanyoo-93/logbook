@@ -1,0 +1,16 @@
+<section id="timer" class="panel timer{% if timer %} timer--running{% endif %}" aria-label="타이머"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+{% if timer %}
+  <span class="timer__dot" aria-hidden="true"></span>
+  <div class="timer__body">
+    <p class="timer__state">진행 중</p>
+    <p class="timer__what">{{ timer.scope }} — {{ timer.note }}{% if timer.task %} [{{ timer.task }}]{% endif %}</p>
+    <p class="timer__time">시작 {{ timer.started }} · {% include "partials/timer_elapsed.html" %}</p>
+  </div>
+  <button type="button" class="btn" hx-post="/timer/stop" hx-target="#timer" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">정지</button>
+{% else %}
+  <p class="timer__idle">진행 중인 타이머가 없습니다. 터미널에서 lb start로 시작하세요.</p>
+{% endif %}
+{% if timer_message|default("") %}
+  <p id="timer-result" class="form-message{% if timer_error|default(false) %} form-message--error{% endif %}" role="{{ 'alert' if timer_error|default(false) else 'status' }}">{{ timer_message }}</p>
+{% endif %}
+</section>

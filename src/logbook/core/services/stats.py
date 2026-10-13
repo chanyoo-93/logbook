@@ -5,6 +5,7 @@
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import date
 from types import MappingProxyType
 from typing import Any, Literal, get_args
 
@@ -47,6 +48,18 @@ class MatrixResult:
     col_totals: Mapping[str, int]
     total_minutes: int
     count: int
+
+
+@dataclass(frozen=True)
+class DailyProjectResult:
+    """요일 x 프로젝트(slug) 합계. cells에는 기록이 있는 칸만 들어 있다."""
+
+    week: Week
+    days: tuple[date, ...]
+    projects: tuple[str, ...]
+    cells: Mapping[tuple[date, str], int]
+    day_totals: Mapping[date, int]
+    total_minutes: int
 
 
 def stats_by(
@@ -108,6 +121,30 @@ def stats_matrix(
         col_totals=MappingProxyType(col_totals),
         total_minutes=sum(row_totals.values()),
         count=count,
+    )
+
+
+def daily_project_minutes(s: Session, week: Week) -> DailyProjectResult:
+    """week의 요일 x 프로젝트 합계(분).
+
+    프로젝트는 주 합계 내림차순(같으면 slug 순). day_totals는 7일 모두 들어 있다(기록 없는 날은 0).
+    """
+    query = _grouped(week, WorkLog.date, Project.slug).join(WorkLog.project)
+    cells: dict[tuple[date, str], int] = {}
+    project_totals: dict[str, int] = {}
+    day_totals = {day: 0 for day in week.days()}
+    for day, slug, minutes, _logs in s.execute(query):
+        cells[(day, slug)] = minutes
+        project_totals[slug] = project_totals.get(slug, 0) + minutes
+        day_totals[day] += minutes
+    projects = sorted(project_totals, key=lambda slug: (-project_totals[slug], slug))
+    return DailyProjectResult(
+        week=week,
+        days=tuple(week.days()),
+        projects=tuple(projects),
+        cells=MappingProxyType(cells),
+        day_totals=MappingProxyType(day_totals),
+        total_minutes=sum(project_totals.values()),
     )
 
 

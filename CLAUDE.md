@@ -39,7 +39,8 @@ src/logbook/
     db.py        # 엔진/세션, 스키마 생성 및 마이그레이션, DB 진입점(open_database·initialize_database)
     services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer, report, backup, backup_import)
     duration.py  # "1h30m", "1.5h", "90m" 파싱/포맷
-    weeks.py     # ISO 주차 계산 (YYYY-Www)
+    weeks.py     # ISO 주차 계산 (YYYY-Www)와 시각·날짜 표기(clock_label, total_label, full_day)
+    ids.py       # ID 파싱·검증 (parse_id, check_id, MAX_ID)
     report.py    # 보고서 데이터 클래스 + Markdown 렌더링 (조립은 services/report.py)
     templates/   # 기본 보고서 템플릿 (report.md.j2)
     config.py    # 설정 로드
@@ -52,11 +53,18 @@ src/logbook/
     console.py   # Rich 출력 (마크업 해석 안 함, 비 TTY 폭 1000, 좁은 화면 대체 출력)
     runtime.py   # 설정·DB 세션·today·공용 옵션·ID 파싱·확인 프롬프트
     render.py    # 한 줄 요약과 표
-    commands/    # 명령별 모듈 (init, project, add, log, stats, task, plan, timer, report, data)
+    commands/    # 명령별 모듈 (init, project, add, log, stats, task, plan, timer, report, data, serve)
   web/
-    app.py       # FastAPI 앱
+    context.py   # WebContext(설정·엔진·시계), 요청별 의존성, 공용 별칭 Ctx·TASK_LABEL
+    htmx.py      # HTMX 요청 판별(is_htmx)과 헤더 상수
+    security.py  # Host 검사, 교차 출처 쓰기 차단, 보안 헤더(CSP)
+    errors.py    # 오류 → HTTP 상태·JSON 봉투·HTMX 알림 변환
+    app.py       # FastAPI 앱 조립
+    server.py    # 루프백 소켓을 열고 uvicorn 실행 (`lb serve`가 호출)
+    api/         # JSON API (/api/*): logs, tasks, stats, report, timer
+    pages/       # 화면 라우트 (대시보드, 기록, 타이머), panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText)
     templates/   # Jinja2 + HTMX
-    static/      # 최소한의 CSS, Chart.js는 CDN 또는 로컬 파일
+    static/      # 최소한의 CSS와 JS, vendor/에 htmx·Chart.js 로컬 파일 (CDN 없음)
 tests/
 docs/
 ```
@@ -64,7 +72,8 @@ docs/
 ## 아키텍처 규칙
 
 - CLI와 Web은 반드시 `core.services`의 함수만 호출한다. SQL/ORM 쿼리를 CLI·Web 레이어에 직접 쓰지 않는다.
-  단, DB 연결·설정·입력 파싱용 core 공개 진입점(core.db.open_database·initialize_database·session_scope, core.config, core.duration, core.weeks, core.platform, core.errors, core.taskstatus(상태 파서), core.report(보고서 렌더링: render_markdown·user_template_path, DB에 접근하지 않음))은 쓸 수 있다. SQL·ORM 쿼리는 어느 경우에도 CLI·Web에 쓰지 않는다.
+  단, DB 연결·설정·입력 파싱용 core 공개 진입점(core.db.open_database·initialize_database·session_scope, core.config, core.duration, core.weeks, core.ids, core.platform, core.errors, core.taskstatus(상태 파서), core.report(보고서 렌더링: render_markdown·user_template_path, DB에 접근하지 않음))은 쓸 수 있다. SQL·ORM 쿼리는 어느 경우에도 CLI·Web에 쓰지 않는다.
+- web은 cli를 import하지 않는다(cli는 `lb serve`에서만 web을 지연 import한다).
 - 시간은 내부적으로 항상 **정수 분(minutes)** 으로 저장한다. 표시할 때만 `1h 30m` 형태로 변환.
 - 날짜는 `date`(로컬 기준)로 저장, 타임스탬프는 ISO 8601 문자열 또는 timezone-aware datetime.
 - 주차는 ISO 8601 주차(월요일 시작)를 기본으로 하되 설정으로 시작 요일 변경 가능하게 설계.

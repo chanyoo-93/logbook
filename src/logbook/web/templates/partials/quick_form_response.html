@@ -1,0 +1,5 @@
+{% include "partials/quick_form.html" %}
+{% if summary|default(none) %}
+{% include "partials/summary.html" %}
+{% include "partials/recent.html" %}
+{% endif %}

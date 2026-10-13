@@ -39,10 +39,10 @@ CLI만 필요하면 Phase 4까지, 웹 대시보드까지 원하면 Phase 6까�
 - [ ] (선택) `gitcollect.py` + `lb git-collect`, 보고서 부록 (후속, R1)
 
 ## Phase 5. 웹 대시보드 — 기본
-- [ ] 의존성 추가: fastapi, uvicorn (CLI에서는 `lb serve` 실행 시에만 lazy import)
-- [ ] `/api/*` JSON 엔드포인트 + 테스트 (`TestClient`)
-- [ ] 레이아웃 템플릿, 대시보드 페이지(요약 카드, 차트), 빠른 기록 폼(HTMX)
-- [ ] `/logs` 필터·인라인 수정
+- [x] 의존성 추가: fastapi, uvicorn (CLI에서는 `lb serve` 실행 시에만 lazy import)
+- [x] `/api/*` JSON 엔드포인트 + 테스트 (`TestClient`)
+- [x] 레이아웃 템플릿, 대시보드 페이지(요약 카드, 차트), 빠른 기록 폼(HTMX)
+- [x] `/logs` 필터·인라인 수정
 
 ## Phase 6. 웹 대시보드 — 계획·보고서
 - [ ] `/tasks` 칸반 + 다음 주 계획 패널 + 예상 대비 실제

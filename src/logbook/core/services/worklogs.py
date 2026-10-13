@@ -31,6 +31,17 @@ _WITH_RELATIONS = (
 )
 
 
+def recent_worklogs(s: Session, *, limit: int) -> list[WorkLog]:
+    """최근에 입력한 순(id 내림차순) 기록 limit건. project·task를 함께 로드한다.
+
+    limit이 1 미만이면 ValueError(호출 코드의 잘못이라 사용자 문구가 아니다).
+    """
+    if limit < 1:
+        raise ValueError(f"limit은 1 이상이어야 합니다: {limit}")
+    query = select(WorkLog).options(*_WITH_RELATIONS).order_by(WorkLog.id.desc()).limit(limit)
+    return list(s.scalars(query).unique())
+
+
 def add_worklog(
     s: Session,
     *,

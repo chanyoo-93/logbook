@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}대시보드{% endblock %}
+{% block scripts %}
+<script src="/static/vendor/chart-4.5.1.umd.min.js" defer></script>
+<script src="/static/js/dashboard.js" defer></script>
+{% endblock %}
+{% block content %}
+{% include "partials/quick_form.html" %}
+{% include "partials/summary.html" %}
+{% include "partials/timer.html" %}
+{% include "partials/recent.html" %}
+{% endblock %}

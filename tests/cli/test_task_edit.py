@@ -157,6 +157,15 @@ def test_bad_values_keep_task(
     assert snapshot(open_db, 1) == TASK_1
 
 
+def test_huge_estimate_is_rejected_and_keeps_task(
+    lb: Callable[..., Result], seeded: Path, open_db: OpenDb
+) -> None:
+    result = lb("task", "edit", "1", "--est", "99999999999999999999h")
+
+    assert_rejected(result, "예상 공수가 너무 큽니다. 더 작은 값으로 입력하세요.")
+    assert snapshot(open_db, 1) == TASK_1
+
+
 def test_clear_all(lb: Callable[..., Result], seeded: Path, open_db: OpenDb) -> None:
     result = run_ok(
         lb, "task", "edit", "1", "--no-category", "--no-est", "--no-week", "--no-ref", "--no-due"

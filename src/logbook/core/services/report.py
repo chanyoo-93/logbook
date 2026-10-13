@@ -5,7 +5,7 @@
 """
 
 from collections.abc import Mapping
-from datetime import date, datetime, time, timedelta, tzinfo
+from datetime import date, tzinfo
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -24,7 +24,7 @@ from logbook.core.report import (
     percent_text,
 )
 from logbook.core.services.stats import MatrixResult, stats_matrix
-from logbook.core.services.tasks import list_tasks
+from logbook.core.services.tasks import count_done_tasks, list_tasks
 from logbook.core.taskstatus import OPEN_STATUSES
 from logbook.core.weeks import Week
 
@@ -61,7 +61,7 @@ def weekly_report(
         end=week.end.isoformat(),
         total=format_duration(matrix.total_minutes),
         log_count=matrix.count,
-        done_task_count=_done_task_count(s, week, tz),
+        done_task_count=count_done_tasks(s, week, tz=tz),
         categories=tuple(labels[key] for key in matrix.categories),
         matrix=_matrix_rows(matrix),
         sections=_sections(s, week, tz, matrix, labels),
@@ -83,22 +83,6 @@ def _format_title(title_format: str, week: Week) -> str:
 def _one_line(text: str) -> str:
     """줄바꿈·탭·연속 공백을 공백 하나로 줄인다."""
     return " ".join(text.split())
-
-
-def _local_midnight(day: date, tz: tzinfo) -> datetime:
-    return datetime.combine(day, time.min, tzinfo=tz)
-
-
-def _done_task_count(s: Session, week: Week, tz: tzinfo) -> int:
-    """완료 시각의 로컬 날짜가 주 범위 안인 완료 태스크 수(보관 프로젝트 포함)."""
-    first = _local_midnight(week.start, tz)
-    after = _local_midnight(week.end + timedelta(days=1), tz)
-    count = s.scalar(
-        select(func.count(Task.id)).where(
-            Task.status == TaskStatus.DONE, Task.done_at >= first, Task.done_at < after
-        )
-    )
-    return count or 0
 
 
 def _matrix_rows(matrix: MatrixResult) -> tuple[MatrixRow, ...]:

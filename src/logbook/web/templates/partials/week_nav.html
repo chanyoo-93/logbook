@@ -1,0 +1,15 @@
+{% macro move(url, text) %}
+    <a class="week-nav__link" href="{{ url }}" hx-get="{{ url }}" hx-target="#log-table" hx-swap="outerHTML" hx-push-url="true">{{ text }}</a>
+{% endmacro %}
+<div id="week-nav" class="week-nav"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+{% if filters.prev_url %}
+  {{ move(filters.prev_url, "◀ 이전 주") }}
+{% endif %}
+  <div class="filters__field">
+    <label for="filter-week">주차</label>
+    <input id="filter-week" name="week" type="text" autocomplete="off" value="{{ filters.week }}" placeholder="2026-W40">
+  </div>
+{% if filters.next_url %}
+  {{ move(filters.next_url, "다음 주 ▶") }}
+{% endif %}
+</div>

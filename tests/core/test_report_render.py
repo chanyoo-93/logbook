@@ -348,7 +348,7 @@ def test_default_template_resource_is_a_real_file() -> None:
 
 
 @pytest.mark.subprocess
-def test_wheel_contains_default_template(tmp_path: Path) -> None:
+def test_wheel_contains_package_data(tmp_path: Path) -> None:
     uv = os.environ.get("UV") or shutil.which("uv")
     if not uv:
         pytest.skip("uv가 없어 휠 빌드를 건너뜁니다")
@@ -362,4 +362,11 @@ def test_wheel_contains_default_template(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr.decode("utf-8", errors="replace")
     wheel = next(tmp_path.glob("*.whl"))
     with zipfile.ZipFile(wheel) as archive:
-        assert "logbook/core/templates/report.md.j2" in archive.namelist()
+        names = set(archive.namelist())
+    # 보고서 기본 템플릿과 웹 대시보드의 템플릿·정적 파일이 휠에 들어 있어야 한다.
+    assert {
+        "logbook/core/templates/report.md.j2",
+        "logbook/web/templates/base.html",
+        "logbook/web/static/css/app.css",
+        "logbook/web/static/vendor/htmx-2.0.11.min.js",
+    } <= names

@@ -137,7 +137,7 @@ include_commits = false
 author_email = "me@example.com"
 
 [web]
-host = "0.0.0.0"
+host = "localhost"
 port = 9000
 """,
     )
@@ -150,7 +150,7 @@ port = 9000
         author="홍길동", title_format="주간보고 {start}", include_commits=False
     )
     assert config.git == GitConfig(author_email="me@example.com", repos=())
-    assert config.web == WebConfig(host="0.0.0.0", port=9000)
+    assert config.web == WebConfig(host="localhost", port=9000)
 
 
 def test_categories_table_replaces_defaults_in_file_order(config_file: Path) -> None:
@@ -359,6 +359,30 @@ def test_invalid_week_start(config_file: Path) -> None:
 @pytest.mark.parametrize("value", ["-1", "0", "1441", '"480"', "true", "480.0"])
 def test_invalid_daily_target_minutes(config_file: Path, value: str) -> None:
     assert_invalid(config_file, f"daily_target_minutes = {value}\n", "daily_target_minutes")
+
+
+@pytest.mark.parametrize("host", ["localhost", "127.0.0.1"])
+def test_local_web_hosts_are_accepted(config_file: Path, host: str) -> None:
+    write_toml(config_file, f'[web]\nhost = "{host}"\n')
+
+    assert load_config(config_file).web.host == host
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "::1", "192.168.0.10"])
+def test_non_local_web_host_is_rejected(config_file: Path, host: str) -> None:
+    write_toml(config_file, f'[web]\nhost = "{host}"\n')
+
+    with pytest.raises(InvalidInputError) as excinfo:
+        load_config(config_file)
+
+    assert str(excinfo.value) == (
+        f'설정 값이 올바르지 않습니다: web.host = "{host}" (파일: {config_file}). '
+        "설정할 수 있는 값: '127.0.0.1' 또는 'localhost'."
+    )
+
+
+def test_empty_web_host_reports_non_empty_string_first(config_file: Path) -> None:
+    assert_invalid(config_file, '[web]\nhost = ""\n', "web.host", "비어 있지 않은 문자열")
 
 
 @pytest.mark.parametrize("value", ["0", "70000", "true", '"8765"'])

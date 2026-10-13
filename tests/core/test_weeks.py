@@ -1,6 +1,6 @@
 """logbook.core.weeks 단위 테스트."""
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
 
@@ -8,9 +8,12 @@ from logbook.core.errors import InvalidInputError
 from logbook.core.weeks import (
     Week,
     WeekStart,
+    clock_label,
     day_label,
+    full_day,
     parse_date,
     parse_week,
+    total_label,
     week_heading,
     week_of,
 )
@@ -365,3 +368,36 @@ def test_day_label_has_zero_padded_month_day_and_weekday(day: date, expected: st
 )
 def test_week_heading_shows_label_and_range(week: Week, expected: str) -> None:
     assert week_heading(week) == expected
+
+
+# --- 표기: clock_label, total_label, full_day ---
+
+
+def test_clock_label_shows_time_only_for_today() -> None:
+    today = date(2026, 10, 1)
+
+    assert clock_label(datetime(2026, 10, 1, 9, 30), today) == "09:30"
+
+
+def test_clock_label_adds_date_for_other_days() -> None:
+    today = date(2026, 10, 1)
+
+    assert clock_label(datetime(2026, 9, 30, 22, 10), today) == "09-30 (수) 22:10"
+
+
+def test_clock_label_midnight_boundary() -> None:
+    today = date(2026, 10, 1)
+
+    assert clock_label(datetime(2026, 10, 1, 0, 5), today) == "00:05"
+    assert clock_label(datetime(2026, 9, 30, 23, 59), today) == "09-30 (수) 23:59"
+
+
+def test_total_label_says_today_or_month_day() -> None:
+    today = date(2026, 10, 1)
+
+    assert total_label(today, today) == "오늘"
+    assert total_label(date(2026, 9, 30), today) == "09-30"
+
+
+def test_full_day_includes_year_and_weekday() -> None:
+    assert full_day(date(2026, 10, 1)) == "2026-10-01 (목)"

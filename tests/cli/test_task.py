@@ -134,6 +134,14 @@ def test_estimate_has_no_upper_limit(
         assert services.get_task(s, 1).estimate_minutes == 2400
 
 
+def test_huge_estimate_is_rejected_in_one_line(
+    lb: Callable[..., Result], initialized: Path
+) -> None:
+    result = lb("task", "add", "T", "--est", "99999999999999999999h")
+
+    assert_rejected(result, "예상 공수가 너무 큽니다. 더 작은 값으로 입력하세요.")
+
+
 @pytest.mark.parametrize(
     ("args", "message"),
     [
