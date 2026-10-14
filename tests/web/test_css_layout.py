@@ -183,6 +183,7 @@ def test_old_single_radius_token_is_gone() -> None:
         ("tasks.css", ".board__col", "var(--radius-md)"),
         ("app.css", ".config-notice", "var(--radius-md)"),
         ("report.css", ".report__preview", "var(--radius-md)"),
+        ("report.css", ".report-polish", "var(--radius-md)"),
         ("app.css", ".quick input, .quick select", "var(--radius-xs)"),
         ("components.css", ".timer-start input, .timer-start select", "var(--radius-xs)"),
         (
