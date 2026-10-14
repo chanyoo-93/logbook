@@ -354,7 +354,7 @@ uv run lb serve --open
 host = "127.0.0.1"   # 127.0.0.1 또는 localhost (표시용 주소). 다른 값은 오류
 port = 8765
 heading_font = "Bookk Gothic"    # 제목·큰 숫자 글꼴
-document_font = "Bookk Gothic"   # 보고서 미리보기·특이사항 글꼴
+document_font = "Bookk Gothic"   # 보고서 미리보기·요약 글꼴
 body_font = "Bookk Gothic"       # 본문·표·차트 글꼴
 ```
 
@@ -362,7 +362,7 @@ body_font = "Bookk Gothic"       # 본문·표·차트 글꼴
 
 기본 글꼴은 부크크 고딕(Bookk Gothic)입니다. 글꼴 파일은 이 프로그램에 들어 있지 않습니다. 부크크에서 글꼴을 받아 PC에 설치해 쓰고, 사용 조건은 부크크의 약관을 따릅니다. 설치하지 않으면 기본 고딕 목록(Pretendard, Apple SD Gothic Neo, Malgun Gothic, Noto Sans KR 중 PC에 있는 것)으로 보입니다.
 
-- `heading_font`는 제목과 큰 숫자, `document_font`는 보고서 미리보기와 특이사항, `body_font`는 본문·표·차트에 쓰입니다.
+- `heading_font`는 제목과 큰 숫자, `document_font`는 보고서 미리보기와 문장 다듬기 결과 글, `body_font`는 본문·표·차트에 쓰입니다.
 - 이 PC에 설치된 다른 글꼴로 바꾸려면 이름을 하나만 적습니다. 예: `body_font = "나눔고딕"`. 쉼표로 여러 개를 적거나 따옴표·세미콜론·중괄호 등을 넣으면 설정 오류입니다. PC에 없는 글꼴 이름이면 기본 고딕으로 보입니다.
 - 빈 값(`body_font = ""`)이면 그 글꼴은 정하지 않고 기본 고딕을 씁니다.
 - 설치 방법. Windows: 글꼴 파일을 오른쪽 클릭하고 `설치`를 고릅니다. macOS: 글꼴 파일을 두 번 클릭하고 서체 관리자에서 `서체 설치`를 누릅니다.

@@ -470,12 +470,12 @@ def project_color(project: Project) -> str:
 
 ## Task 8-7: 문서 마무리와 Phase 8 완료
 
-- [ ] **SPEC.md**
+- [x] **SPEC.md** (3f3e70b)
   - 3장(설정): `[web]`의 `heading_font`·`document_font`·`body_font`, 기본값, 이름 규칙, 설치되지 않으면 기본 글꼴, 다시 시작 없이 반영
   - 6장(웹): `GET /fonts.css`, 설정 화면의 글꼴 줄, 디자인 토큰 원칙(색은 데이터·상태에만, 강조색 하나, 꼬리표·색 점), 프로젝트 색 규칙(지정 색 또는 ID 팔레트, 차트 포함)
-- [ ] **README.md**: 글꼴 설정 절(부크크 폰트는 부크크에서 받아 PC에 설치하고 약관을 따른다, 설정 예시, Windows·macOS 설치 방법 한 줄씩), 화면 설명의 바뀐 모양
-- [ ] **CLAUDE.md, AGENTS.md**: `web/fonts.py`, `web/pages/fonts.py`, `partials/marks.html`, `static/css` 설명(토큰 종류)
-- [ ] **ROADMAP.md**: Phase 8 체크
+- [x] **README.md** (3f3e70b): 글꼴 설정 절(부크크 폰트는 부크크에서 받아 PC에 설치하고 약관을 따른다, 설정 예시, Windows·macOS 설치 방법 한 줄씩), 화면 설명의 바뀐 모양
+- [x] **CLAUDE.md, AGENTS.md** (3f3e70b): `web/fonts.py`, `web/pages/fonts.py`, `partials/marks.html`, `static/css` 설명(토큰 종류)
+- [x] **ROADMAP.md** (3f3e70b): Phase 8 체크
 - [ ] **화면 확인(메인 세션, Edge 헤드리스)**: 다섯 화면 × 1280·375·320px × 밝은·어두운, 가로 넘침 없음, 키보드 포커스, 글꼴 적용 경로
 - [ ] **브라우저 확인(사용자, Windows·macOS, 절차는 PR 댓글)**: 부크크 폰트를 설치한 PC에서 제목·큰 숫자·보고서 글꼴, 설정 화면 미리보기, 설정 파일을 고친 뒤 새로 고침, 어두운 테마
 - [ ] **전체 검증:** ruff, format, mypy(core strict, 전체), pytest(core·web 100%), GitHub Actions 두 OS

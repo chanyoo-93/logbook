@@ -126,7 +126,7 @@ path = "~/work/admin-web"
 host = "127.0.0.1"             # 127.0.0.1 | localhost (표시용 주소)
 port = 8765
 heading_font = "Bookk Gothic"   # 제목·큰 숫자 글꼴(PC에 설치된 글꼴 이름 하나). ""는 기본 고딕 목록
-document_font = "Bookk Gothic"  # 보고서 미리보기·특이사항 글꼴
+document_font = "Bookk Gothic"  # 보고서 미리보기·요약 글꼴
 body_font = "Bookk Gothic"      # 본문·표·차트 글꼴
 
 [llm]
@@ -379,7 +379,7 @@ Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했
 - **`GET /fonts.css`:** 설정 `[web]`의 글꼴을 CSS 변수(`--font-heading`, `--font-document`, `--font-body`)로 내는 스타일시트다. 응답은 `Content-Type: text/css; charset=utf-8`이고 `/static/`이 아니라서 `Cache-Control: no-store`가 붙는다. 값은 `"글꼴 이름", var(--font-sans)` 꼴이고 빈 값인 키는 줄을 내지 않아 `app.css`의 기본값(`var(--font-sans)`)이 남는다. 요청마다 현재 설정으로 만들기 때문에 설정 파일을 고친 뒤 서버를 다시 시작하지 않고 새로 고침만 하면 반영된다(3장). `base.html`과 오류 페이지가 `STYLESHEETS`의 모든 파일 뒤에 이 주소를 링크한다(`STYLESHEETS`에는 넣지 않는다). 글꼴을 인라인 스타일이 아닌 별도 스타일시트로 내므로 CSP(인라인 스타일 없음)와 맞는다.
 - **글꼴이 쓰이는 곳:** `heading_font`는 제목과 큰 숫자(머리 로고, 패널·보드·보고서 제목, 요약 카드 숫자), `document_font`는 보고서 미리보기와 문장 다듬기 결과 글, 설정 화면의 문서 글꼴 미리보기, `body_font`는 본문·표·입력칸과 대시보드 차트 글자(`static/js/dashboard.js`가 `--font-body`를 읽는다)다.
 - **설정 화면 글꼴 줄:** `/settings`의 설정 정보에 제목 글꼴·문서 글꼴·본문 글꼴 세 줄을 보여 준다. 각 줄은 설정 값(빈 값이면 `기본 글꼴`)과 그 글꼴로 그린 미리보기 문장(`가나다 ABC 123 · 8h 55m`)이다. 아래 안내 문장은 설치된 글꼴 이름으로 정하며 설치되지 않았으면 기본 글꼴로 보인다고 알린다. 글꼴 설정은 웹에서 저장하지 않는다.
-- **디자인 토큰:** 색 값은 `app.css`의 `:root` 두 벌(밝은·어두운)에만 있고 다른 CSS는 토큰만 쓴다. 색은 데이터(프로젝트·카테고리)와 상태(`--ok`, `--danger`)에만 쓰고, 강조색 `--accent`는 링크·포커스·주 버튼 전용이다. 모서리는 `--radius-xs`(4px, 입력칸)·`--radius-sm`(8px, 버튼)·`--radius-md`(12px, 카드·패널)·`--radius-full`(꼬리표), 입력칸 테두리는 배경과 3:1 이상 대비인 `--control-border`(옅은 `--rule`은 장식용), 그림자는 `--shadow-soft`·`--shadow-raised`, 글자 크기(`--text-*`)와 간격(`--space-*`)도 토큰이다.
+- **디자인 토큰:** 색 값은 `app.css`의 `:root` 두 벌(밝은·어두운)에만 있고 다른 CSS는 토큰만 쓴다. 색은 데이터(프로젝트·카테고리)와 상태(`--ok`, `--danger`)에만 쓰고, 강조색 `--accent`는 링크·포커스·주 버튼 전용이다. 모서리는 `--radius-xs`(4px, 입력칸)·`--radius-sm`(8px, 버튼·태스크 카드)·`--radius-md`(12px, 패널·보드 열)·`--radius-full`(꼬리표), 입력칸 테두리는 배경과 3:1 이상 대비인 `--control-border`(옅은 `--rule`은 장식용), 그림자는 `--shadow-soft`·`--shadow-raised`, 글자 크기(`--text-*`)와 간격(`--space-*`)도 토큰이다.
 - **꼬리표(pill):** `templates/partials/marks.html`의 `pill` 매크로와 `.pill`(`.pill--ok`, `.pill--danger`)로 카테고리, 계획 주차(이번 주·다음 주·지난 주), `예상 초과`, `이월 후보`, 타이머의 `진행 중`, 프로젝트의 `보관`·`사용 중`을 같은 모양으로 보여 준다. `ok`와 `danger`는 상태에만 쓴다.
 - **프로젝트 색 점:** 같은 파일의 `project_mark` 매크로가 프로젝트 이름 앞에 색 점(SVG, `aria-hidden`)을 붙인다. CSP 때문에 `style` 속성 대신 SVG `fill` 속성으로 칠한다. 태스크 카드, 기록 표, 대시보드 최근 기록에 쓴다.
 - **프로젝트 색 규칙(`web/pages/views.py`의 `project_color`):** 프로젝트에 지정한 색(`#rrggbb`)이 있으면 그 색, 없거나 형식이 틀리면 프로젝트 ID로 고른 `CHART_PALETTE` 색이다. 대시보드 프로젝트 차트(`pages/summary.py`)도 같은 규칙이라 같은 프로젝트는 어느 화면·어느 주에서나 같은 색이다. 바뀐 점: 전에는 차트 색이 그 주에 나타난 순서로 정해졌다. 카테고리 색 규칙은 그대로다.
