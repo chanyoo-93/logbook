@@ -13,6 +13,7 @@ from logbook.core.services.backup_import import import_records
 from logbook.core.services.github_import import (
     IssueImport,
     IssueImportResult,
+    check_import_target,
     import_issues,
     plan_issue_import,
 )
@@ -138,6 +139,7 @@ __all__ = [
     "existing_external_refs",
     "IssueImport",
     "IssueImportResult",
+    "check_import_target",
     "import_issues",
     "plan_issue_import",
 ]

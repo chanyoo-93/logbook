@@ -210,3 +210,17 @@ def test_parse_html_helper_sees_panel_section(
     ).text
 
     assert [e.tag for e in parse_html(html) if e.attrs.get("id") == "report-polish"] == ["section"]
+
+
+def test_broken_user_template_hides_polish_area_even_with_provider(
+    client: TestClient, tmp_home: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _providers(monkeypatch, "anthropic", "openai")
+    (tmp_home / "report.md.j2").write_text("a\n{% if %}\n", encoding="utf-8")
+
+    html = client.get("/report").text
+
+    assert "보고서 템플릿을 읽지 못했습니다" in html
+    assert "report__polish-form" not in html
+    assert "report-polish" not in html
+    assert "polish-progress" not in html

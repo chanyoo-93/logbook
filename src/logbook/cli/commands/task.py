@@ -245,8 +245,16 @@ def import_gh(
     # services는 SQLAlchemy를 로드하므로 검증이 끝난 뒤에 import한다.
     from logbook.core import services
 
+    project_slug = project if project is not None else cfg.default_project
     with runtime.session(cfg) as s:
         if dry_run:
+            # 실제 실행과 같은 검증을 거친다(새 이슈가 없어도 잘못된 프로젝트·카테고리는 오류).
+            services.check_import_target(
+                s,
+                project_slug=project_slug,
+                category=category,
+                allowed_categories=tuple(cfg.categories),
+            )
             plan = services.plan_issue_import(s, the_repo, issues)
             _print_import_plan(plan)
             return
@@ -254,7 +262,7 @@ def import_gh(
             s,
             the_repo,
             issues,
-            project_slug=project if project is not None else cfg.default_project,
+            project_slug=project_slug,
             category=category,
             planned_week=planned_week,
             allowed_categories=tuple(cfg.categories),

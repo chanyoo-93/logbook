@@ -170,3 +170,26 @@ def test_import_gh_unknown_project_creates_nothing(
     assert result.exit_code == 1
     with open_db() as s:
         assert services.list_tasks(s, statuses=None) == []
+
+
+def test_import_gh_dry_run_rejects_unknown_project_and_category(
+    lb: Callable[..., Result], payment: Path, fake_issues: FakeListIssues
+) -> None:
+    unknown = lb("task", "import-gh", "a/b", "-p", "nope", "--dry-run")
+    bad_category = lb("task", "import-gh", "a/b", "-p", "payment", "-c", "zzz", "--dry-run")
+
+    assert unknown.exit_code == 1 and unknown.stdout == ""
+    assert bad_category.exit_code == 1 and bad_category.stdout == ""
+    # 실제 실행과 같은 오류 문구다.
+    real = lb("task", "import-gh", "a/b", "-p", "payment", "-c", "zzz")
+    assert bad_category.stderr == real.stderr
+
+
+def test_import_gh_all_skipped_still_rejects_unknown_project(
+    lb: Callable[..., Result], payment: Path, fake_issues: FakeListIssues
+) -> None:
+    run_ok(lb, "task", "import-gh", "a/b", "-p", "payment")
+
+    result = lb("task", "import-gh", "a/b", "-p", "nope")
+
+    assert result.exit_code == 1 and result.stdout == ""

@@ -135,3 +135,39 @@ def test_import_issues_blank_title_stops_with_core_message(seeded: Session) -> N
 
     seeded.rollback()
     assert task_count(seeded) == before
+
+
+def test_import_issues_with_only_existing_issues_still_checks_target(seeded: Session) -> None:
+    do_import(seeded, [issue(1)])
+
+    with pytest.raises(NotFoundError):
+        do_import(seeded, [issue(1)], project_slug="nope")
+    with pytest.raises(InvalidInputError):
+        do_import(seeded, [issue(1)], category="zzz")
+
+
+def test_check_import_target_accepts_active_project_and_allowed_category(
+    seeded: Session,
+) -> None:
+    services.check_import_target(
+        seeded, project_slug="payment", category=None, allowed_categories=CATEGORIES
+    )
+    services.check_import_target(
+        seeded, project_slug="payment", category="docs", allowed_categories=CATEGORIES
+    )
+
+
+def test_check_import_target_rejects_unknown_archived_and_bad_category(seeded: Session) -> None:
+    with pytest.raises(NotFoundError):
+        services.check_import_target(
+            seeded, project_slug="nope", category=None, allowed_categories=CATEGORIES
+        )
+    with pytest.raises(InvalidInputError):
+        services.check_import_target(
+            seeded, project_slug="payment", category="zzz", allowed_categories=CATEGORIES
+        )
+    services.archive_project(seeded, "payment")
+    with pytest.raises(InvalidInputError):
+        services.check_import_target(
+            seeded, project_slug="payment", category=None, allowed_categories=CATEGORIES
+        )

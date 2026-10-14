@@ -88,55 +88,33 @@ def test_returns_empty_when_database_is_old_version(tmp_home: Path) -> None:
     assert completion.complete_project("") == []
 
 
-def test_bash_completion_lists_project_slugs(seeded: Path) -> None:
+def bash_complete(words: str, cword: int) -> list[str]:
+    """bash 완성 출력(줄마다 후보 하나)을 줄 단위로 돌려준다."""
     result = CliRunner().invoke(
         app,
         [],
         prog_name="lb",
-        env={
-            "_LB_COMPLETE": "complete_bash",
-            "COMP_WORDS": "lb add 1h x -p ",
-            "COMP_CWORD": "5",
-        },
+        env={"_LB_COMPLETE": "complete_bash", "COMP_WORDS": words, "COMP_CWORD": str(cword)},
     )
+    return result.output.splitlines()
 
-    assert "pay" in result.output
-    assert "pal" in result.output
-    assert "old" not in result.output
+
+def test_bash_completion_lists_project_slugs(seeded: Path) -> None:
+    assert bash_complete("lb add 1h x -p ", 5) == ["common", "pal", "pay"]
 
 
 def test_bash_completion_lists_task_ids(seeded: Path) -> None:
-    result = CliRunner().invoke(
-        app,
-        [],
-        prog_name="lb",
-        env={"_LB_COMPLETE": "complete_bash", "COMP_WORDS": "lb task start ", "COMP_CWORD": "3"},
-    )
+    assert bash_complete("lb task start ", 3) == ["1", "2"]
 
-    assert "1" in result.output
-    assert "3" not in result.output.split()
+
+def test_bash_completion_for_timer_start_task_option(seeded: Path) -> None:
+    assert bash_complete("lb start -t ", 3) == ["1", "2"]
 
 
 def test_bash_completion_for_project_subcommands(seeded: Path) -> None:
-    def complete(words: str, cword: int) -> str:
-        return (
-            CliRunner()
-            .invoke(
-                app,
-                [],
-                prog_name="lb",
-                env={
-                    "_LB_COMPLETE": "complete_bash",
-                    "COMP_WORDS": words,
-                    "COMP_CWORD": str(cword),
-                },
-            )
-            .output
-        )
-
-    assert "old" in complete("lb project unarchive ", 3)
-    assert "old" not in complete("lb project archive ", 3)
-    assert "old" in complete("lb task list -p ", 4)
+    assert bash_complete("lb project unarchive ", 3) == ["old"]
+    assert bash_complete("lb project archive ", 3) == ["common", "pal", "pay"]
+    assert bash_complete("lb task list -p ", 4) == ["common", "old", "pal", "pay"]
 
 
 def test_help_shows_completion_options(lb: Lb) -> None:
