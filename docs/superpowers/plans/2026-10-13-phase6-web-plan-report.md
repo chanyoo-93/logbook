@@ -1309,7 +1309,7 @@ class SettingsInfoView:
   - 다섯 화면(`/`, `/logs`, `/tasks`, `/report`, `/settings`) × 밝은·어두운 테마 × 1280px·375px 스크린샷을 찍는다. 320px도 한 장씩 찍어 머리 메뉴 줄바꿈과 태스크·설정 표를 본다. 어두운 테마는 `--force-dark-mode` 또는 `--blink-settings=preferredColorScheme=0`으로 켜고, 둘 중 동작하는 것을 기록한다.
   - 카드 수정·상태 변경·이월, 특이사항 저장 흐름에서 결과 줄·오류 알림이 보이는 자리(뷰포트·가로 스크롤 안)에 있는지 잰다.
   - 프로젝트 색 견본이 보이는지 본다.
-- [ ] **브라우저 확인(사용자, Windows·macOS, 절차는 PR 댓글):**
+- [ ] **브라우저 확인(사용자, Windows·macOS, 절차는 PR 댓글):** Windows는 2026-10-14에 전 항목 확인했다. macOS는 병합 뒤 사용자가 따로 확인한다.
   - 칸반: 상태 변경, 카드 수정(Enter·Esc, 한글 조합), 이월
   - 보고서: 복사(실제 클립보드), 내려받기, 특이사항(한글 조합)
   - 설정: 프로젝트 추가·수정·보관·보관 해제
@@ -1318,8 +1318,8 @@ class SettingsInfoView:
   - OS 다크 모드 전환(차트 포함)
   - 절차서 규칙([[manual-check-procedures]])을 지킨다: 새 터미널마다 임시 DB 환경변수, 동작이 일어나는 순서, 행은 ID로 가리킨다. 이번 Task부터 정적 파일은 no-cache라 Ctrl+F5 안내가 필요 없다.
   - 업그레이드 시험은 임시 DB 복사본으로 한다. 실제 DB는 사용자가 원할 때 업그레이드하고, 그때 백업 위치를 안내한다.
-- [ ] **전체 검증:** `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy src/logbook/core`, `uv run mypy src/logbook`, `uv run pytest`(커버리지: 전체, core·web 100% 유지), GitHub Actions `windows-latest`·`macos-latest`
-- [ ] **PR:** develop 대상, `Closes #13`
+- [x] **전체 검증:** `uv run ruff check .`, `uv run ruff format --check .`, `uv run mypy src/logbook/core`, `uv run mypy src/logbook`, `uv run pytest`(커버리지: 전체, core·web 100% 유지), GitHub Actions `windows-latest`·`macos-latest`
+- [x] **PR:** develop 대상, `Closes #13` (#14)
 
 ---
 
