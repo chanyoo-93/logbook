@@ -1,8 +1,10 @@
 /* 보고서 화면 */
 .report__title,
 .report-notes__title {
+  font-family: var(--font-heading);
   font-size: var(--text-md);
   font-weight: 700;
+  letter-spacing: var(--tracking-title);
 }
 
 /* 복사 결과 알림(live region)은 DOM에 두되, 비어 있는 동안에는 자리를 차지하지 않는다. */
@@ -41,6 +43,7 @@ a.btn {
   border-radius: var(--radius-md);
   background: var(--bg);
   font: inherit;
+  font-family: var(--font-document);
   font-size: var(--text-sm);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -128,6 +131,7 @@ a.btn {
 
 .report-polish__text {
   margin-top: var(--space-2);
+  font-family: var(--font-document);
   line-height: 1.7;
   overflow-wrap: anywhere;
   white-space: pre-wrap;

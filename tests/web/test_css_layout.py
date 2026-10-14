@@ -232,3 +232,47 @@ def test_button_press_effect_and_transition() -> None:
     assert "transition: transform 80ms ease-out, background-color 120ms ease-out" in _declarations(
         css, ".btn"
     )
+
+
+_HEADING_SELECTORS = [
+    ("app.css", ".masthead__brand", "letter-spacing: var(--tracking-display)"),
+    ("dashboard.css", ".panel__title", "letter-spacing: var(--tracking-title)"),
+    ("tasks.css", ".board__title", "letter-spacing: var(--tracking-title)"),
+    ("tasks.css", ".board__col-title", "letter-spacing: var(--tracking-title)"),
+    ("tasks.css", ".plan__title", "letter-spacing: var(--tracking-title)"),
+    ("report.css", ".report__title, .report-notes__title", "letter-spacing: var(--tracking-title)"),
+    ("dashboard.css", ".stat__value", "letter-spacing: var(--tracking-display)"),
+]
+
+
+@pytest.mark.parametrize(("file_name", "selector", "tracking"), _HEADING_SELECTORS)
+def test_headings_and_big_numbers_use_heading_font_and_tracking(
+    file_name: str, selector: str, tracking: str
+) -> None:
+    declarations = _declarations(_read(file_name), selector)
+
+    assert "font-family: var(--font-heading)" in declarations
+    assert tracking in declarations
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [".report__preview", ".report-polish__text"],
+)
+def test_report_text_uses_document_font(selector: str) -> None:
+    assert "font-family: var(--font-document)" in _declarations(_read("report.css"), selector)
+
+
+def test_report_preview_sets_document_font_after_font_inherit() -> None:
+    css = _squash(_read("report.css"))
+    block = css[css.index(".report__preview { padding") :]
+    block = block[: block.index("}")]
+
+    assert block.index("font: inherit") < block.index("font-family: var(--font-document)")
+
+
+def test_tracking_tokens_are_in_root() -> None:
+    declarations = _declarations(_read("app.css"), ":root")
+
+    assert "--tracking-title: -0.01em" in declarations
+    assert "--tracking-display: -0.035em" in declarations
