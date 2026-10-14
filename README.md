@@ -149,7 +149,7 @@ PowerShell에서는 `Copy-Item`으로만 복사하세요. `>`, `Out-File`, `Set-
 | `data.plan` | 다음 주 계획. 각 항목: `project`, `estimate_total`, `items` |
 | `data.plan[].items` | 각 태스크: `title`, `task_id`, `estimate`(없으면 `None`), `carried`(이번 주에서 넘어온 후보면 참) |
 | `data.notes`, `data.risks` | 그 주의 특이사항, 리스크 텍스트(웹에서 저장, 없으면 빈 문자열) |
-| `data.summary` | AI가 만든 요약 문단(`--polish`를 쓴 때만, 없으면 빈 문자열). 기본 템플릿은 제목 아래에 `## 요약 (자동 생성)`으로 넣습니다. |
+| `data.summary` | AI가 만든 요약 문단(`--polish`를 쓴 때만, 없으면 빈 문자열). 기본 템플릿은 제목 아래에 `## 요약 (자동 생성)`으로 넣습니다. 사용자 템플릿에는 `data.summary`를 직접 넣어야 요약이 나옵니다(없으면 `--polish`가 미리 경고합니다). |
 | `data.commits` | 커밋 부록. 각 묶음: `project`, `repo`(저장소 폴더 이름), `commits`(각 커밋: `date`, `hash`, `subject`). 없으면 빈 목록 |
 
 3절의 기본 템플릿 출력은 다음과 같습니다(빈 칸은 빠지고, 둘 다 비면 `(작성하세요)` 한 줄입니다).

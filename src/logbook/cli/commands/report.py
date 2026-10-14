@@ -22,6 +22,10 @@ POLISH_CONFIRM = (
 )
 POLISH_CANCELLED = "문장 다듬기를 취소했습니다. 보고서를 만들지 않았습니다."
 POLISH_NO_INPUT = "확인 입력이 없습니다. 보내려면 --yes를 붙이세요."
+TEMPLATE_WITHOUT_SUMMARY = (
+    "사용자 보고서 템플릿에 data.summary가 없어 요약이 출력에 나오지 않습니다: {path}. "
+    "템플릿에 data.summary를 넣으세요."
+)
 POLISH_REQUESTING = " {label}에 요약을 요청하는 중입니다…"
 
 
@@ -97,15 +101,38 @@ def _check_polish_options(polish: bool, provider: str | None) -> None:
         raise InvalidInputError(polish_core.UNKNOWN_PROVIDER.format(echo=echo_input(provider)))
 
 
+def _choose_provider(build: ReportBuild, provider: str | None) -> str:
+    """--polish에 쓸 제공자. 쓸 수 있는 것이 없으면 git 수집 등 다른 일을 하기 전에 오류가 난다."""
+    from logbook.core import polish
+
+    return polish.choose_provider(build.cfg.llm, provider)
+
+
+def _warn_if_template_hides_summary() -> None:
+    """사용자 템플릿이 data.summary를 쓰지 않으면 요약이 출력에 나오지 않는다고 미리 알린다."""
+    from logbook.core.config import config_path
+    from logbook.core.report import user_template_path
+
+    path = user_template_path(config_path())
+    if not path.is_file():
+        return
+    try:
+        source = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return  # 읽지 못하는 템플릿은 렌더링 단계가 자기 오류로 알린다.
+    if "summary" not in source:
+        console.print_warning(TEMPLATE_WITHOUT_SUMMARY.format(path=path))
+
+
 def _polished(
     build: ReportBuild,
     data: "ReportData",
-    provider: str | None,
+    chosen: str,
     *,
     out_path: Path | None,
     yes: bool,
 ) -> "ReportData":
-    """제공자를 고르고 확인을 모두 받은 뒤 요약을 요청해 summary를 채운 데이터를 돌려준다.
+    """확인을 모두 받은 뒤 요약을 요청해 summary를 채운 데이터를 돌려준다.
 
     비용이 드는 요청 전에 거절할 수 있는 확인(보낼 내용, --out 덮어쓰기)을 먼저 다 받는다.
     """
@@ -114,7 +141,7 @@ def _polished(
     from logbook.core import polish
     from logbook.core.polish import prompt
 
-    chosen = polish.choose_provider(build.cfg.llm, provider)
+    _warn_if_template_hides_summary()
     label = polish.PROVIDER_LABELS[chosen]
     model = polish.model_for(build.cfg.llm, chosen)
     if not yes:
@@ -178,9 +205,10 @@ def report(
     _check_polish_options(polish, provider)
     out_path = runtime.prepare_output_path(out) if out is not None else None
     build = _build_data(week)
+    chosen = _choose_provider(build, provider) if polish else None
     data = _with_commits(build)
-    if polish:
-        data = _polished(build, data, provider, out_path=out_path, yes=yes)
+    if chosen is not None:
+        data = _polished(build, data, chosen, out_path=out_path, yes=yes)
     markdown = _render(data)
     # 요약을 요청했다면 덮어쓰기 확인은 요청 전에 이미 끝났다.
     _deliver(markdown, out_path, copy=copy, yes=yes, overwrite_confirmed=polish)

@@ -10,6 +10,7 @@ TIMEOUT_SECONDS = 60.0
 MAX_RETRIES = 2
 MAX_OUTPUT_TOKENS = 4000
 EFFORT = "low"
+CONTENT_FILTER_REASON = "content_filter"
 
 
 def _has_refusal(response: Any) -> bool:
@@ -24,6 +25,9 @@ def _has_refusal(response: Any) -> bool:
 def _text_of(response: Any) -> str:
     label = PROVIDER_LABELS[PROVIDER]
     if response.status == "incomplete":
+        details = response.incomplete_details  # Response.incomplete_details: {reason} 또는 None
+        if details is not None and details.reason == CONTENT_FILTER_REASON:
+            raise ExternalServiceError(prompt.REFUSED.format(label=label))
         raise ExternalServiceError(prompt.TRUNCATED.format(label=label))
     text: str = response.output_text
     if not text and _has_refusal(response):

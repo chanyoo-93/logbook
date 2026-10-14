@@ -9,7 +9,7 @@ import pytest
 
 from logbook.core.config import LlmConfig
 from logbook.core.errors import ExternalServiceError
-from logbook.core.polish import chatgpt, polish_report
+from logbook.core.polish import chatgpt, polish_report, prompt
 from tests.core.test_report_render import three_project_data
 
 SYSTEM = "시스템 프롬프트"
@@ -23,8 +23,12 @@ def response(
     *,
     status: str = "completed",
     output: tuple[SimpleNamespace, ...] = (),
+    incomplete_reason: str | None = None,
 ) -> SimpleNamespace:
-    return SimpleNamespace(status=status, output_text=output_text, output=list(output))
+    details = SimpleNamespace(reason=incomplete_reason) if incomplete_reason else None
+    return SimpleNamespace(
+        status=status, output_text=output_text, output=list(output), incomplete_details=details
+    )
 
 
 def refusal_message() -> SimpleNamespace:
@@ -93,6 +97,26 @@ def test_incomplete_status_is_reported_as_truncated() -> None:
     assert str(error.value) == (
         "ChatGPT 응답이 길이 제한에 걸려 끝까지 오지 않았습니다. 다시 시도하세요."
     )
+
+
+def test_incomplete_by_content_filter_is_reported_as_refused() -> None:
+    client = FakeClient(response("", status="incomplete", incomplete_reason="content_filter"))
+
+    with pytest.raises(ExternalServiceError) as caught:
+        chatgpt.summarize(SYSTEM, USER, model=DEFAULT_MODEL, client=client)
+
+    assert str(caught.value) == prompt.REFUSED.format(label="ChatGPT")
+
+
+def test_incomplete_by_max_output_tokens_is_reported_as_truncated() -> None:
+    client = FakeClient(
+        response("잘린", status="incomplete", incomplete_reason="max_output_tokens")
+    )
+
+    with pytest.raises(ExternalServiceError) as caught:
+        chatgpt.summarize(SYSTEM, USER, model=DEFAULT_MODEL, client=client)
+
+    assert str(caught.value) == prompt.TRUNCATED.format(label="ChatGPT")
 
 
 def test_refusal_item_without_text_is_reported_as_refused() -> None:

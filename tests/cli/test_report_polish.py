@@ -9,13 +9,15 @@ import pytest
 from typer.testing import Result
 
 from logbook.cli import render
-from logbook.core import polish
+from logbook.core import gitcollect, polish
 from logbook.core.config import LlmConfig
 from logbook.core.errors import ExternalServiceError
+from logbook.core.gitcollect import RepoCommits
 from logbook.core.polish import PolishResult
 from logbook.core.report import ReportData
 from tests.cli.helpers import Clipboard, assert_rejected, run_ok
 from tests.cli.test_report import expected_report
+from tests.helpers import FakeCollect
 
 SUMMARY = "이번 주에는 결제 재시도를 구현했습니다."
 SUMMARY_HEADING = "## 요약 (자동 생성)"
@@ -25,6 +27,10 @@ CONFIRM_QUESTION = (
     "Claude(claude-opus-5-5)로 보낼까요? [y/N]: "
 )
 REQUESTING = f"{render.info_mark()} Claude에 요약을 요청하는 중입니다…\n"
+TEMPLATE_WARNING = (
+    "사용자 보고서 템플릿에 data.summary가 없어 요약이 출력에 나오지 않습니다: {path}. "
+    "템플릿에 data.summary를 넣으세요."
+)
 PROVIDER_OPTION_WITHOUT_POLISH = "--provider 옵션은 --polish와 함께 쓰세요."
 CANCELLED = "문장 다듬기를 취소했습니다. 보고서를 만들지 않았습니다.\n"
 NO_INPUT = "확인 입력이 없습니다. 보내려면 --yes를 붙이세요.\n"
@@ -241,3 +247,76 @@ def test_report_without_polish_has_no_summary(
     assert result.stdout == expected_report()
     assert SUMMARY_HEADING not in result.stdout
     assert fake_polish.calls == []
+
+
+def test_polish_without_provider_does_not_run_git_or_warn(
+    lb: Callable[..., Result],
+    seeded: Path,
+    tmp_home: Path,
+    fake_polish: FakePolish,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_home / "config.toml").write_text(
+        f'[[git.repos]]\nproject = "payment"\npath = "{tmp_home.as_posix()}"\n',
+        encoding="utf-8",
+        newline="\n",
+    )
+    fake_collect = FakeCollect((RepoCommits("payment", tmp_home, (), "git 실패"),))
+    monkeypatch.setattr(gitcollect, "collect_commits", fake_collect)
+    monkeypatch.delenv("ANTHROPIC_API_KEY")
+    monkeypatch.delenv("OPENAI_API_KEY")
+
+    result = lb("report", "--polish", "--yes")
+
+    assert_rejected(result, polish.NO_PROVIDER)
+    assert fake_collect.calls == []
+    assert "주의" not in result.stderr
+
+
+def template_warning(tmp_home: Path) -> str:
+    return TEMPLATE_WARNING.format(path=tmp_home / "report.md.j2")
+
+
+def test_polish_warns_before_confirmation_when_template_lacks_summary(
+    lb: Callable[..., Result], seeded: Path, tmp_home: Path, fake_polish: FakePolish
+) -> None:
+    (tmp_home / "report.md.j2").write_text("내 보고서: {{ data.title }}\n", encoding="utf-8")
+
+    result = lb("report", "--polish", input="y\n")
+
+    assert result.exit_code == 0
+    assert result.stderr == f"주의: {template_warning(tmp_home)}\n" + CONFIRM_QUESTION + REQUESTING
+    assert result.stdout == "내 보고서: 주간업무보고 (2026-09-28 ~ 2026-10-04)\n"
+    assert len(fake_polish.calls) == 1
+
+
+def test_polish_warns_with_yes_too_and_still_requests(
+    lb: Callable[..., Result], seeded: Path, tmp_home: Path, fake_polish: FakePolish
+) -> None:
+    (tmp_home / "report.md.j2").write_text("{{ data.title }}\n", encoding="utf-8")
+
+    result = run_ok(lb, "report", "--polish", "--yes")
+
+    assert result.stderr == f"주의: {template_warning(tmp_home)}\n" + REQUESTING
+    assert len(fake_polish.calls) == 1
+
+
+def test_polish_does_not_warn_when_template_uses_summary(
+    lb: Callable[..., Result], seeded: Path, tmp_home: Path, fake_polish: FakePolish
+) -> None:
+    (tmp_home / "report.md.j2").write_text("{{ data.summary }}\n", encoding="utf-8")
+
+    result = run_ok(lb, "report", "--polish", "--yes")
+
+    assert result.stderr == REQUESTING
+    assert result.stdout == f"{SUMMARY}\n"
+
+
+def test_polish_ignores_unreadable_user_template(
+    lb: Callable[..., Result], seeded: Path, tmp_home: Path, fake_polish: FakePolish
+) -> None:
+    (tmp_home / "report.md.j2").write_bytes(b"\xff\xfe{{ data.summary }}")
+
+    result = lb("report", "--polish", "--yes")
+
+    assert "data.summary가 없어" not in result.stderr
