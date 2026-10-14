@@ -298,8 +298,8 @@ def fonts_stylesheet(ctx: Ctx) -> Response:
 | 설정 화면 | 기본 설정 / `body_font = ""` | 세 줄과 미리보기 class, 빈 값은 `기본 글꼴`, 안내 문구 |
 | CSS | `body`가 `var(--font-body)`, 글꼴 토큰 기본값이 `:root`에 있다 | |
 
-- [ ] RED → GREEN → 커밋 `feat: 설정에서 설치된 글꼴을 지정하는 /fonts.css와 설정 화면 미리보기 추가`
-- [ ] 메인 세션: 전후 스크린샷. 이 PC에 부크크가 없으면 임시 설정의 `heading_font`를 설치된 글꼴(예: `Malgun Gothic`, 문서는 `Batang`)로 바꿔 적용 경로를 확인한다 → 사용자 승인
+- [x] RED → GREEN → 커밋 `feat: 설정에서 설치된 글꼴을 지정하는 /fonts.css와 설정 화면 미리보기 추가` (0ded719)
+- [x] 메인 세션: 전후 스크린샷. 이 PC에 부크크가 없으면 임시 설정의 `heading_font`를 설치된 글꼴(예: `Malgun Gothic`, 문서는 `Batang`)로 바꿔 적용 경로를 확인한다 → 사용자 승인 (2026-10-14. 바탕·궁서로 경로 확인 뒤 사용자가 부크크를 설치해 다시 확인. 본문 명조 Light 보기용 스크린샷도 봤고, 기본값은 계획대로 본문 기존 글꼴로 결정)
 
 ---
 
