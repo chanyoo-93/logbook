@@ -230,9 +230,9 @@ def prepare_output_path(path_text: str) -> Path:
     return path
 
 
-def write_text_file(path: Path, text: str, *, yes: bool) -> None:
-    """text를 UTF-8·LF로 쓴다. 파일이 이미 있으면 yes가 아닌 한 덮어쓸지 묻는다."""
-    if path.exists() and not yes:
+def confirm_overwrite(path: Path) -> None:
+    """path가 이미 있으면 덮어쓸지 묻는다. 거절하거나 입력이 없으면 exit 1로 끝낸다."""
+    if path.exists():
         require_confirmation(
             f"파일이 이미 있습니다: {path}\n덮어쓸까요?",
             cancelled="덮어쓰지 않았습니다.",
@@ -240,6 +240,12 @@ def write_text_file(path: Path, text: str, *, yes: bool) -> None:
                 "확인 입력을 받지 못해 덮어쓰지 않았습니다. 확인 없이 덮어쓰려면 --yes를 붙이세요."
             ),
         )
+
+
+def write_text_file(path: Path, text: str, *, yes: bool) -> None:
+    """text를 UTF-8·LF로 쓴다. 파일이 이미 있으면 yes가 아닌 한 덮어쓸지 묻는다."""
+    if not yes:
+        confirm_overwrite(path)
     try:
         path.write_text(text, encoding="utf-8", newline="\n")
     except OSError as error:
