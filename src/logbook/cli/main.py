@@ -10,6 +10,7 @@ from logbook.cli.commands import (
     CommandModule,
     add,
     data,
+    gitcollect,
     init,
     log,
     plan,
@@ -43,6 +44,7 @@ COMMAND_MODULES: tuple[CommandModule, ...] = (
     timer,
     stats,
     report,
+    gitcollect,
     serve,
     data,
 )

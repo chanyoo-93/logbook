@@ -1,6 +1,7 @@
 """웹 테스트 fixture (fixture만 둔다. 그 밖의 도우미는 tests/web/helpers.py)."""
 
 from collections.abc import Iterator
+from dataclasses import replace
 from pathlib import Path
 from typing import NamedTuple
 
@@ -11,8 +12,8 @@ from pydantic import BaseModel, ConfigDict
 from sqlalchemy import Engine
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from logbook.core import db, services
-from logbook.core.config import Config
+from logbook.core import db, gitcollect, services
+from logbook.core.config import Config, GitConfig, GitRepo
 from logbook.core.errors import (
     DatabaseBusyError,
     DatabaseNotInitializedError,
@@ -21,10 +22,12 @@ from logbook.core.errors import (
     LogbookError,
     NotFoundError,
 )
+from logbook.core.gitcollect import RepoCommits
+from logbook.core.report import CommitLine
 from logbook.web.app import create_app
 from logbook.web.context import WebContext
 from logbook.web.errors import ConflictError
-from tests.helpers import Clock
+from tests.helpers import Clock, FakeCollect
 
 LOCAL_BASE_URL = "http://127.0.0.1:8765"
 FAST_BUSY_TIMEOUT = 0.05
@@ -176,3 +179,34 @@ def locked_client(
             yield LockedApp(c, engine, path)
     finally:
         engine.dispose()
+
+
+@pytest.fixture
+def fake_collect(monkeypatch: pytest.MonkeyPatch, tmp_home: Path) -> FakeCollect:
+    """저장소 둘: payment는 커밋 1건, admin은 읽기 실패."""
+    fake = FakeCollect(
+        (
+            RepoCommits(
+                "payment",
+                tmp_home / "payment-server",
+                (CommitLine("2026-09-30", "a1b2c3d", "재시도 <백오프> 구현"),),
+            ),
+            RepoCommits("admin", tmp_home / "admin-web", (), "git 실패"),
+        )
+    )
+    monkeypatch.setattr(gitcollect, "collect_commits", fake)
+    return fake
+
+
+@pytest.fixture
+def git_client(
+    web_ctx: WebContext, tmp_home: Path, fake_collect: FakeCollect
+) -> Iterator[TestClient]:
+    """설정에 저장소가 둘 있고 커밋 수집을 가짜로 바꾼 클라이언트."""
+    repos = (
+        GitRepo("payment", tmp_home / "payment-server"),
+        GitRepo("admin", tmp_home / "admin-web"),
+    )
+    ctx = replace(web_ctx, cfg=replace(web_ctx.cfg, git=GitConfig(repos=repos)))
+    with TestClient(create_app(ctx), base_url=LOCAL_BASE_URL) as c:
+        yield c

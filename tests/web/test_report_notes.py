@@ -8,7 +8,7 @@ from logbook.core import db, services
 from logbook.core.weeks import parse_week
 from logbook.web.pages.panels import NO_CHANGE
 from logbook.web.pages.report import NOTES_SAVED
-from tests.helpers import FIXED_NOW
+from tests.helpers import FIXED_NOW, FakeCollect
 from tests.web.helpers import by_id, inline_code_violations, parse_html
 
 HTMX = {"HX-Request": "true"}
@@ -115,3 +115,32 @@ def test_cross_origin_post_is_forbidden(client: TestClient, web_engine: Engine) 
 
     assert response.status_code == 403
     assert _stored(web_engine) is None
+
+
+def test_save_response_keeps_commit_appendix_and_warnings(git_client: TestClient) -> None:
+    html = _post(git_client, notes="일정 지연").text
+
+    assert "## 부록. 커밋 내역" in by_id(html, "report-markdown").text
+    assert "커밋을 모으지 못했습니다: admin (git 실패)" in html
+
+
+def test_conflict_response_keeps_commit_appendix_and_warnings(
+    git_client: TestClient, web_engine: Engine
+) -> None:
+    with db.session_scope(web_engine) as s:
+        services.save_week_note(s, WEEK, notes="다른 탭", risks="")
+
+    response = _post(git_client, notes="내 입력", version="")
+
+    assert response.status_code == 409
+    assert "## 부록. 커밋 내역" in by_id(response.text, "report-markdown").text
+    assert "커밋을 모으지 못했습니다: admin (git 실패)" in response.text
+
+
+def test_bad_week_response_does_not_collect_commits(
+    git_client: TestClient, fake_collect: FakeCollect
+) -> None:
+    response = _post(git_client, week="abc")
+
+    assert response.status_code == 400
+    assert fake_collect.calls == []

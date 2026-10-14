@@ -8,7 +8,7 @@ from sqlalchemy import Engine
 from logbook.core.report import TEMPLATE_NAME
 from logbook.core.weeks import Week
 from logbook.web.pages.report import _neighbor_url
-from tests.helpers import FIXED_NOW
+from tests.helpers import FIXED_NOW, FakeCollect
 from tests.web.helpers import (
     add_log,
     add_project,
@@ -118,3 +118,29 @@ def test_report_first_week_with_tz_ahead_of_utc_renders_without_previous_link(
     assert response.status_code == 200
     assert "/report?week=0001-W02" in links
     assert not [href for href in links if href and "week=0000" in href]
+
+
+def test_report_page_shows_commit_appendix_and_warnings(
+    git_client: TestClient, fake_collect: FakeCollect
+) -> None:
+    html = git_client.get("/report").text
+
+    preview = by_id(html, "report-markdown").text
+    assert "## 부록. 커밋 내역" in preview
+    assert "### payment (payment-server)" in preview
+    assert "- 2026-09-30 a1b2c3d 재시도 <백오프> 구현" in preview
+    warnings = [e for e in parse_html(html) if e.attrs.get("class") == "report__warnings"]
+    assert [(e.tag, e.attrs.get("role")) for e in warnings] == [("ul", "status")]
+    assert "커밋을 모으지 못했습니다: admin (git 실패)" in html
+    assert [call[1].label for call in fake_collect.calls] == ["2026-W40"]
+    assert inline_code_violations(html) == []
+
+
+def test_report_page_without_repos_has_no_appendix_or_warnings(
+    client: TestClient, fake_collect: FakeCollect
+) -> None:
+    html = client.get("/report").text
+
+    assert "부록" not in by_id(html, "report-markdown").text
+    assert "report__warnings" not in html
+    assert fake_collect.calls == []

@@ -452,6 +452,8 @@ def _add_logs_today(db_path: Path, count: int) -> None:
             "오류: 저장할 폴더가 없습니다",
             id="report-missing-dir",
         ),
+        pytest.param(["git-collect", "--help"], 0, None, id="git-collect-help"),
+        pytest.param(["git-collect", "-w", "x"], 1, "오류: 주차 형식이", id="git-collect-bad-week"),
         pytest.param(["serve", "--help"], 0, None, id="serve-help"),
         pytest.param(
             ["serve", "--port", "abc"], 1, "오류: 포트가 올바르지 않습니다", id="serve-bad-port"

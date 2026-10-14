@@ -42,3 +42,11 @@ def test_download_with_broken_user_template_is_bad_request(
 
     assert response.status_code == 400
     assert "attachment" not in response.headers.get("content-disposition", "")
+
+
+def test_download_includes_commit_appendix(git_client: TestClient) -> None:
+    response = git_client.get("/report/download", params={"week": "2026-W40"})
+
+    text = response.content.decode("utf-8")
+    assert "## 부록. 커밋 내역" in text
+    assert "- 2026-09-30 a1b2c3d 재시도 <백오프> 구현" in text

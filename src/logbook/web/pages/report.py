@@ -24,7 +24,12 @@ from logbook.web.pages.forms import FormText, QueryText
 from logbook.web.pages.panels import NO_CHANGE, RESULT_MARK
 from logbook.web.pages.templating import render, render_error
 from logbook.web.pages.views import content_version
-from logbook.web.reporting import download_name, report_data, report_markdown
+from logbook.web.reporting import (
+    download_name,
+    report_data,
+    report_markdown,
+    report_with_commits,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -63,6 +68,7 @@ class ReportBodyView:
     notes: NotesValues
     message: str = ""
     is_error: bool = False
+    warnings: tuple[str, ...] = ()  # 커밋 수집 경고(미리보기 위에 보여 준다)
 
 
 @dataclass(frozen=True)
@@ -112,6 +118,7 @@ def _body_view(
     *,
     message: str = "",
     is_error: bool = False,
+    warnings: tuple[str, ...] = (),
 ) -> ReportBodyView:
     """미리보기를 렌더링해 본문 뷰를 만든다. 세션을 닫은 뒤에 부른다."""
     markdown = ""
@@ -129,6 +136,7 @@ def _body_view(
         notes=notes,
         message=message,
         is_error=is_error,
+        warnings=warnings,
     )
 
 
@@ -157,7 +165,8 @@ def report_page(request: Request, ctx: Ctx, week: QueryText = "") -> HTMLRespons
     with ctx.session() as s:
         data, note = _load(s, ctx, the_week, now)
         notes = _saved_values(note)
-    body = _body_view(ctx, the_week, data, notes)
+    data, warnings = report_with_commits(ctx, data, the_week, now)
+    body = _body_view(ctx, the_week, data, notes, warnings=warnings)
     context = {"active": "report", "nav": _nav_view(the_week, ""), "body": body}
     if is_htmx(request):
         return render(request, RESPONSE_TEMPLATE, context)
@@ -170,6 +179,7 @@ def report_download(ctx: Ctx, week: QueryText = "") -> Response:
     the_week = _parse_week(ctx, week)
     with ctx.session() as s:
         data = report_data(s, ctx, the_week, now)
+    data, _ = report_with_commits(ctx, data, the_week, now)
     markdown = report_markdown(ctx, data)
     headers = {"Content-Disposition": f'attachment; filename="{download_name(the_week)}"'}
     return Response(markdown.encode("utf-8"), media_type=MARKDOWN_TYPE, headers=headers)
@@ -181,8 +191,9 @@ def _conflict_response(
     """저장된 내용으로 미리보기를 다시 그린다. 입력값은 그대로 두고 버전만 지금 값으로 바꾼다."""
     with ctx.session() as s:
         data, note = _load(s, ctx, the_week, now)
+    data, warnings = report_with_commits(ctx, data, the_week, now)
     shown = NotesValues(form.notes, form.risks, notes_version(note))
-    body = _body_view(ctx, the_week, data, shown, message=error, is_error=True)
+    body = _body_view(ctx, the_week, data, shown, message=error, is_error=True, warnings=warnings)
     headers = {"HX-Retarget": "#report-body", "HX-Reswap": "outerHTML", "HX-Push-Url": "false"}
     return render(request, BODY_TEMPLATE, {"body": body}, status_code=409, headers=headers)
 
@@ -239,5 +250,6 @@ def save_notes(
     except ConflictError as error:
         return _conflict_response(request, ctx, the_week, now, form, str(error))
     message = NOTES_SAVED.format(week=the_week.label) if changed else NO_CHANGE
-    body = _body_view(ctx, the_week, data, saved, message=message)
+    data, warnings = report_with_commits(ctx, data, the_week, now)
+    body = _body_view(ctx, the_week, data, saved, message=message, warnings=warnings)
     return render(request, BODY_TEMPLATE, {"body": body})

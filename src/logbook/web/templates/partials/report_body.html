@@ -9,6 +9,13 @@
 {% endif %}
   </div>
   <p id="copy-status" class="form-message" role="status"></p>
+{% if body.warnings %}
+  <ul class="report__warnings" role="status">
+{% for warning in body.warnings %}
+    <li>{{ warning }}</li>
+{% endfor %}
+  </ul>
+{% endif %}
 {% if body.preview_error %}
   <p class="form-message form-message--error" role="alert">{{ body.preview_error }}</p>
 {% else %}
