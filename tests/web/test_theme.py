@@ -20,14 +20,12 @@ COLOR_TOKENS = (
     "--ink",
     "--ink-muted",
     "--rule",
-    "--rule-strong",
     "--row-hover",
     "--accent",
     "--accent-hover",
     "--accent-ink",
     "--ok",
     "--danger",
-    "--shadow-soft",
     "--shadow-raised",
 )
 CONTRAST_PAIRS = (

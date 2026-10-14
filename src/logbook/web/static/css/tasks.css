@@ -4,7 +4,7 @@
   padding: var(--space-3) var(--space-4);
   background: var(--surface);
   border: 1px solid var(--rule);
-  box-shadow: var(--shadow-soft);
+  border-top: 2px solid var(--ink);
 }
 
 .task-form__fields {
@@ -56,7 +56,7 @@
 
 .task-form input:hover,
 .task-form select:hover {
-  border-color: var(--rule-strong);
+  border-color: var(--ink);
 }
 
 .task-form input:focus-visible,
@@ -90,7 +90,7 @@
   padding: var(--space-3);
   background: var(--surface);
   border: 1px solid var(--rule);
-  box-shadow: var(--shadow-soft);
+  border-top: 2px solid var(--ink);
 }
 
 .board__col-head {
@@ -206,7 +206,7 @@
 
 .task-edit input:hover,
 .task-edit select:hover {
-  border-color: var(--rule-strong);
+  border-color: var(--ink);
 }
 
 .task-edit input:focus-visible,

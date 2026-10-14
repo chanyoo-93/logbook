@@ -1,24 +1,19 @@
 /* 기본: 색 토큰(밝은·어두운), 머리, 설정 알림, 빠른 기록 줄 */
 :root {
   /* 색: 데이터(프로젝트·카테고리)와 상태(ok·danger)에만 쓴다. --accent는 링크·포커스·주 버튼 전용이다.
-     다크모드는 이 블록의 값만 바꾸면 되도록, 아래 규칙에서는 색을 토큰으로만 쓴다.
-     바탕은 따뜻한 종이색, 면은 흰색, 경계는 옅은 선과 여러 겹의 옅은 그림자로 나눈다. */
-  --bg: #f6f5f4;
+     다크모드는 이 블록의 값만 바꾸면 되도록, 아래 규칙에서는 색을 토큰으로만 쓴다. */
+  --bg: #f7f7f5;
   --surface: #ffffff;
-  --ink: #1f1e1c;
-  --ink-muted: #615d59;
-  --rule: #e6e5e3;
-  --rule-strong: #c9c6c2;
-  --row-hover: #f3f2f0;
-  --accent: #0075de;
-  --accent-hover: #005bab;
+  --ink: #15171c;
+  --ink-muted: #5a6170;
+  --rule: #dcdfe4;
+  --row-hover: #f0f1f3;
+  --accent: #2448c8;
+  --accent-hover: #1b3aa3;
   --accent-ink: #ffffff;
   --ok: #0f7a3d;
   --danger: #b42318;
-  --shadow-soft: 0 0.2px 1px rgba(0, 0, 0, 0.01), 0 0.8px 3px rgba(0, 0, 0, 0.02),
-    0 2px 8px rgba(0, 0, 0, 0.027), 0 4px 18px rgba(0, 0, 0, 0.04);
-  --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.02), 0 3px 9px rgba(0, 0, 0, 0.03),
-    0 8px 20px rgba(0, 0, 0, 0.04), 0 23px 52px rgba(0, 0, 0, 0.05);
+  --shadow-raised: 0 8px 14px -10px rgba(21, 23, 28, 0.45);
   color-scheme: light dark;
 
   /* 글꼴: 웹 글꼴을 내려받지 않고 OS 한글 글꼴을 쓴다(오프라인, 의존성 없음). */
@@ -53,20 +48,18 @@
 /* 어두운 테마: 색 토큰만 다시 정한다. 인쇄는 밝은 토큰을 쓰도록 screen으로 한정한다. */
 @media screen and (prefers-color-scheme: dark) {
   :root {
-    --bg: #191918;
-    --surface: #222221;
-    --ink: #ecebe9;
-    --ink-muted: #a3a09b;
-    --rule: #33322f;
-    --rule-strong: #4a4844;
-    --row-hover: #2a2a28;
-    --accent: #5ea8f0;
-    --accent-hover: #86bff5;
-    --accent-ink: #0b1724;
+    --bg: #0f1115;
+    --surface: #171a21;
+    --ink: #e6e8ec;
+    --ink-muted: #a1a8b5;
+    --rule: #2c313b;
+    --row-hover: #1f232c;
+    --accent: #8aa4ff;
+    --accent-hover: #a9bcff;
+    --accent-ink: #0b1020;
     --ok: #4fc283;
     --danger: #ff7b72;
-    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
-    --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.4);
+    --shadow-raised: 0 8px 14px -10px rgba(0, 0, 0, 0.8);
   }
 }
 
@@ -139,7 +132,7 @@ a {
 /* 머리: 앱 이름, 탐색, 이번 주 */
 .masthead {
   background: var(--surface);
-  border-bottom: 1px solid var(--rule);
+  border-bottom: 2px solid var(--ink);
 }
 
 .masthead__inner {
@@ -233,6 +226,7 @@ main {
   padding: var(--space-3) var(--space-4);
   background: var(--surface);
   border: 1px solid var(--rule);
+  border-top: 2px solid var(--ink);
   box-shadow: var(--shadow-raised);
 }
 
@@ -276,7 +270,7 @@ main {
 
 .quick input:hover,
 .quick select:hover {
-  border-color: var(--rule-strong);
+  border-color: var(--ink);
 }
 
 .quick input:focus-visible,
