@@ -764,10 +764,11 @@ def test_font_name_is_kept_as_written(config_file: Path, key: str, name: str) ->
         r'"A\u0007"',
     ],
 )
-def test_invalid_font_name_is_rejected_with_key(config_file: Path, toml_value: str) -> None:
-    assert_invalid(
-        config_file, f"[web]\nheading_font = {toml_value}\n", "web.heading_font", "글꼴 이름"
-    )
+@pytest.mark.parametrize("key", FONT_KEYS)
+def test_invalid_font_name_is_rejected_with_key(
+    config_file: Path, key: str, toml_value: str
+) -> None:
+    assert_invalid(config_file, f"[web]\n{key} = {toml_value}\n", f"web.{key}", "글꼴 이름")
 
 
 def test_font_name_of_100_chars_is_accepted(config_file: Path) -> None:

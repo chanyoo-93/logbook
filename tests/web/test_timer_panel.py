@@ -7,7 +7,7 @@ from logbook.core import db, services
 from logbook.core.services.timer import NO_TIMER_MESSAGE
 from tests.conftest import FIXED_TODAY
 from tests.helpers import FIXED_NOW, Clock
-from tests.web.helpers import add_log, add_project, all_by_tag, by_id, parse_html
+from tests.web.helpers import add_log, add_project, all_by_tag, by_class, by_id, parse_html
 
 HTMX = {"HX-Request": "true"}
 ONE_MINUTE_MESSAGE = "1분이 지나지 않아 기록하지 않았습니다. 버리려면 'lb cancel'을 실행하세요."
@@ -62,6 +62,16 @@ def test_panel_with_timer(client: TestClient, web_engine: Engine, clock: Clock) 
     assert button.attrs["hx-swap"] == "outerHTML"
     assert button.attrs["hx-sync"] == "this:drop"
     assert button.attrs["hx-disabled-elt"] == "this"
+
+
+def test_panel_with_timer_shows_running_pill(client: TestClient, web_engine: Engine) -> None:
+    _start(web_engine)
+
+    html = client.get("/timer", headers=HTMX).text
+
+    pills = by_class(html, "pill--ok")
+    assert [(e.tag, e.text) for e in pills] == [("span", "진행 중")]
+    assert str(pills[0].attrs["class"]).split() == ["pill", "pill--ok"]
 
 
 def test_dashboard_embeds_the_same_panel(

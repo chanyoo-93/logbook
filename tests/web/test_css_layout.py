@@ -146,6 +146,29 @@ def test_control_hover_border_is_darker_than_default(file_name: str, selector: s
     assert "border-color: var(--ink-muted)" in _declarations(_read(file_name), selector)
 
 
+_CONTROL_TAG = re.compile(r"(?<![\w-])(input|select|textarea)(?![\w-])")
+MIN_BORDERED_CONTROL_RULES = 7
+
+
+def test_every_bordered_control_rule_uses_the_control_border_token() -> None:
+    bordered: list[tuple[str, str]] = []
+    for path in sorted(CSS_ROOT.glob("*.css")):
+        for match in _RULE.finditer(_read(path.name)):
+            selector = _squash(match.group(1))
+            if not _CONTROL_TAG.search(selector):
+                continue
+            parts = (_squash(part) for part in match.group(2).split(";"))
+            bordered.extend(
+                (f"{path.name}: {selector}", part)
+                for part in parts
+                if part.startswith("border: 1px solid")
+            )
+
+    assert len(bordered) >= MIN_BORDERED_CONTROL_RULES
+    wrong = [(where, part) for where, part in bordered if "var(--control-border)" not in part]
+    assert wrong == []
+
+
 def test_no_control_uses_the_old_muted_border() -> None:
     css = " ".join(_read(path.name) for path in sorted(CSS_ROOT.glob("*.css")))
 

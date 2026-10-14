@@ -136,6 +136,17 @@ def test_changed_db_path_shows_running_db_and_restart_notice(
     assert "db_path" in notices[0].text
 
 
+def _font_row_value(html: str, label: str) -> str:
+    """정의 목록에서 글이 label인 dt 바로 다음 dd의 글."""
+    elements = parse_html(html)
+    for index, element in enumerate(elements):
+        if element.tag == "dt" and element.text == label:
+            following = next(e for e in elements[index + 1 :] if e.tag in {"dt", "dd"})
+            assert following.tag == "dd"
+            return following.text.strip()
+    raise AssertionError(f"'{label}' 줄이 없습니다")
+
+
 def test_settings_info_shows_font_rows_with_previews(client: TestClient) -> None:
     html = client.get("/settings").text
 
@@ -144,7 +155,8 @@ def test_settings_info_shows_font_rows_with_previews(client: TestClient) -> None
     assert "본문 글꼴" in html
     assert "Bookk Gothic" in html
     assert "Bookk Myungjo" not in html
-    assert html.count("Bookk Gothic") >= 3
+    for label in ("제목 글꼴", "문서 글꼴", "본문 글꼴"):
+        assert _font_row_value(html, label).startswith("Bookk Gothic")
     assert FONT_NOTE in html
     for cls in ("font-preview--heading", "font-preview--document", "font-preview--body"):
         assert len(by_class(html, cls)) == 1

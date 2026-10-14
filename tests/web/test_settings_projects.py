@@ -339,3 +339,34 @@ def test_cross_origin_writes_are_forbidden(client: TestClient, web_engine: Engin
 
     assert [r.status_code for r in responses] == [403, 403, 403, 403]
     assert _stored(web_engine, "payment") == ("결제", None, None, False)
+
+
+def _row_pill(html: str, slug: str) -> tuple[list[str], str]:
+    """프로젝트 행(tr) 안 첫 꼬리표의 (class 목록, 글)."""
+    in_row = False
+    for element in parse_html(html):
+        if element.tag == "tr":
+            in_row = element.attrs.get("id") == f"project-{slug}"
+        elif in_row and element.tag == "span" and "pill" in str(element.attrs.get("class")).split():
+            return str(element.attrs["class"]).split(), element.text
+    raise AssertionError(f"project-{slug} 행에 꼬리표가 없습니다")
+
+
+def test_archive_and_unarchive_responses_redraw_the_status_pill(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "payment", "결제")
+
+    archived = client.post(
+        "/settings/projects/payment/archive",
+        data={"version": _version(web_engine, "payment")},
+        headers=HTMX,
+    )
+    restored = client.post(
+        "/settings/projects/payment/unarchive",
+        data={"version": _version(web_engine, "payment")},
+        headers=HTMX,
+    )
+
+    assert _row_pill(archived.text, "payment") == (["pill"], "보관")
+    assert _row_pill(restored.text, "payment") == (["pill", "pill--ok"], "사용 중")
