@@ -271,6 +271,14 @@ def test_report_preview_sets_document_font_after_font_inherit() -> None:
     assert block.index("font: inherit") < block.index("font-family: var(--font-document)")
 
 
+def test_report_preview_uses_body_size_so_the_light_serif_stays_readable() -> None:
+    # 명조 Light는 13px(--text-sm)에서 획이 너무 가늘어 본문 크기로 키웠다(2026-10-14 사용자 결정).
+    declarations = _declarations(_read("report.css"), ".report__preview")
+
+    assert "font-size: var(--text-base)" in declarations
+    assert "font-size: var(--text-sm)" not in declarations
+
+
 def test_tracking_tokens_are_in_root() -> None:
     declarations = _declarations(_read("app.css"), ":root")
 

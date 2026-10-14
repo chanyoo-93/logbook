@@ -44,7 +44,7 @@ a.btn {
   background: var(--bg);
   font: inherit;
   font-family: var(--font-document);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
