@@ -479,8 +479,8 @@ def project_color(project: Project) -> str:
   - 최종 리뷰 반영(c320fe5): `document_font` 사용처(보고서 미리보기와 문장 다듬기 결과 글, 특이사항 입력란은 본문 글꼴)와 모서리 토큰 사용처(태스크 카드 8px)를 문서에서 바로잡았다. README 글꼴 설치 방법은 두 OS 모두 글꼴 파일을 두 번 클릭하는 경로로 고쳤다(95b5b29).
 - [x] **화면 확인(메인 세션, Edge 헤드리스)**: 다섯 화면과 편집 상태 두 개 × 1280·375·320px × 밝은·어두운(42장), 가로 넘침 없음. 키보드 포커스: 좁은 폭에서 잘림 0건, 넓은 폭 후보 2건(설정 표 안 버튼)은 측정 도구가 윤곽선 간격 4px를 가정한 것이고 포커스 스크린샷에서 윤곽선이 버튼 안쪽에 온전히 보인다(8-2 보완 9e2c178). 글꼴 적용 경로: 설정을 `Batang`·`Gungsuh`·빈 값으로 바꾸면 미리보기의 계산된 `font-family` 첫 글꼴이 그 이름이고 빈 값은 기본 고딕 목록이다. 8-6 뒤와 최종 스크린샷은 배치가 같다(다른 픽셀은 임시 DB 경로 글자와 글자 안티앨리어싱).
 - [ ] **브라우저 확인(사용자, Windows·macOS, 절차는 PR 댓글)**: 부크크 폰트를 설치한 PC에서 제목·큰 숫자·보고서 글꼴, 설정 화면 미리보기, 설정 파일을 고친 뒤 새로 고침, 어두운 테마
-- [ ] **전체 검증:** ruff, format, mypy(core strict, 전체), pytest(core·web 100%), GitHub Actions 두 OS
-- [ ] **PR:** develop 대상, `Closes #<이슈 번호>`
+- [x] **전체 검증:** ruff, format, mypy(core strict, 전체), pytest 2853 passed·2 skipped(core·web 100%), GitHub Actions 두 OS 통과(windows-latest 5m24s, macos-latest 4m5s)
+- [x] **PR:** develop 대상, `Closes #17` (#18)
 
 ---
 
