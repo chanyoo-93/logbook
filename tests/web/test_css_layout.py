@@ -150,3 +150,77 @@ def test_no_control_uses_the_old_muted_border() -> None:
     css = " ".join(_read(path.name) for path in sorted(CSS_ROOT.glob("*.css")))
 
     assert "border: 1px solid var(--ink-muted)" not in _squash(css)
+
+
+def _all_css() -> str:
+    return " ".join(_read(path.name) for path in sorted(CSS_ROOT.glob("*.css")))
+
+
+def test_radius_tokens_have_the_planned_values() -> None:
+    declarations = _declarations(_read("app.css"), ":root")
+
+    assert "--radius-xs: 4px" in declarations
+    assert "--radius-sm: 8px" in declarations
+    assert "--radius-md: 12px" in declarations
+    assert "--radius-full: 999px" in declarations
+
+
+def test_old_single_radius_token_is_gone() -> None:
+    css = _all_css()
+
+    assert "var(--radius)" not in css
+    assert "--radius:" not in css
+
+
+@pytest.mark.parametrize(
+    ("file_name", "selector", "radius"),
+    [
+        ("components.css", ".btn", "var(--radius-sm)"),
+        ("tasks.css", ".task-card", "var(--radius-sm)"),
+        ("dashboard.css", ".panel", "var(--radius-md)"),
+        ("app.css", ".quick", "var(--radius-md)"),
+        ("tasks.css", ".task-form", "var(--radius-md)"),
+        ("tasks.css", ".board__col", "var(--radius-md)"),
+        ("app.css", ".config-notice", "var(--radius-md)"),
+        ("report.css", ".report__preview", "var(--radius-md)"),
+        ("app.css", ".quick input, .quick select", "var(--radius-xs)"),
+        ("components.css", ".timer-start input, .timer-start select", "var(--radius-xs)"),
+        (
+            "logs.css",
+            ".filters input, .filters select, .grid .is-editing input, .grid .is-editing select",
+            "var(--radius-xs)",
+        ),
+        ("report.css", ".report-notes textarea", "var(--radius-xs)"),
+        (
+            "settings.css",
+            ".project-form input, .grid--projects .is-editing input",
+            "var(--radius-xs)",
+        ),
+        ("tasks.css", ".task-form input, .task-form select", "var(--radius-xs)"),
+        ("tasks.css", ".task-edit input, .task-edit select", "var(--radius-xs)"),
+        ("app.css", ".skip-link", "var(--radius-xs)"),
+    ],
+)
+def test_corner_radius_uses_the_step_for_the_element(
+    file_name: str, selector: str, radius: str
+) -> None:
+    assert f"border-radius: {radius}" in _declarations(_read(file_name), selector)
+
+
+def test_flash_notice_uses_medium_radius() -> None:
+    declarations = _declarations(_read("components.css"), '.flash, main > p[role="alert"]')
+
+    assert "border-radius: var(--radius-md)" in declarations
+
+
+def test_panel_clips_overflow_so_corners_stay_round() -> None:
+    assert "overflow: clip" in _declarations(_read("dashboard.css"), ".panel")
+
+
+def test_button_press_effect_and_transition() -> None:
+    css = _read("components.css")
+
+    assert "transform: scale(0.97)" in _declarations(css, ".btn:active")
+    assert "transition: transform 80ms ease-out, background-color 120ms ease-out" in _declarations(
+        css, ".btn"
+    )

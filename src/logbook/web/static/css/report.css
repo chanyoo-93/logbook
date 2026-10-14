@@ -38,6 +38,7 @@ a.btn {
 .report__preview {
   padding: var(--space-3);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
   background: var(--bg);
   font: inherit;
   font-size: var(--text-sm);
@@ -65,7 +66,7 @@ a.btn {
   width: 100%;
   padding: var(--space-2);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-xs);
   background: var(--surface);
   color: var(--ink);
   font: inherit;

@@ -53,7 +53,7 @@
   min-height: 2.25rem;
   padding: 0 var(--space-2);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-xs);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -115,12 +115,13 @@
   min-height: 2.25rem;
   padding: 0 var(--space-4);
   border: 1px solid var(--rule-strong);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: transform 80ms ease-out, background-color 120ms ease-out;
 }
 
 .btn:hover {
@@ -128,7 +129,7 @@
 }
 
 .btn:active {
-  transform: translateY(1px);
+  transform: scale(0.97);
 }
 
 .btn--primary {
@@ -166,6 +167,7 @@ main > p[role="alert"] {
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--rule);
   border-left: 4px solid var(--ink);
+  border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-raised);
 }

@@ -4,7 +4,9 @@
   margin-top: var(--space-5);
   background: var(--surface);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
+  overflow: clip;
 }
 
 .panel__head {

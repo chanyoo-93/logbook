@@ -4,6 +4,7 @@
   padding: var(--space-3) var(--space-4);
   background: var(--surface);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
 }
 
@@ -47,7 +48,7 @@
   min-height: 2.25rem;
   padding: 0 var(--space-2);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-xs);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -90,6 +91,7 @@
   padding: var(--space-3);
   background: var(--surface);
   border: 1px solid var(--rule);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-soft);
 }
 
@@ -129,6 +131,7 @@
   background: var(--bg);
   border: 1px solid var(--rule);
   border-left: 3px solid var(--ink-muted);
+  border-radius: var(--radius-sm);
 }
 
 .task-card--over {
@@ -197,7 +200,7 @@
   min-height: 2.25rem;
   padding: 0 var(--space-2);
   border: 1px solid var(--control-border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-xs);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
