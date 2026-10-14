@@ -74,7 +74,7 @@ a.btn {
 }
 
 .report-notes textarea:hover {
-  border-color: var(--ink);
+  border-color: var(--rule-strong);
 }
 
 .report-notes textarea:focus-visible {

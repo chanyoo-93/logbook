@@ -105,7 +105,7 @@
 }
 
 .grid tfoot td {
-  border-top: 1px solid var(--ink);
+  border-top: 1px solid var(--rule-strong);
   border-bottom: 0;
   color: var(--ink-muted);
   font-weight: 600;
