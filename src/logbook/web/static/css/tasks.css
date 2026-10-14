@@ -169,17 +169,6 @@
   font-weight: 600;
 }
 
-.task-card__tag {
-  padding: 0 var(--space-1);
-  border: 1px solid var(--rule);
-  font-size: var(--text-xs);
-}
-
-.task-card__over {
-  color: var(--danger);
-  font-weight: 700;
-}
-
 .task-card__actions {
   display: flex;
   flex-wrap: wrap;

@@ -224,7 +224,8 @@ def test_recent_logs_table_columns_and_cells(client: TestClient, web_engine: Eng
     for header in ("ID", "날짜", "프로젝트/카테고리", "시간", "메모", "태스크"):
         assert header in recent
     row = next(e for e in all_by_tag(html, "tr") if e.attrs.get("id") == f"log-{log_id}")
-    assert row.text == f"{log_id} 10-01 (목) payment/dev 1h 30m 재시도 로직 #{task_id}"
+    assert '<span class="pill">dev</span>' in html
+    assert row.text == f"{log_id} 10-01 (목) payment dev 1h 30m 재시도 로직 #{task_id}"
 
 
 def test_recent_logs_without_task_show_dash(client: TestClient, web_engine: Engine) -> None:
@@ -260,9 +261,11 @@ def test_timer_running(client: TestClient, web_engine: Engine, clock: Clock) -> 
         )
     clock.advance(minutes=85)
 
-    timer = by_id(_get(client), "timer").text
+    html = _get(client)
+    timer = by_id(html, "timer").text
 
     assert "진행 중 " in f"{timer} "
+    assert '<span class="pill pill--ok">진행 중</span>' in html
     assert f"payment/design — 환불 API 설계 [#{task_id}]" in timer
     assert "시작 09:30 · 경과 1h 25m" in timer
     assert "진행 중인 타이머가 없습니다" not in timer

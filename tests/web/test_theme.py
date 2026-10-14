@@ -28,6 +28,9 @@ COLOR_TOKENS = (
     "--accent-ink",
     "--ok",
     "--danger",
+    "--tag-bg",
+    "--ok-soft",
+    "--danger-soft",
     "--shadow-soft",
     "--shadow-raised",
 )
@@ -40,6 +43,9 @@ CONTRAST_PAIRS = (
     ("--accent-ink", "--accent"),
     ("--danger", "--surface"),
     ("--ok", "--surface"),
+    ("--ink-muted", "--tag-bg"),
+    ("--ok", "--ok-soft"),
+    ("--danger", "--danger-soft"),
 )
 NON_TEXT_PAIRS = (
     ("--control-border", "--surface"),
@@ -192,3 +198,11 @@ def test_dashboard_script_redraws_charts_when_os_theme_changes() -> None:
 
     assert 'matchMedia("(prefers-color-scheme: dark)")' in script
     assert re.search(r'addEventListener\("change",\s*drawCharts\)', script)
+
+
+def test_pill_rules_exist_and_old_tag_rules_are_gone(other_css: str) -> None:
+    assert re.search(r"\.pill\s*\{", other_css)
+    assert re.search(r"\.pill--ok\s*\{", other_css)
+    assert re.search(r"\.pill--danger\s*\{", other_css)
+    for old in (".task-card__tag", ".task-card__over", ".timer__state"):
+        assert old not in other_css

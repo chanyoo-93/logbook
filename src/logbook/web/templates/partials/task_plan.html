@@ -1,3 +1,4 @@
+{% from "partials/marks.html" import pill %}
 <section id="task-plan" class="panel plan" aria-labelledby="task-plan-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
   <h2 id="task-plan-title" class="plan__title" tabindex="-1" data-focus>{{ plan.heading }}</h2>
 {% if plan.message %}
@@ -9,7 +10,7 @@
     <h3 class="plan__project">{{ group.project }} (예상 {{ group.estimate_total }})</h3>
     <ul class="plan__items">
 {% for item in group.items %}
-      <li class="plan__item">#{{ item.task_id }} {{ item.title }}{% if item.estimate %} — 예상 {{ item.estimate }}{% endif %}{% if item.carried %} (이월 후보){% endif %}</li>
+      <li class="plan__item">#{{ item.task_id }} {{ item.title }}{% if item.estimate %} — 예상 {{ item.estimate }}{% endif %}{% if item.carried %} {{ pill("이월 후보") }}{% endif %}</li>
 {% endfor %}
     </ul>
   </div>

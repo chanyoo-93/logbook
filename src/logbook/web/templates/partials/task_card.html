@@ -1,3 +1,4 @@
+{% from "partials/marks.html" import pill %}
         <li id="task-{{ card.id }}" class="task-card{% if card.over %} task-card--over{% endif %}">
           <p class="task-card__title">
             <span class="task-card__id">#{{ card.id }}</span>
@@ -6,19 +7,19 @@
           <p class="task-card__meta">
             <span class="task-card__project">{{ card.project }}</span>
 {% if card.category %}
-            <span class="task-card__category">{{ card.category }}</span>
+            {{ pill(card.category, extra="task-card__category") }}
 {% endif %}
 {% if card.week %}
             <span class="task-card__week">{{ card.week }}</span>
 {% if card.week_tag %}
-            <span class="task-card__tag">{{ card.week_tag }}</span>
+            {{ pill(card.week_tag, extra="task-card__tag") }}
 {% endif %}
 {% endif %}
           </p>
           <p class="task-card__stats">
             <span class="task-card__figures">실적 {{ card.actual }}{% if card.estimate %} / 예상 {{ card.estimate }}{% endif %}</span>
 {% if card.over %}
-            <span class="task-card__over">예상 초과</span>
+            {{ pill("예상 초과", "danger", "task-card__over") }}
 {% endif %}
           </p>
           <div class="task-card__actions">

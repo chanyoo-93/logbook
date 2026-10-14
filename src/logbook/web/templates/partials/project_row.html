@@ -1,3 +1,4 @@
+{% from "partials/marks.html" import pill %}
         <tr id="project-{{ row.slug }}"{% if row.archived %} class="is-archived"{% endif %}>
           <td class="nowrap">{{ row.slug }}</td>
           <td>{{ row.name }}</td>
@@ -10,7 +11,7 @@
 {% endif %}
           </td>
           <td class="grid__note">{{ row.description }}</td>
-          <td class="nowrap">{{ "보관" if row.archived else "사용 중" }}</td>
+          <td class="nowrap">{{ pill("보관") if row.archived else pill("사용 중", "ok") }}</td>
           <td class="nowrap grid__actions">
             <button type="button" class="btn btn--small" hx-get="/settings/projects/{{ row.slug }}/edit" hx-target="closest tr" hx-swap="outerHTML">수정</button>
 {% if row.archived %}

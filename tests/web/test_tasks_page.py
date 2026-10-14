@@ -117,6 +117,11 @@ def test_card_shows_actual_and_estimate_and_flags_overrun(
     assert _figures(html, over) == "실적 5h / 예상 4h"
     assert "task-card--over" in str(by_id(html, f"task-{over}").attrs["class"]).split()
     assert [e.text for e in by_class(html, "task-card__over")] == ["예상 초과"]
+    assert str(by_class(html, "task-card__over")[0].attrs["class"]).split() == [
+        "pill",
+        "pill--danger",
+        "task-card__over",
+    ]
     assert _figures(html, within) == "실적 1h / 예상 4h"
     assert "task-card--over" not in str(by_id(html, f"task-{within}").attrs["class"]).split()
 
@@ -149,6 +154,9 @@ def test_card_shows_week_and_tag(client: TestClient, web_engine: Engine) -> None
         "이번 주",
         "다음 주",
     ]  # 계획 주차 순
+    for tag in by_class(html, "task-card__tag"):
+        assert str(tag.attrs["class"]).split() == ["pill", "task-card__tag"]
+    assert not any(week in _card(html, none) for week in ("이번 주", "다음 주", "지난 주"))
 
 
 def test_card_shows_project_and_category(client: TestClient, web_engine: Engine) -> None:
@@ -159,6 +167,8 @@ def test_card_shows_project_and_category(client: TestClient, web_engine: Engine)
 
     assert [e.text for e in by_class(html, "task-card__project")] == ["payment"]
     assert [e.text for e in by_class(html, "task-card__category")] == ["design"]
+    category = by_class(html, "task-card__category")[0]
+    assert str(category.attrs["class"]).split() == ["pill", "task-card__category"]
     assert f"#{task}" in _card(html, task)
 
 

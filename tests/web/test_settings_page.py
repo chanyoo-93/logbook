@@ -48,6 +48,8 @@ def test_settings_page_lists_projects_and_info(
     assert by_id(html, "project-payment").text.startswith("payment 결제")
     assert "#4f46e5" in by_id(html, "project-payment").text
     assert "보관" in by_id(html, "project-old").text
+    assert '<span class="pill">보관</span>' in html
+    assert '<span class="pill pill--ok">사용 중</span>' in html
     assert "dev — 개발" in html
     assert str(web_ctx.config_file) in html
     assert str(web_ctx.engine.url.database) in html

@@ -1,0 +1,4 @@
+{# 공용 부품: 꼬리표(pill). tone은 "", "ok", "danger"만 쓴다. extra는 화면 코드와 테스트가 찾는 class 표지를 남길 때 쓴다. #}
+{% macro pill(text, tone="", extra="") -%}
+<span class="pill{% if tone %} pill--{{ tone }}{% endif %}{% if extra %} {{ extra }}{% endif %}">{{ text }}</span>
+{%- endmacro %}
