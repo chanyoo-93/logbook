@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Annotated
 
 import typer
 
-from logbook.cli import console, render, runtime
+from logbook.cli import completion, console, render, runtime
 from logbook.cli.group import LogbookCommand, LogbookGroup
 from logbook.core.errors import InvalidInputError
 
@@ -40,7 +40,14 @@ _CLEARABLE = (
     ("--due", "--no-due", "due_date"),
 )
 
-TaskIdArg = Annotated[str, typer.Argument(metavar="ID", help="태스크 ID (예: 43 또는 '#43')")]
+TaskIdArg = Annotated[
+    str,
+    typer.Argument(
+        metavar="ID",
+        help="태스크 ID (예: 43 또는 '#43')",
+        autocompletion=completion.complete_task_id,
+    ),
+]
 
 
 @task_app.command("add", cls=LogbookCommand)
@@ -103,6 +110,7 @@ def list_(
             "--project",
             "-p",
             help="프로젝트 slug (예: payment). 지정하면 보관된 프로젝트도 볼 수 있습니다.",
+            autocompletion=completion.complete_any_project,
         ),
     ] = None,
     status: runtime.StatusOpt = None,

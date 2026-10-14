@@ -4,7 +4,7 @@ from typing import Annotated
 
 import typer
 
-from logbook.cli import console, render, runtime
+from logbook.cli import completion, console, render, runtime
 from logbook.cli.group import LogbookCommand, LogbookGroup
 from logbook.core.errors import InvalidInputError
 
@@ -71,7 +71,14 @@ def list_(
 
 @project_app.command("edit", cls=LogbookCommand)
 def edit(
-    slug: Annotated[str, typer.Argument(metavar="SLUG", help="수정할 프로젝트 slug")],
+    slug: Annotated[
+        str,
+        typer.Argument(
+            metavar="SLUG",
+            help="수정할 프로젝트 slug",
+            autocompletion=completion.complete_project,
+        ),
+    ],
     name: Annotated[str | None, typer.Option("--name", help="표시 이름")] = None,
     color: Annotated[str | None, typer.Option("--color", help="색상 (예: '#4f46e5')")] = None,
     description: Annotated[str | None, typer.Option("--description", help="설명")] = None,
@@ -119,7 +126,14 @@ def edit(
 
 @project_app.command("archive", cls=LogbookCommand)
 def archive(
-    slug: Annotated[str, typer.Argument(metavar="SLUG", help="보관할 프로젝트 slug")],
+    slug: Annotated[
+        str,
+        typer.Argument(
+            metavar="SLUG",
+            help="보관할 프로젝트 slug",
+            autocompletion=completion.complete_project,
+        ),
+    ],
 ) -> None:
     """프로젝트를 보관합니다. 과거 기록은 집계에 계속 포함됩니다."""
     from rich.text import Text
@@ -149,7 +163,14 @@ def archive(
 
 @project_app.command("unarchive", cls=LogbookCommand)
 def unarchive(
-    slug: Annotated[str, typer.Argument(metavar="SLUG", help="보관을 해제할 프로젝트 slug")],
+    slug: Annotated[
+        str,
+        typer.Argument(
+            metavar="SLUG",
+            help="보관을 해제할 프로젝트 slug",
+            autocompletion=completion.complete_archived_project,
+        ),
+    ],
 ) -> None:
     """보관한 프로젝트를 다시 사용 중으로 되돌립니다."""
     from rich.text import Text

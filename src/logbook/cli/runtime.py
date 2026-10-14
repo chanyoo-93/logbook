@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Annotated
 
 import typer
 
-from logbook.cli import console
+from logbook.cli import completion, console
 from logbook.cli.group import EXIT_ERROR
 from logbook.core.errors import InvalidInputError, LogbookError
 from logbook.core.ids import MAX_ID as MAX_ID
@@ -30,7 +30,13 @@ if TYPE_CHECKING:
     from logbook.core.db import InitResult
 
 ProjectOpt = Annotated[
-    str | None, typer.Option("--project", "-p", help="프로젝트 slug (예: payment)")
+    str | None,
+    typer.Option(
+        "--project",
+        "-p",
+        help="프로젝트 slug (예: payment)",
+        autocompletion=completion.complete_project,
+    ),
 ]
 CategoryOpt = Annotated[str | None, typer.Option("--category", "-c", help="카테고리 키 (예: dev)")]
 DateOpt = Annotated[
@@ -40,7 +46,15 @@ DateOpt = Annotated[
 WeekOpt = Annotated[
     str | None, typer.Option("--week", "-w", help="주차: this, last, next, 2026-W40")
 ]
-TaskOpt = Annotated[str | None, typer.Option("--task", "-t", help="태스크 ID (예: 42 또는 '#42')")]
+TaskOpt = Annotated[
+    str | None,
+    typer.Option(
+        "--task",
+        "-t",
+        help="태스크 ID (예: 42 또는 '#42')",
+        autocompletion=completion.complete_task_id,
+    ),
+]
 YesOpt = Annotated[bool, typer.Option("--yes", "-y", help="확인 없이 진행합니다.")]
 StatusOpt = Annotated[
     str | None,
