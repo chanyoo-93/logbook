@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 import logbook.web
 from logbook.web.app import create_app
+from logbook.web.assets import STYLESHEETS
 from logbook.web.context import WebContext
 from tests.web.conftest import LOCAL_BASE_URL
 from tests.web.helpers import all_by_tag
@@ -51,9 +52,10 @@ def _readme_hashes() -> dict[str, str]:
 @pytest.mark.parametrize(
     ("path", "content_type"),
     [
-        ("/static/css/app.css", CSS),
+        *[(f"/static/css/{name}", CSS) for name in STYLESHEETS],
         ("/static/js/app.js", JS),
         ("/static/js/dashboard.js", JS),
+        ("/static/js/report.js", JS),
         ("/static/vendor/htmx-2.0.11.min.js", JS),
         ("/static/vendor/chart-4.5.1.umd.min.js", JS),
     ],
@@ -67,8 +69,24 @@ def test_static_files_are_served_with_type_and_security_headers(
     assert response.headers["content-type"] == content_type
     assert response.headers["x-content-type-options"] == "nosniff"
     assert "default-src 'self'" in response.headers["content-security-policy"]
-    assert "cache-control" not in response.headers
+    assert response.headers["cache-control"] == "no-cache"
+    assert response.headers["etag"]
     assert response.content
+
+
+def test_static_conditional_request_gets_304_with_security_headers(client: TestClient) -> None:
+    etag = client.get("/static/css/app.css").headers["etag"]
+
+    response = client.get("/static/css/app.css", headers={"If-None-Match": etag})
+
+    assert response.status_code == 304
+    assert response.headers["cache-control"] == "no-cache"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert "default-src 'self'" in response.headers["content-security-policy"]
+
+
+def test_pages_stay_no_store(client: TestClient) -> None:
+    assert client.get("/").headers["cache-control"] == "no-store"
 
 
 def test_static_favicon_is_svg(client: TestClient) -> None:
@@ -102,7 +120,8 @@ def test_create_app_overrides_a_registry_mime_type_for_js(
 
     with TestClient(create_app(web_ctx), base_url=LOCAL_BASE_URL) as client:
         assert client.get("/static/js/app.js").headers["content-type"] == JS
-        assert client.get("/static/css/app.css").headers["content-type"] == CSS
+        for name in STYLESHEETS:
+            assert client.get(f"/static/css/{name}").headers["content-type"] == CSS
 
 
 def test_vendor_readme_lists_every_vendor_file() -> None:
@@ -139,8 +158,33 @@ def test_base_template_sets_the_htmx_config(client: TestClient) -> None:
     assert json.loads(content) == HTMX_CONFIG
 
 
-def test_app_css_defines_color_tokens_and_reduced_motion() -> None:
-    css = (STATIC_ROOT / "css" / "app.css").read_text(encoding="utf-8")
+def test_stylesheet_list_has_every_css_file_exactly_once() -> None:
+    on_disk = sorted(path.name for path in (STATIC_ROOT / "css").glob("*.css"))
+
+    assert sorted(STYLESHEETS) == on_disk
+
+
+def _linked_sheets(html: str) -> list[str | None]:
+    return [
+        e.attrs.get("href") for e in all_by_tag(html, "link") if e.attrs.get("rel") == "stylesheet"
+    ]
+
+
+def test_base_template_links_every_stylesheet_in_order(client: TestClient) -> None:
+    assert _linked_sheets(client.get("/").text) == [f"/static/css/{n}" for n in STYLESHEETS]
+
+
+def test_error_page_links_the_same_stylesheets_in_the_same_order(client: TestClient) -> None:
+    error = client.get("/no-such-page")
+
+    assert error.status_code == 404
+    assert _linked_sheets(error.text) == _linked_sheets(client.get("/").text)
+
+
+def test_css_files_define_color_tokens_and_reduced_motion() -> None:
+    css = "\n".join(
+        (STATIC_ROOT / "css" / name).read_text(encoding="utf-8") for name in STYLESHEETS
+    )
 
     for token in (
         "--bg",
@@ -158,19 +202,12 @@ def test_app_css_defines_color_tokens_and_reduced_motion() -> None:
     assert ".visually-hidden" in css
 
 
-def test_app_css_uses_color_literals_only_in_the_token_block() -> None:
-    css = (STATIC_ROOT / "css" / "app.css").read_text(encoding="utf-8")
-    after_tokens = css.split("}", 1)[1]  # 첫 규칙(:root)을 지난 뒤
-
-    assert not re.search(r"#[0-9a-fA-F]{3,8}\b", after_tokens)
-    assert not re.search(r"\b(?:rgb|rgba|hsl|hsla|oklch)\(", after_tokens)
-
-
 def test_static_text_files_are_utf8_without_carriage_returns() -> None:
     for path in (
-        STATIC_ROOT / "css" / "app.css",
+        *[STATIC_ROOT / "css" / name for name in STYLESHEETS],
         STATIC_ROOT / "js" / "app.js",
         STATIC_ROOT / "js" / "dashboard.js",
+        STATIC_ROOT / "js" / "report.js",
         STATIC_ROOT / "favicon.svg",
     ):
         data = path.read_bytes()

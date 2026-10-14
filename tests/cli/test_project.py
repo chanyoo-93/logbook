@@ -1,13 +1,17 @@
-"""lb project add|list|archive."""
+"""lb project add|list|edit|archive|unarchive."""
 
 import os
 from collections.abc import Callable
+from contextlib import AbstractContextManager
 from pathlib import Path
 
 import pytest
+from sqlalchemy.orm import Session
 from typer.testing import Result
 
-from logbook.core import platform
+from logbook.cli import runtime
+from logbook.cli.commands.project import EDIT_NOTHING
+from logbook.core import platform, services
 from tests.cli.helpers import tokens
 
 ARCHIVE_DEFAULT_WARNING = (
@@ -212,3 +216,130 @@ def test_project_without_args_shows_help(lb: Callable[..., Result], tmp_home: Pa
 
     assert result.exit_code == 2
     assert "Usage: lb project" in result.stdout + result.stderr
+
+
+def test_edit_changes_name_and_color(lb: Callable[..., Result], initialized: Path) -> None:
+    add_payment(lb)
+
+    result = lb("project", "edit", "payment", "--name", "결제 API", "--color", "#22c55e")
+
+    assert result.exit_code == 0, result.stderr
+    assert result.stdout == "✔ 프로젝트 수정: payment (결제 API) #22c55e\n"
+    assert result.stderr == ""
+    listed = lb("project", "list")
+    assert ["payment", "결제 API", "#22c55e"] in table_rows(listed.stdout)
+
+
+def test_edit_no_color_clears_color(lb: Callable[..., Result], initialized: Path) -> None:
+    add_payment(lb)
+
+    result = lb("project", "edit", "payment", "--no-color")
+
+    assert result.exit_code == 0, result.stderr
+    assert result.stdout == "✔ 프로젝트 수정: payment (결제 서버)\n"
+    assert ["payment", "결제 서버", "-"] in table_rows(lb("project", "list").stdout)
+
+
+def test_edit_description_set_and_cleared(lb: Callable[..., Result], initialized: Path) -> None:
+    add_payment(lb)
+
+    first = lb("project", "edit", "payment", "--description", "결제 연동")
+    second = lb("project", "edit", "payment", "--no-description")
+
+    assert first.exit_code == 0, first.stderr
+    assert first.stdout == "✔ 프로젝트 수정: payment (결제 서버) #4f46e5\n"
+    assert second.exit_code == 0, second.stderr
+    assert second.stdout == "✔ 프로젝트 수정: payment (결제 서버) #4f46e5\n"
+
+
+def test_edit_name_and_no_description_together(
+    lb: Callable[..., Result],
+    initialized: Path,
+    open_db: Callable[[], AbstractContextManager[Session]],
+) -> None:
+    add_payment(lb)
+    lb("project", "edit", "payment", "--description", "결제 연동")
+
+    result = lb("project", "edit", "payment", "--name", "결제 API", "--no-description")
+
+    assert result.exit_code == 0, result.stderr
+    assert result.stdout == "✔ 프로젝트 수정: payment (결제 API) #4f46e5\n"
+    with open_db() as s:
+        project = services.get_project(s, "payment")
+        assert (project.name, project.description) == ("결제 API", None)
+
+
+def test_edit_uses_ascii_mark_when_console_lacks_unicode(
+    lb: Callable[..., Result], initialized: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    add_payment(lb)
+    monkeypatch.setattr(platform, "supports_unicode", lambda text="": False)
+
+    result = lb("project", "edit", "payment", "--name", "x")
+
+    assert result.stdout == "v 프로젝트 수정: payment (x) #4f46e5\n"
+
+
+@pytest.mark.parametrize(
+    ("args", "message"),
+    [
+        (["payment"], EDIT_NOTHING),
+        (
+            ["payment", "--color", "#22c55e", "--no-color"],
+            "--color 옵션과 --no-color 옵션은 함께 쓸 수 없습니다. 하나만 지정하세요.",
+        ),
+        (
+            ["payment", "--description", "x", "--no-description"],
+            "--description 옵션과 --no-description 옵션은 함께 쓸 수 없습니다. 하나만 지정하세요.",
+        ),
+        (["zzz", "--name", "x"], None),
+        (["payment", "--name", " "], "프로젝트 이름이 비어 있습니다. 이름을 입력하세요."),
+    ],
+    ids=["nothing", "color-conflict", "description-conflict", "unknown-slug", "blank-name"],
+)
+def test_edit_rejects(
+    lb: Callable[..., Result], initialized: Path, args: list[str], message: str | None
+) -> None:
+    add_payment(lb)
+
+    result = lb("project", "edit", *args)
+
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    if message is None:
+        assert result.stderr.startswith("오류: 프로젝트를 찾을 수 없습니다: 'zzz'.")
+    else:
+        assert result.stderr.startswith(f"오류: {message.splitlines()[0]}")
+
+
+def test_unarchive_archived_and_active(lb: Callable[..., Result], initialized: Path) -> None:
+    add_payment(lb)
+    assert lb("project", "archive", "payment").exit_code == 0
+
+    first = lb("project", "unarchive", "payment")
+    second = lb("project", "unarchive", "payment")
+
+    assert first.exit_code == 0, first.stderr
+    assert first.stdout == "✔ 프로젝트 보관 해제: payment\n"
+    assert second.exit_code == 0, second.stderr
+    assert second.stdout == "· 보관되지 않은 프로젝트입니다: payment\n"
+    assert ["payment", "결제 서버", "#4f46e5"] in table_rows(lb("project", "list").stdout)
+
+
+def test_unarchive_unknown_project(lb: Callable[..., Result], initialized: Path) -> None:
+    result = lb("project", "unarchive", "zzz")
+
+    assert result.exit_code == 1
+    assert result.stderr.startswith("오류: 프로젝트를 찾을 수 없습니다: 'zzz'.")
+
+
+def test_conflict_message_is_shared_with_task_command() -> None:
+    from logbook.cli.commands import task
+
+    assert task.CONFLICT_MESSAGE is runtime.CONFLICT_MESSAGE
+
+
+def test_edit_nothing_example_uses_double_quotes_for_cmd_exe() -> None:
+    # cmd.exe는 작은따옴표를 벗기지 않아 값에 따옴표가 남는다.
+    assert 'lb project edit payment --color "#22c55e"' in EDIT_NOTHING
+    assert "'" not in EDIT_NOTHING

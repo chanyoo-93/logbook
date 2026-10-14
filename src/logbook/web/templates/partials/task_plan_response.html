@@ -1,0 +1,5 @@
+{# 이월 응답: 계획 패널(#task-plan)이 본문이고 보드는 OOB로 함께 바꾼다. #}
+{% include "partials/task_plan.html" %}
+{% with oob = true %}
+{% include "partials/task_board.html" %}
+{% endwith %}

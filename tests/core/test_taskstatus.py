@@ -71,3 +71,22 @@ def test_taskstatus_does_not_import_sqlalchemy() -> None:
     code = "import sys, logbook.core.taskstatus; sys.exit(1 if 'sqlalchemy' in sys.modules else 0)"
     proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=False)
     assert proc.returncode == 0, proc.stderr
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [("done", TaskStatus.DONE), (" DOING ", TaskStatus.DOING), ("todo", TaskStatus.TODO)],
+)
+def test_parse_status_single_value(text: str, expected: TaskStatus) -> None:
+    assert taskstatus.parse_status(text) is expected
+
+
+@pytest.mark.parametrize("text", ["x", "", "all", "todo,doing"])
+def test_parse_status_rejects_other_values(text: str) -> None:
+    with pytest.raises(InvalidInputError) as caught:
+        taskstatus.parse_status(text)
+
+    assert str(caught.value) == taskstatus.STATUS_INVALID.format(value=text)
+    assert str(caught.value) == (
+        f"태스크 상태가 올바르지 않습니다: '{text}'. todo, doing, done, dropped 중 하나를 쓰세요."
+    )

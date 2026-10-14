@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from logbook.core import db, services
 from logbook.core.errors import InvalidInputError
-from logbook.core.models import ActiveTimer, Project, Task, WorkLog
+from logbook.core.models import ActiveTimer, Project, Task, WeekNote, WorkLog
 from logbook.core.taskstatus import TaskStatus
 
 NOW = datetime(2026, 10, 8, 3, 0, 0, tzinfo=UTC)
@@ -80,6 +80,12 @@ DEFAULT_ROWS: dict[str, dict[str, Any]] = {
         "note": "타이머",
         "started_at": STAMP,
     },
+    "week_notes": {
+        "week": "2026-W41",
+        "risks": "리스크",
+        "notes": "특이사항",
+        "updated_at": STAMP,
+    },
 }
 
 
@@ -88,17 +94,24 @@ def dumps(obj: object) -> str:
 
 
 def header(**changes: Any) -> str:
+    """형식 1 머리글. 형식 1 파일은 스키마 1에서 만들어졌으므로 schema_version은 1로 고정한다."""
     header: dict[str, Any] = {
         "type": "logbook-export",
         "format": 1,
-        "schema_version": db.SCHEMA_VERSION,
+        "schema_version": 1,
         "exported_at": "2026-10-08T03:00:00+00:00",
     }
     header.update(changes)
     return dumps({key: value for key, value in header.items() if value != "<missing>"})
 
 
+def header_v2(**changes: Any) -> str:
+    """형식 2 머리글(현재 스키마)."""
+    return header(**{"format": 2, "schema_version": db.SCHEMA_VERSION, **changes})
+
+
 HEADER = header()
+HEADER_V2 = header_v2()
 
 
 def line(table: str, **changes: Any) -> str:
@@ -111,13 +124,15 @@ PAY = line("projects", id=2, slug="pay", name="결제")
 TASK = line("tasks")
 WORKLOG = line("worklogs")
 TIMER = line("active_timer")
+WEEK_NOTE = line("week_notes")
 
-# 테이블 줄 앞에 와야 하는 정상 줄(머리글 포함)
+# 테이블 줄 앞에 와야 하는 정상 줄(머리글 포함). week_notes는 형식 2 머리글이다.
 PREFIX = {
     "projects": [HEADER],
     "tasks": [HEADER, COMMON, PAY],
     "worklogs": [HEADER, COMMON, PAY, TASK],
     "active_timer": [HEADER, COMMON, PAY, TASK, WORKLOG],
+    "week_notes": [HEADER_V2, COMMON, PAY, TASK, WORKLOG, TIMER],
 }
 
 
@@ -128,7 +143,7 @@ def valid() -> list[str]:
 def assert_unchanged(session: Session) -> None:
     slugs = [p.slug for p in session.scalars(select(Project))]
     assert slugs == ["common"]
-    for model in (Task, WorkLog, ActiveTimer):
+    for model in (Task, WorkLog, ActiveTimer, WeekNote):
         assert session.scalar(select(func.count()).select_from(model)) == 0
 
 
@@ -208,6 +223,22 @@ def populate(s: Session) -> None:
             note="타이머",
             started_at=NOW,
         )
+    )
+    s.add_all(
+        [
+            WeekNote(
+                week="2026-W41",
+                risks="",
+                notes="W41 특이사항",
+                updated_at=datetime(2026, 10, 8, 1, 0, 0, tzinfo=UTC),
+            ),
+            WeekNote(
+                week="2026-W40",
+                risks="W40 리스크",
+                notes="",
+                updated_at=datetime(2026, 10, 1, 1, 0, 0, tzinfo=UTC),
+            ),
+        ]
     )
     s.flush()
 

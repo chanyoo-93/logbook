@@ -25,6 +25,7 @@ from logbook.core.report import (
 )
 from logbook.core.services.stats import MatrixResult, stats_matrix
 from logbook.core.services.tasks import count_done_tasks, list_tasks
+from logbook.core.services.week_notes import get_week_note
 from logbook.core.taskstatus import OPEN_STATUSES
 from logbook.core.weeks import Week
 
@@ -53,6 +54,7 @@ def weekly_report(
     title = _format_title(title_format, week)
     matrix = stats_matrix(s, week, category_order=tuple(category_labels))
     labels = {key: _one_line(category_labels.get(key, key)) for key in matrix.categories}
+    note = get_week_note(s, week)
     return ReportData(
         title=title,
         author=author,
@@ -65,7 +67,9 @@ def weekly_report(
         categories=tuple(labels[key] for key in matrix.categories),
         matrix=_matrix_rows(matrix),
         sections=_sections(s, week, tz, matrix, labels),
-        plan=_plan(s, week),
+        plan=next_week_plan(s, week),
+        notes=note.notes if note else "",
+        risks=note.risks if note else "",
     )
 
 
@@ -225,8 +229,11 @@ def _others(
     return tuple((label, format_duration(minutes[label])) for label in ranked)
 
 
-def _plan(s: Session, week: Week) -> tuple[PlanGroup, ...]:
-    """다음 주 계획 태스크와 이번 주 미완료(이월 후보)를 프로젝트 slug 순으로 묶는다."""
+def next_week_plan(s: Session, week: Week) -> tuple[PlanGroup, ...]:
+    """week 다음 주의 계획(보고서 4절): 다음 주 todo·doing과 week의 todo·doing(이월 후보).
+
+    프로젝트 slug 순으로 묶는다.
+    """
     upcoming = list_tasks(s, statuses=OPEN_STATUSES, week=week.next())
     carried = list_tasks(s, statuses=OPEN_STATUSES, week=week)
     items: dict[str, list[tuple[Task, bool]]] = {}

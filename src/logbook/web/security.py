@@ -48,12 +48,14 @@ def is_api_path(path: str) -> bool:
 
 
 def security_headers(path: str) -> tuple[tuple[str, str], ...]:
-    """모든 응답에 붙이는 보안 헤더. /static/이 아니면 Cache-Control: no-store를 더한다.
+    """모든 응답에 붙이는 보안 헤더. Cache-Control은 /static/이면 no-cache, 아니면 no-store다.
+
+    정적 파일은 ETag로 매번 바뀌었는지 확인해 고친 CSS·JS를 새로 고침만으로 받게 한다.
 
     미들웨어와 500 처리기가 함께 쓴다(500 응답은 이 미들웨어를 지나지 않는다).
     """
     if path.startswith(STATIC_PREFIX):
-        return _BASE_HEADERS
+        return (*_BASE_HEADERS, ("Cache-Control", "no-cache"))
     return (*_BASE_HEADERS, ("Cache-Control", "no-store"))
 
 

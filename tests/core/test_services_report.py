@@ -436,6 +436,44 @@ def test_plan_item_estimate_and_title(seeded: Session) -> None:
     )
 
 
+# --- 특이사항·리스크 ---
+
+
+def test_report_carries_week_note_only_for_its_week(seeded: Session) -> None:
+    services.save_week_note(seeded, FIXED, notes="배포 일정 확정", risks="인력 부족")
+
+    this_week = _report(seeded)
+    next_week = _report(seeded, FIXED.next())
+
+    assert (this_week.notes, this_week.risks) == ("배포 일정 확정", "인력 부족")
+    assert (next_week.notes, next_week.risks) == ("", "")
+
+
+# --- next_week_plan ---
+
+
+def test_next_week_plan_is_public_and_matches_report_plan(seeded: Session) -> None:
+    next_todo = _task(seeded, "다음 할 일", planned_week=FIXED.next())
+    carried = _task(seeded, "이월", planned_week=FIXED)
+    services.set_task_status(seeded, carried.id, TaskStatus.DOING)
+    done = _task(seeded, "이번 완료", planned_week=FIXED)
+    _finish(seeded, done)
+    archived = _task(seeded, "보관됨", "admin", planned_week=FIXED.next())
+    services.archive_project(seeded, "admin")
+
+    plan = services.next_week_plan(seeded, FIXED)
+    task_ids = {i.task_id: i.carried for g in plan for i in g.items}
+
+    assert plan == _report(seeded).plan
+    assert [(g.project, [(i.task_id, i.carried) for i in g.items]) for g in plan] == [
+        ("payment", [(next_todo.id, False), (carried.id, True)])
+    ]
+    # 이번 주 미완료 건은 이월 표시, 완료 태스크와 보관 프로젝트 태스크는 빠진다.
+    assert task_ids[carried.id] is True
+    assert done.id not in task_ids
+    assert archived.id not in task_ids
+
+
 # --- 쿼리 수 ---
 
 

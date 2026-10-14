@@ -1,0 +1,17 @@
+{% macro move(url, text) %}
+    <a class="week-nav__link" href="{{ url }}" hx-get="{{ url }}" hx-target="#report-body" hx-swap="outerHTML" hx-push-url="true">{{ text }}</a>
+{% endmacro %}
+<form id="report-nav" class="filters" aria-label="보고서 주차" hx-get="/report" hx-target="#report-body" hx-swap="outerHTML" hx-push-url="true" hx-trigger="change, submit" hx-sync="this:replace"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+  <div class="week-nav">
+{% if nav.prev_url %}
+    {{ move(nav.prev_url, "◀ 이전 주") }}
+{% endif %}
+    <div class="filters__field">
+      <label for="report-week">주차</label>
+      <input id="report-week" name="week" type="text" autocomplete="off" value="{{ nav.week }}" placeholder="2026-W40">
+    </div>
+{% if nav.next_url %}
+    {{ move(nav.next_url, "다음 주 ▶") }}
+{% endif %}
+  </div>
+</form>

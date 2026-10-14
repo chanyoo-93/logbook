@@ -250,16 +250,16 @@ def test_export_import_round_trip_on_cp949_console(tmp_path: Path) -> None:
     assert run_lb(["add", "1h", "한글 메모", "-c", "dev"], env=env, cwd=tmp_path).returncode == 0
     exported = run_lb(["export", "-o", "b.jsonl"], env=env, cwd=tmp_path)
     assert exported.returncode == 0, exported.stderr
-    assert (
-        exported.stdout == "✔ 내보냈습니다: b.jsonl (프로젝트 1 · 태스크 0 · 기록 1 · 타이머 0)\n"
+    assert exported.stdout == (
+        "✔ 내보냈습니다: b.jsonl (프로젝트 1 · 태스크 0 · 기록 1 · 타이머 0 · 특이사항 0)\n"
     )
 
     other_env = {**env, "LOGBOOK_DB": str(tmp_path / "other" / "logbook.db")}
     assert run_lb(["init"], env=other_env, cwd=tmp_path).returncode == 0
     imported = run_lb(["import", "b.jsonl"], env=other_env, cwd=tmp_path)
     assert imported.returncode == 0, imported.stderr
-    assert (
-        imported.stdout == "✔ 가져왔습니다: b.jsonl (프로젝트 1 · 태스크 0 · 기록 1 · 타이머 0)\n"
+    assert imported.stdout == (
+        "✔ 가져왔습니다: b.jsonl (프로젝트 1 · 태스크 0 · 기록 1 · 타이머 0 · 특이사항 0)\n"
     )
 
     shown = run_lb(["log"], env=other_env, cwd=tmp_path)
@@ -348,6 +348,17 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(["init", "--help"], 0, None, id="init-help"),
         pytest.param(["project"], 2, None, id="project-no-args"),
         pytest.param(["project", "--help"], 0, None, id="project-help"),
+        pytest.param(["project", "edit", "--help"], 0, None, id="project-edit-help"),
+        pytest.param(["project", "unarchive", "--help"], 0, None, id="project-unarchive-help"),
+        pytest.param(
+            ["project", "edit", "payment"], 1, "오류: 바꿀 항목을", id="project-edit-nothing"
+        ),
+        pytest.param(
+            ["project", "edit", "payment", "--color", "#22c55e", "--no-color"],
+            1,
+            "오류: --color 옵션과 --no-color 옵션",
+            id="project-edit-conflict",
+        ),
         pytest.param(["add", "--help"], 0, None, id="add-help"),
         pytest.param(["add", "1h"], 2, None, id="add-missing-note"),
         pytest.param(["add", "abc", "x"], 1, "오류: 시간 형식이", id="add-bad-duration"),
@@ -390,7 +401,7 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         pytest.param(
             ["task", "edit", "1", "--est", "1h", "--no-est"],
             1,
-            "오류: --est와 --no-est",
+            "오류: --est 옵션과 --no-est 옵션",
             id="task-edit-conflict",
         ),
         pytest.param(

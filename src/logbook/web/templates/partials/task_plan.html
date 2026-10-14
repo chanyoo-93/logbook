@@ -1,0 +1,23 @@
+<section id="task-plan" class="panel plan" aria-labelledby="task-plan-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+  <h2 id="task-plan-title" class="plan__title" tabindex="-1" data-focus>{{ plan.heading }}</h2>
+{% if plan.message %}
+  <p id="plan-result" class="form-message{% if plan.is_error %} form-message--error{% endif %}" role="{{ 'alert' if plan.is_error else 'status' }}">{{ plan.message }}</p>
+{% endif %}
+{% if plan.groups %}
+{% for group in plan.groups %}
+  <div class="plan__group">
+    <h3 class="plan__project">{{ group.project }} (예상 {{ group.estimate_total }})</h3>
+    <ul class="plan__items">
+{% for item in group.items %}
+      <li class="plan__item">#{{ item.task_id }} {{ item.title }}{% if item.estimate %} — 예상 {{ item.estimate }}{% endif %}{% if item.carried %} (이월 후보){% endif %}</li>
+{% endfor %}
+    </ul>
+  </div>
+{% endfor %}
+{% else %}
+  <p class="empty">계획된 태스크가 없습니다.</p>
+{% endif %}
+{% if plan.carry_ids %}
+  <button type="button" class="btn btn--small" hx-post="/tasks/carry" hx-vals='{{ {"ids": plan.carry_ids|join(",")}|tojson }}' hx-include="#task-filters" hx-target="#task-plan" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this" hx-confirm="{{ plan.carry_confirm }}">다음 주로 이월</button>
+{% endif %}
+</section>

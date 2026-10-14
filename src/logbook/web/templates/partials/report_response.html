@@ -1,0 +1,5 @@
+{# 주 이동 응답: 본문(#report-body)이 본문이고 주 이동은 OOB로 함께 바꾼다. #}
+{% include "partials/report_body.html" %}
+{% with oob = true %}
+{% include "partials/report_nav.html" %}
+{% endwith %}

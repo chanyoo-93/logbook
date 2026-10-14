@@ -1,4 +1,4 @@
-"""SQLAlchemy 모델: projects, tasks, worklogs, active_timer, schema_version.
+"""SQLAlchemy 모델: projects, tasks, worklogs, active_timer, week_notes, schema_version.
 
 관계는 다대일(자식 → 부모)만 둔다. 부모 삭제 시의 처리(거부, task_id NULL)는
 ORM이 아니라 DB 외래 키 규칙이 맡는다.
@@ -130,6 +130,17 @@ class ActiveTimer(Base):
 
     project: Mapped[Project] = relationship()
     task: Mapped[Task | None] = relationship()
+
+
+class WeekNote(Base):
+    """주차별 보고서 특이사항·리스크(보고서 3절). 두 칸이 모두 비면 행을 두지 않는다."""
+
+    __tablename__ = "week_notes"
+
+    week: Mapped[str] = mapped_column(String(8), primary_key=True)  # Week.label: '2026-W41'
+    risks: Mapped[str] = mapped_column(Text)
+    notes: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[dt.datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
 
 class SchemaVersion(Base):

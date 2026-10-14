@@ -17,6 +17,7 @@ from logbook.core import db
 from logbook.core.config import Config
 from logbook.core.errors import LogbookError
 from logbook.web.app import create_app
+from logbook.web.config_watch import ConfigWatcher
 from logbook.web.context import WebContext
 
 BIND_ADDRESS = "127.0.0.1"
@@ -63,16 +64,19 @@ def serve(
     now: Callable[[], datetime],
     on_ready: Callable[[str], None],
     on_browser_failed: Callable[[str], None],
+    on_upgrade: Callable[[db.InitResult], None] | None = None,
 ) -> None:
     """서버를 실행하고 종료(Ctrl+C)할 때까지 돌아오지 않는다."""
-    engine = db.open_database(cfg.db_path)
+    engine = db.open_database(cfg.db_path, now=now(), on_upgrade=on_upgrade)
     try:
         sock = open_listen_socket(port)
     except BaseException:
         engine.dispose()
         raise
     try:
-        server = build_server(create_app(WebContext(cfg, engine, config_file, now)))
+        watcher = ConfigWatcher(config_file, cfg)
+        ctx = WebContext(cfg, engine, config_file, now)
+        server = build_server(create_app(ctx, watcher=watcher))
         url = f"http://{cfg.web.host}:{port}"
         on_ready(url)
         if open_browser:

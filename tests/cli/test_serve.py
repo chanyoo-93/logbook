@@ -14,8 +14,11 @@ import httpx2
 import pytest
 from typer.testing import Result
 
+from logbook.cli import render
 from logbook.web import server as web_server
+from logbook.web.config_watch import ConfigWatcher
 from tests.cli.helpers import assert_rejected, lb_env, run_lb
+from tests.helpers import make_v1_database
 
 DEFAULT_PORT = 8765
 STARTUP_TIMEOUT_SECONDS = 30
@@ -92,6 +95,25 @@ def test_serve_prints_start_and_stop_lines_and_releases_resources(
     # serve가 끝나면 소켓이 닫혀 있어야 한다.
     assert len(fake_server.sockets) == 1
     assert fake_server.sockets[0].fileno() == -1
+
+
+def test_serve_announces_database_upgrade_before_start_line(
+    lb: Callable[..., Result], tmp_home: Path, fake_server: FakeServer
+) -> None:
+    make_v1_database(tmp_home / "logbook.db")
+    backup = tmp_home / "logbook.db.v1-20261001-093000.bak"
+
+    result = lb("serve")
+
+    assert result.exit_code == 0, result.stderr
+    arrow = render.arrow()
+    upgrade_line = (
+        f"데이터베이스를 업그레이드했습니다: v1 {arrow} v2. 이전 데이터베이스 백업: {backup}\n"
+    )
+    assert result.stderr == upgrade_line
+    assert result.stdout == start_line(DEFAULT_PORT) + STOP_LINE
+    # Click 8.2+의 result.output은 stdout과 stderr를 나온 순서대로 담는다.
+    assert result.output == upgrade_line + start_line(DEFAULT_PORT) + STOP_LINE
 
 
 def test_serve_closes_socket_so_port_can_be_reopened(
@@ -370,3 +392,25 @@ def test_real_server_exits_zero_on_sigint(
 
     assert proc.returncode == 0
     assert out.decode("utf-8").replace("\r\n", "\n").endswith(STOP_LINE)
+
+
+def test_serve_passes_a_config_watcher_to_the_app(
+    lb: Callable[..., Result],
+    initialized: Path,
+    tmp_home: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    fake_server: FakeServer,
+) -> None:
+    built: list[Any] = []
+    monkeypatch.setattr(web_server, "build_server", lambda app: built.append(app) or fake_server)
+
+    result = lb("serve")
+
+    assert result.exit_code == 0, result.stderr
+    watcher = built[0].state.watcher
+    assert isinstance(watcher, ConfigWatcher)
+    assert watcher.current().cfg.db_path == initialized
+    # 같은 설정 파일을 보고 있으므로 파일을 고치면 current()가 새 값을 돌려준다.
+    assert watcher.current().cfg.report.author == ""
+    (tmp_home / "config.toml").write_text('[report]\nauthor = "홍길동"\n', encoding="utf-8")
+    assert watcher.current().cfg.report.author == "홍길동"

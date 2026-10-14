@@ -1,0 +1,33 @@
+{% macro form_select(id, name, label, empty_label, choices, current) %}
+    <div class="task-form__field task-form__field--{{ name }}">
+      <label for="{{ id }}">{{ label }}</label>
+      <select id="{{ id }}" name="{{ name }}">
+        <option value="">{{ empty_label }}</option>
+{% for choice in choices %}
+        <option value="{{ choice.value }}"{% if choice.value == current %} selected{% endif %}>{{ choice.label }}</option>
+{% endfor %}
+      </select>
+    </div>
+{% endmacro %}
+<form id="task-form" class="task-form" aria-label="태스크 추가" hx-post="/tasks" hx-include="#task-filters" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button">
+  <div class="task-form__fields">
+    <div class="task-form__field task-form__field--title">
+      <label for="task-title">제목</label>
+      <input id="task-title" name="title" type="text" autocomplete="off" data-focus placeholder="할 일을 적으세요" value="{{ form.values.title }}">
+    </div>
+    {{ form_select("task-project", "task_project", "프로젝트", "자동 (" ~ form.default_project ~ ")", form.projects, form.values.task_project) }}
+    {{ form_select("task-category", "task_category", "카테고리", "없음", form.categories, form.values.task_category) }}
+    <div class="task-form__field task-form__field--estimate">
+      <label for="task-estimate">예상</label>
+      <input id="task-estimate" name="estimate" type="text" autocomplete="off" placeholder="4h, 90m" value="{{ form.values.estimate }}">
+    </div>
+    <div class="task-form__field task-form__field--week">
+      <label for="task-week">계획 주차</label>
+      <input id="task-week" name="week" type="text" autocomplete="off" placeholder="next, 2026-W43" value="{{ form.values.week }}">
+    </div>
+    <button type="submit" class="btn btn--primary">추가</button>
+  </div>
+{% if form.message %}
+  <p id="task-form-result" class="form-message{% if form.is_error %} form-message--error{% endif %}" role="{{ 'alert' if form.is_error else 'status' }}">{{ form.message }}</p>
+{% endif %}
+</form>

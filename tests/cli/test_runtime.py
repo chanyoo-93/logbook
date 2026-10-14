@@ -11,11 +11,13 @@ from pathlib import Path
 import pytest
 import typer
 from sqlalchemy.orm import Session
+from typer.testing import Result
 
-from logbook.cli import runtime
+from logbook.cli import render, runtime
 from logbook.core import db
 from logbook.core.errors import DatabaseNotInitializedError, InvalidInputError, LogbookError
 from tests.cli.helpers import FIXED_NOW, Clock
+from tests.helpers import make_v1_database
 
 # deterministic_cli가 고정하기 전의 runtime.now (모듈 import 시점에 잡아 둔다)
 _REAL_NOW = runtime.now
@@ -229,6 +231,46 @@ def test_session_disposes_engine(tmp_home: Path) -> None:
         assert session.is_active
 
     os.replace(db_path, db_path.with_name("moved.db"))
+
+
+def upgrade_notice(backup: Path | None) -> str:
+    text = f"데이터베이스를 업그레이드했습니다: v1 {render.arrow()} v2."
+    if backup is not None:
+        text += f" 이전 데이터베이스 백업: {backup}"
+    return text + "\n"
+
+
+def test_announce_upgrade_writes_backup_path_to_stderr(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    backup = tmp_path / "logbook.db.v1-20261001-093000.bak"
+
+    runtime.announce_upgrade(db.InitResult(1, 2, backup))
+
+    captured = capsys.readouterr()
+    assert captured.err == upgrade_notice(backup)
+    assert captured.out == ""
+
+
+def test_announce_upgrade_without_backup_omits_backup_sentence(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    runtime.announce_upgrade(db.InitResult(1, 2))
+
+    assert capsys.readouterr().err == upgrade_notice(None)
+
+
+def test_session_announces_upgrade_once(lb: Callable[..., Result], tmp_home: Path) -> None:
+    make_v1_database(tmp_home / "logbook.db")
+    backup = tmp_home / "logbook.db.v1-20261001-093000.bak"
+
+    first = lb("log")
+    second = lb("log")
+
+    assert first.exit_code == 0, first.stderr
+    assert first.stderr == upgrade_notice(backup)
+    assert second.exit_code == 0, second.stderr
+    assert second.stderr == ""
 
 
 def test_open_db_fixture_disposes_engine(

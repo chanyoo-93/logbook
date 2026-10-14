@@ -71,6 +71,21 @@ def test_report_json_format(client: TestClient, web_engine: Engine, config: Conf
     assert isinstance(data["categories"], list)
 
 
+def test_report_json_includes_saved_notes(client: TestClient, web_engine: Engine) -> None:
+    with db.session_scope(web_engine) as s:
+        services.save_week_note(
+            s,
+            parse_week("2026-W40", today=W40_DAY, week_start="monday"),
+            notes="일정",
+            risks="위험",
+        )
+
+    data = client.get("/api/report", params={"format": "json"}).json()["data"]
+
+    assert data["notes"] == "일정"
+    assert data["risks"] == "위험"
+
+
 def test_report_rejects_unknown_format(client: TestClient) -> None:
     response = client.get("/api/report", params={"format": "pdf"})
 

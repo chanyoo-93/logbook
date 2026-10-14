@@ -66,6 +66,13 @@ def _input(html: str, name: str) -> Element:
     raise AssertionError(f"name이 '{name}'인 입력이 없습니다")
 
 
+def _quick_form_html(client: TestClient) -> str:
+    """대시보드에서 빠른 기록 폼 부분만 잘라 낸다(같은 화면의 타이머 시작 폼과 섞이지 않게)."""
+    html = client.get("/").text
+    start = html.index('id="quick-form"')
+    return html[start : html.index("</form>", start)]
+
+
 def _seed_form(engine: Engine) -> int:
     add_project(engine, "payment", "결제 서버")
     return add_task(engine, title="환불 API 설계", project="payment", category="design")
@@ -83,7 +90,7 @@ def test_form_attributes(client: TestClient) -> None:
 
 
 def test_form_inputs_are_labelled(client: TestClient) -> None:
-    html = client.get("/").text
+    html = _quick_form_html(client)
 
     label_targets = {e.attrs["for"] for e in all_by_tag(html, "label")}
     for name in ("duration", "note", "project", "category", "task"):
@@ -105,7 +112,7 @@ def test_form_options(client: TestClient, web_engine: Engine) -> None:
     with db.session_scope(web_engine) as s:
         services.archive_project(s, "old")
 
-    html = client.get("/").text
+    html = _quick_form_html(client)
 
     projects = _options(html, "project")
     assert projects[0] == ("", "자동 (태스크 또는 common)", False)

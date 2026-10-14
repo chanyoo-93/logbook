@@ -11,9 +11,11 @@ from logbook.web.pages.summary import build_summary
 from logbook.web.pages.views import (
     RECENT_LIMIT,
     QuickFormValues,
+    TimerStartValues,
     log_row,
     quick_form_options,
     record_text,
+    timer_view,
 )
 
 if TYPE_CHECKING:
@@ -25,6 +27,9 @@ if TYPE_CHECKING:
     from logbook.web.context import WebContext
 
 RESULT_MARK = "✔"
+NO_CHANGE = "바뀐 내용이 없습니다."
+CATEGORY_REQUIRED = "카테고리를 고르세요. 태스크를 고르면 태스크의 카테고리를 씁니다."
+NOTE_REQUIRED = "메모를 입력하세요. 태스크를 고르면 태스크 제목을 씁니다."
 
 
 def result_line(s: Session, log: WorkLog, today: date) -> str:
@@ -65,3 +70,28 @@ def quick_form_context(
         "quick_error": is_error,
         "default_project": ctx.cfg.default_project,
     }
+
+
+def timer_panel_context(
+    s: Session,
+    ctx: WebContext,
+    now: datetime,
+    *,
+    values: TimerStartValues | None = None,
+    message: str = "",
+    is_error: bool = False,
+) -> dict[str, Any]:
+    """타이머 패널의 템플릿 값. 진행 중이면 타이머 뷰, 아니면 시작 폼의 선택지와 채워 둘 값."""
+    timer = services.get_timer(s)
+    context: dict[str, Any] = {
+        "timer": None,
+        "timer_message": message,
+        "timer_error": is_error,
+        "default_project": ctx.cfg.default_project,
+    }
+    if timer is not None:
+        context["timer"] = timer_view(timer, now)
+        return context
+    context["timer_options"] = quick_form_options(s, ctx.cfg)
+    context["timer_values"] = values if values is not None else TimerStartValues()
+    return context

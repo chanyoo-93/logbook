@@ -1,0 +1,42 @@
+<section id="project-section" class="panel" aria-labelledby="project-section-title">
+  <div class="panel__head">
+    <h2 id="project-section-title" class="panel__title" tabindex="-1" data-focus>프로젝트</h2>
+  </div>
+{% if section.message %}
+  <p id="project-result" class="form-message{% if section.is_error %} form-message--error{% endif %}" role="{{ 'alert' if section.is_error else 'status' }}">{{ section.message }}</p>
+{% endif %}
+  <div class="table-wrap">
+    <table class="grid grid--projects">
+      <thead>
+        <tr>
+          <th scope="col">slug</th>
+          <th scope="col">이름</th>
+          <th scope="col">색</th>
+          <th scope="col">설명</th>
+          <th scope="col">상태</th>
+          <th scope="col">동작</th>
+        </tr>
+      </thead>
+      <tbody>
+{% for row in section.rows %}
+{% include "partials/project_row.html" %}
+{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <form id="project-add-form" class="project-form" aria-label="프로젝트 추가" hx-post="/settings/projects" hx-target="#project-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button">
+    <div class="project-form__field">
+      <label for="project-slug">slug</label>
+      <input id="project-slug" type="text" name="slug" autocomplete="off" placeholder="payment" value="{{ section.add_values.slug }}">
+    </div>
+    <div class="project-form__field">
+      <label for="project-name">이름</label>
+      <input id="project-name" type="text" name="name" autocomplete="off" placeholder="결제 서버" value="{{ section.add_values.name }}">
+    </div>
+    <div class="project-form__field">
+      <label for="project-color">색</label>
+      <input id="project-color" type="text" name="color" autocomplete="off" placeholder="#4f46e5" value="{{ section.add_values.color }}">
+    </div>
+    <button type="submit" class="btn btn--primary">추가</button>
+  </form>
+</section>

@@ -3,8 +3,9 @@
 import sqlite3
 import sys
 from collections.abc import Callable, Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 from sqlalchemy import (
@@ -29,25 +30,42 @@ from logbook.core.config import default_db_path as default_db_path
 from logbook.core.errors import DatabaseBusyError, DatabaseNotInitializedError, LogbookError
 from logbook.core.models import Base, SchemaVersion
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 # 다른 연결이 잠금을 잡고 있을 때 기다리는 시간(초). sqlite3 기본값과 같다.
 # monkeypatch가 먹도록 create_engine_for가 호출 시점에 읽는다.
 BUSY_TIMEOUT_SECONDS = 5.0
 
 Migration = Callable[[Connection], None]
-# 버전 v-1 스키마를 v로 올리는 함수. 예: {2: upgrade_to_2}
+
+
+def _upgrade_to_2(conn: Connection) -> None:
+    """v2: week_notes 테이블. 모델이 나중에 바뀌어도 이 단계는 그대로 두도록 DDL을 고정한다."""
+    conn.exec_driver_sql(
+        "CREATE TABLE week_notes ("
+        "week VARCHAR(8) NOT NULL, risks TEXT NOT NULL, notes TEXT NOT NULL, "
+        "updated_at DATETIME NOT NULL, PRIMARY KEY (week))"
+    )
+
+
+# 버전 v-1 스키마를 v로 올리는 함수. 2는 week_notes 추가
 # 주의: 마이그레이션은 트랜잭션 안에서 foreign_keys=ON 상태로 실행된다. SQLite는 트랜잭션 안의
 # PRAGMA foreign_keys 변경을 무시하므로, 테이블 재생성이 필요하면 이 실행 방식부터 바꿔야 한다.
-MIGRATIONS: dict[int, Migration] = {}
+MIGRATIONS: dict[int, Migration] = {2: _upgrade_to_2}
+
+BACKUP_FAILED = (
+    "마이그레이션 전에 데이터베이스를 백업하지 못했습니다: {target} ({detail}). "
+    "디스크 공간과 쓰기 권한을 확인한 뒤 다시 실행하세요. 데이터베이스는 바뀌지 않았습니다."
+)
 
 
 @dataclass(frozen=True)
 class InitResult:
-    """initialize_database의 결과."""
+    """init_db·initialize_database의 결과."""
 
     previous_version: int | None  # None: 스키마를 새로 만들었음(파일이 없었거나 비어 있었음)
     version: int  # 적용 후 버전
+    backup_path: Path | None = None  # 마이그레이션 전에 만든 백업. 올리지 않았으면 None
 
 
 def create_engine_for(path: Path | str) -> Engine:
@@ -82,11 +100,17 @@ def _enable_foreign_keys(
         cursor.close()
 
 
-def open_database(path: Path | str) -> Engine:
+def open_database(
+    path: Path | str,
+    *,
+    now: datetime | None = None,
+    on_upgrade: Callable[[InitResult], None] | None = None,
+) -> Engine:
     """'lb init'으로 만든 DB만 연다(CLI·Web 공용). 엔진의 dispose는 호출자 책임이다.
 
     파일을 만들지 않는다. 파일이 없거나 스키마가 없으면 DatabaseNotInitializedError.
     버전은 한 번만 읽고, 최신과 다를 때만 init_db로 대기 중인 마이그레이션을 적용한다.
+    실제로 버전을 올렸으면 on_upgrade(결과)를 한 번 부른다(core는 출력하지 않는다).
     존재 확인과 연결 사이에 다른 프로세스가 파일을 지우면 sqlite3가 빈 파일을 만들 수 있다.
     이때도 DatabaseNotInitializedError로 'lb init'을 안내하므로 데이터는 잃지 않는다.
     """
@@ -104,22 +128,22 @@ def open_database(path: Path | str) -> Engine:
             )
         # monkeypatch가 먹도록 모듈 전역 값을 호출 시점에 읽는다.
         if found != SCHEMA_VERSION:
-            init_db(engine)
+            result = init_db(engine, now=now)
+            if on_upgrade is not None and result.previous_version != result.version:
+                on_upgrade(result)
     except BaseException:
         engine.dispose()
         raise
     return engine
 
 
-def initialize_database(path: Path | str) -> InitResult:
+def initialize_database(path: Path | str, *, now: datetime | None = None) -> InitResult:
     """'lb init' 전용: 스키마를 만들거나 최신 버전까지 올린다. 엔진은 항상 dispose한다."""
     engine = create_engine_for(path)
     try:
-        previous = current_version(engine)
-        version = init_db(engine)
+        return init_db(engine, now=now)
     finally:
         engine.dispose()
-    return InitResult(previous, version)
 
 
 def _translate_sqlite_error(error: DatabaseError, path: str | None) -> LogbookError | None:
@@ -167,29 +191,76 @@ def _read_version(conn: Connection) -> int | None:
     return conn.scalar(select(func.max(SchemaVersion.version)))
 
 
-def init_db(engine: Engine) -> int:
-    """새 DB면 스키마를 만들고, 기존 DB면 최신 버전까지 마이그레이션한다. 결과 버전을 반환한다."""
+def init_db(engine: Engine, *, now: datetime | None = None) -> InitResult:
+    """새 DB면 스키마를 만들고, 기존 DB면 최신 버전까지 마이그레이션한다.
+
+    올릴 때는 첫 단계를 적용하기 직전에 DB를 같은 폴더에 한 번 백업한다. now는 백업 파일
+    이름에만 쓴다(None이면 지금 시각).
+    """
     # monkeypatch가 먹도록 모듈 전역 값을 호출 시점에 읽는다.
     target = SCHEMA_VERSION
     found = current_version(engine)
     if found == target:
-        return target
+        return InitResult(target, target)
     _check_upgradable(found, target)
     # 동시에 실행된 다른 프로세스가 먼저 초기화·마이그레이션했을 수 있으므로
-    # 쓰기 잠금을 잡은 뒤 버전을 다시 읽고 한 단계씩 올린다.
-    while True:
-        with _transaction(engine) as conn:
-            found = _read_version(conn)
-            if found is None:
-                Base.metadata.create_all(conn)
-                conn.execute(insert(SchemaVersion).values(version=target))
-                return target
-            _check_upgradable(found, target)
-            if found == target:
-                return target
-            version = found + 1
-            MIGRATIONS[version](conn)
-            conn.execute(update(SchemaVersion).values(version=version))
+    # 쓰기 잠금을 잡은 뒤 버전을 다시 읽고, 같은 잠금 안에서 백업과 모든 단계를 적용한다.
+    with _transaction(engine) as conn:
+        found = _read_version(conn)
+        if found is None:
+            Base.metadata.create_all(conn)
+            conn.execute(insert(SchemaVersion).values(version=target))
+            return InitResult(None, target)
+        _check_upgradable(found, target)
+        if found == target:
+            return InitResult(target, target)
+        previous = found
+        backup_path = _backup_database(engine, found, now or datetime.now().astimezone())
+        while found < target:
+            found += 1
+            MIGRATIONS[found](conn)
+            conn.execute(update(SchemaVersion).values(version=found))
+    return InitResult(previous, target, backup_path)
+
+
+def backup_path_for(db_file: Path, version: int, now: datetime) -> Path:
+    """'logbook.db.v1-20261013-153000.bak'. 이름이 겹치면 '-2', '-3'…을 붙인다(덮어쓰지 않는다)."""
+    stem = f"{db_file.name}.v{version}-{now.strftime('%Y%m%d-%H%M%S')}"
+    candidate = db_file.with_name(f"{stem}.bak")
+    number = 2
+    while candidate.exists():
+        candidate = db_file.with_name(f"{stem}-{number}.bak")
+        number += 1
+    return candidate
+
+
+def _copy_database(source: Path, target: Path) -> None:
+    """sqlite3 백업 API로 일관된 사본을 만든다. 두 연결은 반드시 닫는다(Windows 파일 잠금)."""
+    source_conn = sqlite3.connect(source, timeout=BUSY_TIMEOUT_SECONDS)
+    try:
+        target_conn = sqlite3.connect(target)
+        try:
+            source_conn.backup(target_conn)
+        finally:
+            target_conn.close()
+    finally:
+        source_conn.close()
+
+
+def _backup_database(engine: Engine, version: int, now: datetime) -> Path | None:
+    """마이그레이션 전 백업. 파일 DB가 아니면 None. 실패하면 부분 파일을 치우고 오류를 낸다."""
+    database = engine.url.database
+    if not database or database == ":memory:":
+        return None
+    target = backup_path_for(Path(database), version, now)
+    try:
+        _copy_database(Path(database), target)
+    except (sqlite3.Error, OSError) as error:
+        with suppress(OSError):
+            target.unlink(missing_ok=True)
+        detail = getattr(error, "strerror", None) or error
+        raise LogbookError(BACKUP_FAILED.format(target=target, detail=detail)) from error
+    return target
 
 
 def _check_upgradable(found: int | None, target: int) -> None:

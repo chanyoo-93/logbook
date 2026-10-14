@@ -1,4 +1,4 @@
-"""/api/timer: 타이머 시작·정지."""
+"""/api/timer: 타이머 상태 조회·시작·정지·취소."""
 
 from __future__ import annotations
 
@@ -13,6 +13,14 @@ from logbook.web.api.serialize import timer_json, worklog_json
 from logbook.web.context import TASK_LABEL, Ctx
 
 router = APIRouter()
+
+
+@router.get("/timer")
+def get_timer(ctx: Ctx) -> JSONResponse:
+    now = ctx.now()
+    with ctx.session() as s:
+        timer = services.get_timer(s)
+        return ok({"timer": timer_json(timer, now) if timer is not None else None})
 
 
 @router.post("/timer/start")
@@ -47,3 +55,11 @@ def stop_timer(ctx: Ctx, body: TimerStop | None = None) -> JSONResponse:
             "day_total_minutes": services.day_total_minutes(s, stopped.log.date),
         }
     return ok(data)
+
+
+@router.post("/timer/cancel")
+def cancel_timer(ctx: Ctx) -> JSONResponse:
+    now = ctx.now()
+    with ctx.session() as s:
+        canceled = services.cancel_timer(s)
+        return ok({"timer": timer_json(canceled, now)})

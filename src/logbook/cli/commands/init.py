@@ -87,12 +87,16 @@ def init() -> None:
     except FileExistsError:
         config_created = False
     cfg = load_config(path)
-    result = db.initialize_database(cfg.db_path)
+    result = db.initialize_database(cfg.db_path, now=runtime.now())
     common, warning = _prepare_projects(cfg)
 
     # 모든 단계가 성공한 뒤에 출력한다(실패하면 stdout이 비어 있다).
     console.print_line(*_config_line(path, config_created))
     console.print_line(*_database_line(cfg.db_path, result))
+    if result.backup_path is not None:
+        console.print_line(
+            f"{render.info_mark()} 이전 데이터베이스 백업: ", Text(str(result.backup_path))
+        )
     console.print_line(
         render.ok_mark(),
         " 기본 프로젝트 준비: ",

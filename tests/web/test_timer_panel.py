@@ -40,7 +40,7 @@ def test_panel_without_timer(client: TestClient) -> None:
     assert response.status_code == 200
     assert "진행 중인 타이머가 없습니다" in by_id(response.text, "timer").text
     assert "timer-elapsed" not in _ids(response.text)
-    assert all_by_tag(response.text, "button") == []
+    assert [e.text for e in all_by_tag(response.text, "button")] == ["시작"]
 
 
 def test_panel_with_timer(client: TestClient, web_engine: Engine, clock: Clock) -> None:
@@ -55,8 +55,8 @@ def test_panel_with_timer(client: TestClient, web_engine: Engine, clock: Clock) 
     assert elapsed.attrs["hx-get"] == "/timer/elapsed"
     assert elapsed.attrs["hx-trigger"] == "every 60s"
     assert elapsed.attrs["hx-swap"] == "outerHTML"
-    (button,) = all_by_tag(html, "button")
-    assert button.text == "정지"
+    button = next(e for e in all_by_tag(html, "button") if e.text == "정지")
+    assert [e.text for e in all_by_tag(html, "button")] == ["정지", "취소"]
     assert button.attrs["hx-post"] == "/timer/stop"
     assert button.attrs["hx-target"] == "#timer"
     assert button.attrs["hx-swap"] == "outerHTML"
@@ -73,7 +73,7 @@ def test_dashboard_embeds_the_same_panel(
     html = client.get("/").text
 
     assert by_id(html, "timer-elapsed").attrs["hx-trigger"] == "every 60s"
-    assert [e.text for e in all_by_tag(html, "button")][-1] == "정지"
+    assert "정지" in [e.text for e in all_by_tag(html, "button")]
 
 
 def test_elapsed_fragment(client: TestClient, web_engine: Engine, clock: Clock) -> None:

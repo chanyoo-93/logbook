@@ -9,8 +9,10 @@ from logbook.core.models import ActiveTimer, Project, WorkLog
 from logbook.web.pages.summary import CHART_PALETTE, project_colors
 from logbook.web.pages.views import (
     RECENT_LIMIT,
+    content_version,
     log_row,
     record_text,
+    timer_version,
     timer_view,
     worklog_version,
 )
@@ -168,3 +170,46 @@ def test_log_row_fields() -> None:
 
 def test_log_row_without_task_shows_dash() -> None:
     assert log_row(_log()).task == "-"
+
+
+def test_content_version_matches_worklog_version() -> None:
+    log = _log(task_id=7)
+    expected = content_version(
+        log.id,
+        log.date.isoformat(),
+        log.minutes,
+        log.note,
+        log.project_id,
+        log.category,
+        log.task_id,
+        log.created_at.isoformat(),
+    )
+
+    assert expected == worklog_version(log)
+
+
+def test_content_version_treats_none_as_empty_and_separates_fields() -> None:
+    assert content_version("a", None) == content_version("a", "")
+    assert content_version("a", "bc") != content_version("ab", "c")
+
+
+def test_timer_version_changes_with_started_at_and_note() -> None:
+    base = timer_version(_timer())
+
+    assert timer_version(_timer()) == base
+    assert timer_version(_timer(note="다른 메모")) != base
+    assert timer_version(_timer(started_at=datetime(2026, 9, 30, 13, 11, tzinfo=UTC))) != base
+
+
+def test_timer_view_has_version_and_cancel_confirm() -> None:
+    now = FIXED_NOW + timedelta(minutes=85)
+    started = datetime(2026, 10, 1, 0, 30, tzinfo=UTC)
+    timer = _timer(started_at=started, note="설계")
+
+    view = timer_view(timer, now)
+
+    assert view.version == timer_version(timer)
+    assert view.cancel_confirm == (
+        "버릴 타이머: payment/design — 설계 (시작 09:30 · 경과 1h 25m)\n"
+        "버릴까요? 기록은 남지 않습니다."
+    )

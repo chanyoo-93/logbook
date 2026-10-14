@@ -205,5 +205,8 @@
     }
   });
 
+  // OS 테마가 바뀌면 CSS 변수를 다시 읽어 차트를 다시 그린다.
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawCharts);
+
   drawCharts();
 })();

@@ -26,6 +26,7 @@ from .backup_helpers import (
     TASK,
     TIME_EXPECT,
     TIMER,
+    WEEK_NOTE,
     WORKLOG,
     dumps,
     header,
@@ -33,13 +34,17 @@ from .backup_helpers import (
     rejects,
 )
 
+WEEK_EXPECT = "YYYY-Www 형식의 주차 (예: 2026-W41)"
+
 # --- 머리글 ---
 
 
 def _header_cases() -> Iterator[Any]:
     empty = "logbook 내보내기 파일이 아닙니다 (내용이 없습니다)."
     no_type = "logbook 내보내기 파일이 아닙니다 (첫 줄에 type 값이 없습니다)."
-    version = "지원하지 않는 내보내기 형식 버전입니다: {}. 이 버전의 logbook이 읽을 수 있는 형식: 1"
+    version = (
+        "지원하지 않는 내보내기 형식 버전입니다: {}. 이 버전의 logbook이 읽을 수 있는 형식: 1, 2"
+    )
     schema = "내보내기 파일의 스키마 버전이 올바르지 않습니다: {}"
     yield pytest.param([], empty, id="빈 입력")
     yield pytest.param(["", "  ", "\r\n"], empty, id="빈 줄만")
@@ -57,7 +62,7 @@ def _header_cases() -> Iterator[Any]:
         ("1.0", 1.0, "1.0"),
         ("문자열", "1", '"1"'),
         ("없음", "<missing>", "null"),
-        ("2", 2, "2"),
+        ("3", 3, "3"),
     ):
         yield pytest.param([header(format=value)], version.format(shown), id=f"format {label}")
     for label, value, shown in (
@@ -173,6 +178,11 @@ def _value_cases() -> Iterator[Any]:
     yield _field_case("active_timer", "id", 2, "1")
     yield _field_case("active_timer", "id", True, "1")
     yield _field_case("active_timer", "started_at", None, TIME_EXPECT)
+    for value in ("2027-W53", "2026-w41", "2026-W5", 41, "2026-41", None, "2026-W00"):
+        yield _field_case("week_notes", "week", value, WEEK_EXPECT)
+    yield _field_case("week_notes", "risks", None, "문자열")
+    yield _field_case("week_notes", "notes", 5, "문자열")
+    yield _field_case("week_notes", "updated_at", "2026-10-08T03:00:00", TIME_EXPECT)
 
 
 @pytest.mark.parametrize(("table", "bad", "suffix"), list(_value_cases()))
@@ -243,6 +253,46 @@ def test_format_errors(fresh: Session, table: str, bad: str, suffix: str) -> Non
 )
 def test_table_order_violation(fresh: Session, lines: list[str], message: str) -> None:
     rejects(fresh, lines, message)
+
+
+def test_table_order_violation_in_format_2_lists_all_tables(fresh: Session) -> None:
+    lines = [*PREFIX["week_notes"], WEEK_NOTE, WORKLOG]
+
+    rejects(
+        fresh,
+        lines,
+        "8번째 줄: 테이블 순서가 올바르지 않습니다: worklogs 행이 week_notes 행 뒤에 있습니다. "
+        "projects, tasks, worklogs, active_timer, week_notes 순서여야 합니다.",
+    )
+
+
+def test_week_notes_row_in_format_1_file_is_unknown_table(fresh: Session) -> None:
+    lines = [HEADER, COMMON, PAY, TASK, WORKLOG, TIMER, WEEK_NOTE]
+
+    rejects(
+        fresh,
+        lines,
+        '7번째 줄: 알 수 없는 테이블입니다: "week_notes". '
+        "projects, tasks, worklogs, active_timer 중 하나여야 합니다.",
+    )
+
+
+def test_duplicate_week_in_week_notes(fresh: Session) -> None:
+    lines = [*PREFIX["week_notes"], WEEK_NOTE, WEEK_NOTE]
+
+    rejects(
+        fresh,
+        lines,
+        '8번째 줄: week_notes 행의 week가 중복됩니다: "2026-W41".',
+    )
+
+
+def test_week_53_is_valid_for_2026(fresh: Session) -> None:
+    lines = [*PREFIX["week_notes"], line("week_notes", week="2026-W53")]
+
+    counts = services.import_records(fresh, lines)
+
+    assert counts.week_notes == 1
 
 
 def _row_text(table: str, row: dict[str, Any]) -> str:
@@ -395,12 +445,49 @@ def _invariant_cases() -> Iterator[Any]:
         id="다른 프로젝트 태스크의 타이머",
     )
 
+    unclean = "(줄바꿈은 LF이고 줄 끝 공백과 앞뒤 빈 줄이 없는 정리된 값이어야 합니다)."
+    empty = "(risks와 notes가 모두 비어 있는 행은 둘 수 없습니다)."
+    yield pytest.param(
+        "week_notes",
+        line("week_notes", risks="", notes=""),
+        f'week_notes.notes 값이 올바르지 않습니다: "" {empty}',
+        id="두 칸이 모두 빔",
+    )
+    yield pytest.param(
+        "week_notes",
+        line("week_notes", risks="", notes="  \n"),
+        f'week_notes.notes 값이 올바르지 않습니다: "  \\n" {unclean}',
+        id="공백뿐인 칸",
+    )
+    yield pytest.param(
+        "week_notes",
+        line("week_notes", notes="가\r\n나"),
+        f'week_notes.notes 값이 올바르지 않습니다: "가\\r\\n나" {unclean}',
+        id="CRLF",
+    )
+    yield pytest.param(
+        "week_notes",
+        line("week_notes", risks=" 리스크 \n"),
+        f'week_notes.risks 값이 올바르지 않습니다: " 리스크 \\n" {unclean}',
+        id="끝 공백과 빈 줄",
+    )
+
 
 @pytest.mark.parametrize(("table", "bad", "suffix"), list(_invariant_cases()))
 def test_invariant_errors(fresh: Session, table: str, bad: str, suffix: str) -> None:
     lines = [*PREFIX[table], bad]
 
     rejects(fresh, lines, f"{len(lines)}번째 줄: {suffix}")
+
+
+def test_allows_week_note_with_only_one_cleaned_field(fresh: Session) -> None:
+    lines = [
+        *PREFIX["week_notes"],
+        line("week_notes", week="2026-W41", risks="", notes="가\n  들여쓴 줄"),
+        line("week_notes", week="2026-W42", risks="리스크", notes=""),
+    ]
+
+    assert services.import_records(fresh, lines).week_notes == 2
 
 
 def test_rejects_archived_common_project(fresh: Session) -> None:

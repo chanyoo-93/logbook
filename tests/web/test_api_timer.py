@@ -186,3 +186,64 @@ def test_stop_rejects_bad_body(client: TestClient, body: dict[str, object]) -> N
 
     assert response.status_code == 400
     assert _error(response.json())["code"] == "invalid_input"
+
+
+def test_get_timer_none(client: TestClient) -> None:
+    response = client.get("/api/timer")
+
+    assert response.status_code == 200
+    assert response.json()["data"] == {"timer": None}
+
+
+def test_get_timer_running(client: TestClient, web_engine: Engine, clock: Clock) -> None:
+    add_project(web_engine, "payment", "결제")
+    client.post("/api/timer/start", json=START_BODY)
+    clock.advance(minutes=85)
+
+    response = client.get("/api/timer")
+
+    assert response.status_code == 200
+    assert response.json()["data"]["timer"] == {
+        "project": "payment",
+        "category": "design",
+        "note": "환불 API 설계",
+        "task_id": None,
+        "started_at": STARTED_AT_UTC,
+        "elapsed_minutes": 85,
+    }
+
+
+def test_cancel_timer(client: TestClient, web_engine: Engine, clock: Clock) -> None:
+    add_project(web_engine, "payment", "결제")
+    client.post("/api/timer/start", json=START_BODY)
+    clock.advance(minutes=10)
+
+    response = client.post("/api/timer/cancel")
+
+    assert response.status_code == 200
+    timer = response.json()["data"]["timer"]
+    assert timer["note"] == "환불 API 설계"
+    assert timer["project"] == "payment"
+    assert timer["started_at"] == STARTED_AT_UTC
+    assert not _has_timer(web_engine)
+    with db.session_scope(web_engine) as s:
+        assert services.list_worklogs(s) == []
+
+
+def test_cancel_without_timer(client: TestClient) -> None:
+    response = client.post("/api/timer/cancel")
+
+    assert response.status_code == 404
+    error = _error(response.json())
+    assert error["code"] == "not_found"
+    assert error["message"] == NO_TIMER_MESSAGE
+
+
+def test_cancel_from_other_origin_is_forbidden(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "payment", "결제")
+    client.post("/api/timer/start", json=START_BODY)
+
+    response = client.post("/api/timer/cancel", headers={"Origin": "http://evil.example"})
+
+    assert response.status_code == 403
+    assert _has_timer(web_engine)

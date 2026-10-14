@@ -1,0 +1,15 @@
+<tr id="project-{{ edit.slug }}" class="is-editing">
+  <td class="nowrap">{{ edit.slug }}<input type="hidden" name="version" value="{{ edit.values.version }}"></td>
+  <td><input id="project-{{ edit.slug }}-name" type="text" name="name" aria-label="이름" autocomplete="off" data-focus value="{{ edit.values.name }}"></td>
+  <td><input id="project-{{ edit.slug }}-color" type="text" name="color" aria-label="색" autocomplete="off" placeholder="#4f46e5" value="{{ edit.values.color }}"></td>
+  <td class="grid__note"><input id="project-{{ edit.slug }}-description" type="text" name="description" aria-label="설명" autocomplete="off" value="{{ edit.values.description }}"></td>
+  <td></td>
+  <td class="grid__actions">
+    <button type="button" class="btn btn--small btn--primary" hx-patch="/settings/projects/{{ edit.slug }}" hx-include="closest tr" hx-target="#project-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">저장</button>
+    <button type="button" class="btn btn--small" hx-get="/settings/projects/{{ edit.slug }}/row" hx-target="closest tr" hx-swap="outerHTML">취소</button>
+  </td>
+</tr>
+{% if edit.error %}
+{# 오류 문구는 행 안이 아니라 알림 영역(스크롤과 상관없이 보인다)에 둔다. #}
+<div id="flash" hx-swap-oob="innerHTML"><p class="flash flash--error" role="alert">{{ edit.error }}</p></div>
+{% endif %}

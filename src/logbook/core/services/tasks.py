@@ -1,7 +1,7 @@
 """태스크(할 일) 생성·조회·목록·수정·상태 변경과 실제 공수 집계 유스케이스."""
 
 from collections.abc import Callable, Collection
-from datetime import date, datetime, time, timedelta, tzinfo
+from datetime import UTC, date, datetime, time, timedelta, tzinfo
 from typing import Any
 
 from sqlalchemy import func, select
@@ -236,16 +236,56 @@ def _checked_due_date(due_date: date | None) -> date | None:
 
 
 def _local_midnight(day: date, tz: tzinfo) -> datetime:
-    return datetime.combine(day, time.min, tzinfo=tz)
+    """day의 로컬 자정. UTC로 바꿀 수 없으면 표현 가능한 가장 이른 UTC 시각으로 맞춘다.
+
+    UTC보다 앞선 시간대의 0001-01-01 자정은 UTC로 0000년이라 저장 형식이 다루지 못한다.
+    그 앞에는 기록이 있을 수 없으므로 하한을 맞춰도 비교 결과는 같다.
+    상한 쪽은 9999-W51까지만 주를 받으므로(다음 주 계산 범위) 넘치지 않는다.
+    """
+    midnight = datetime.combine(day, time.min, tzinfo=tz)
+    try:
+        midnight.astimezone(UTC)
+    except OverflowError:
+        return datetime.min.replace(tzinfo=UTC)
+    return midnight
+
+
+def _done_range(week: Week, tz: tzinfo) -> tuple[datetime, datetime]:
+    """주 범위의 로컬 자정 구간 [시작, 다음 주 시작)."""
+    return (
+        _local_midnight(week.start, tz),
+        _local_midnight(week.end + timedelta(days=1), tz),
+    )
 
 
 def count_done_tasks(s: Session, week: Week, *, tz: tzinfo) -> int:
     """완료 시각의 로컬 날짜(tz 기준)가 주 범위 안인 완료 태스크 수(보관 프로젝트 포함)."""
-    first = _local_midnight(week.start, tz)
-    after = _local_midnight(week.end + timedelta(days=1), tz)
+    first, after = _done_range(week, tz)
     count = s.scalar(
         select(func.count(Task.id)).where(
             Task.status == TaskStatus.DONE, Task.done_at >= first, Task.done_at < after
         )
     )
     return count or 0
+
+
+def done_tasks_in_week(
+    s: Session, week: Week, *, tz: tzinfo, project_slug: str | None = None
+) -> list[Task]:
+    """완료 시각의 로컬 날짜(tz 기준)가 week 안인 완료 태스크(project 함께 로드).
+
+    최근 완료가 먼저, 같으면 id 순이다.
+    project_slug가 없으면 보관 프로젝트는 뺀다(list_tasks와 같다).
+    """
+    first, after = _done_range(week, tz)
+    query = (
+        select(Task)
+        .options(joinedload(Task.project))
+        .where(Task.status == TaskStatus.DONE, Task.done_at >= first, Task.done_at < after)
+        .order_by(Task.done_at.desc(), Task.id)
+    )
+    if project_slug is not None:
+        query = query.where(Task.project_id == get_project(s, project_slug).id)
+    else:
+        query = query.where(Task.project.has(Project.archived.is_(False)))
+    return list(s.scalars(query))

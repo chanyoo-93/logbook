@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}설정{% endblock %}
+{% block content %}
+{% include "partials/project_section.html" %}
+<section id="settings-info" class="panel" aria-labelledby="settings-info-title">
+  <div class="panel__head">
+    <h2 id="settings-info-title" class="panel__title">설정 정보</h2>
+  </div>
+  <dl class="info">
+    <dt>설정 파일</dt>
+    <dd>{{ info.config_file }}</dd>
+    <dt>DB 파일</dt>
+    <dd>{{ info.db_path }}</dd>
+    <dt>기본 프로젝트</dt>
+    <dd>{{ info.default_project }}</dd>
+    <dt>주 시작 요일</dt>
+    <dd>{{ info.week_start }}</dd>
+    <dt>하루 목표</dt>
+    <dd>{{ info.daily_target }}</dd>
+    <dt>카테고리</dt>
+    <dd>
+      <ul class="info__categories">
+{% for choice in info.categories %}
+        <li>{{ choice.value }} — {{ choice.label }}</li>
+{% endfor %}
+      </ul>
+    </dd>
+  </dl>
+  <p class="info__note">{{ category_note }}</p>
+</section>
+{% endblock %}

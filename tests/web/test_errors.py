@@ -14,6 +14,7 @@ from logbook.core.errors import (
 )
 from logbook.web import errors
 from logbook.web.api.envelope import fail, ok
+from logbook.web.assets import STYLESHEETS
 from logbook.web.errors import ConflictError, ErrorKind, classify
 from tests.web.conftest import RAISED_ERRORS
 from tests.web.helpers import all_by_tag
@@ -123,8 +124,10 @@ def test_page_errors_render_error_page(probe_client: TestClient) -> None:
     assert page_message(response.text) == str(RAISED_ERRORS["missing"])
     [title] = all_by_tag(response.text, "title")
     assert title.text == "오류 · logbook"
-    [sheet] = [e for e in all_by_tag(response.text, "link") if e.attrs.get("rel") == "stylesheet"]
-    assert sheet.attrs["href"] == "/static/css/app.css"
+    sheets = [e for e in all_by_tag(response.text, "link") if e.attrs.get("rel") == "stylesheet"]
+    assert [sheet.attrs["href"] for sheet in sheets] == [
+        f"/static/css/{name}" for name in STYLESHEETS
+    ]
     [back] = all_by_tag(response.text, "a")
     assert back.attrs["href"] == "/"
     assert back.text == "대시보드로 돌아가기"

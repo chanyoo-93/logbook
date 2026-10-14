@@ -1,0 +1,114 @@
+/* 기록 페이지: 필터 줄, 인라인 편집 행. 필터 줄(.filters)·주 이동(.week-nav)은 태스크·보고서에서, 편집 행(.is-editing)과 작은·위험 버튼(.btn--small, .btn--danger)은 태스크·설정·보고서에서도 쓴다 */
+/* 기록 페이지: 필터 줄, 인라인 편집 행 */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.week-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-1) var(--space-3);
+  max-width: 100%;
+}
+
+.week-nav__link {
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.week-nav__link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+.filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--ink-muted);
+}
+
+.filters input,
+.filters select,
+.grid .is-editing input,
+.grid .is-editing select {
+  min-height: 2rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--ink-muted);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 400;
+}
+
+.filters input:focus-visible,
+.filters select:focus-visible,
+.grid .is-editing input:focus-visible,
+.grid .is-editing select:focus-visible {
+  border-color: var(--accent);
+}
+
+.grid .is-editing {
+  background: var(--row-hover);
+}
+
+.grid .is-editing td {
+  height: auto;
+  padding-block: var(--space-2);
+}
+
+.grid .is-editing input[name="note"] {
+  width: 100%;
+  min-width: 12rem;
+}
+
+.grid .is-editing input[name="duration"] {
+  width: 6rem;
+}
+
+/* 선택 상자는 칸에 맞춰 줄어든다(펼치면 전체 이름이 보인다). 넓은 화면에서 편집 행이 표 폭을 넘지 않게 한다. */
+.grid .is-editing select {
+  width: 100%;
+  min-width: 6rem;
+}
+
+.grid__actions {
+  white-space: nowrap;
+}
+
+.btn--small {
+  min-height: 1.75rem;
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.btn--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.panel > .form-message {
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.grid tfoot td {
+  border-top: 1px solid var(--ink);
+  border-bottom: 0;
+  color: var(--ink-muted);
+  font-weight: 600;
+  text-align: right;
+  padding-right: var(--space-4);
+}

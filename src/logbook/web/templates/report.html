@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}보고서{% endblock %}
+{% block scripts %}
+<script src="/static/js/report.js" defer></script>
+{% endblock %}
+{% block content %}
+{% include "partials/report_nav.html" %}
+{% if body %}
+{% include "partials/report_body.html" %}
+{% else %}
+<section id="report-body" class="panel" aria-label="주간보고서">
+  <p class="form-message form-message--error" role="alert">{{ error }}</p>
+</section>
+{% endif %}
+{% endblock %}

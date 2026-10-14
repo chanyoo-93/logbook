@@ -1,3 +1,4 @@
+{% from "partials/choose_macro.html" import choose %}
 <section id="timer" class="panel timer{% if timer %} timer--running{% endif %}" aria-label="타이머"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
 {% if timer %}
   <span class="timer__dot" aria-hidden="true"></span>
@@ -6,9 +7,24 @@
     <p class="timer__what">{{ timer.scope }} — {{ timer.note }}{% if timer.task %} [{{ timer.task }}]{% endif %}</p>
     <p class="timer__time">시작 {{ timer.started }} · {% include "partials/timer_elapsed.html" %}</p>
   </div>
-  <button type="button" class="btn" hx-post="/timer/stop" hx-target="#timer" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">정지</button>
+  <div class="timer__actions">
+    <button type="button" class="btn" data-focus hx-post="/timer/stop" hx-target="#timer" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">정지</button>
+    <button type="button" class="btn" hx-post="/timer/cancel" hx-vals='{{ {"version": timer.version}|tojson }}' hx-confirm="{{ timer.cancel_confirm }}" hx-target="#timer" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">취소</button>
+  </div>
 {% else %}
-  <p class="timer__idle">진행 중인 타이머가 없습니다. 터미널에서 lb start로 시작하세요.</p>
+  <p class="timer__idle">진행 중인 타이머가 없습니다.</p>
+  <form id="timer-start" class="timer-start" aria-label="타이머 시작" hx-post="/timer/start" hx-target="#timer" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button">
+    <div class="timer-start__fields">
+      <div class="timer-start__field timer-start__field--note">
+        <label class="visually-hidden" for="timer-note">메모</label>
+        <input id="timer-note" name="note" type="text" autocomplete="off" data-focus placeholder="무엇을 하나요 (태스크를 고르면 생략)" value="{{ timer_values.note }}">
+      </div>
+      {{ choose("timer-start", "timer", "project", "프로젝트", "자동 (태스크 또는 " ~ default_project ~ ")", timer_options.projects, timer_values.project) }}
+      {{ choose("timer-start", "timer", "category", "카테고리", "자동 (태스크)", timer_options.categories, timer_values.category) }}
+      {{ choose("timer-start", "timer", "task", "태스크", "없음", timer_options.tasks, timer_values.task) }}
+      <button type="submit" class="btn btn--primary">시작</button>
+    </div>
+  </form>
 {% endif %}
 {% if timer_message|default("") %}
   <p id="timer-result" class="form-message{% if timer_error|default(false) %} form-message--error{% endif %}" role="{{ 'alert' if timer_error|default(false) else 'status' }}">{{ timer_message }}</p>

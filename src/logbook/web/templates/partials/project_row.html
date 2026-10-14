@@ -1,0 +1,22 @@
+        <tr id="project-{{ row.slug }}"{% if row.archived %} class="is-archived"{% endif %}>
+          <td class="nowrap">{{ row.slug }}</td>
+          <td>{{ row.name }}</td>
+          <td class="nowrap">
+{% if row.color %}
+            <svg class="swatch" width="14" height="14" aria-hidden="true"><rect width="14" height="14" fill="{{ row.color }}"/></svg>
+{% endif %}
+{% if row.color_text %}
+            {{ row.color_text }}
+{% endif %}
+          </td>
+          <td class="grid__note">{{ row.description }}</td>
+          <td class="nowrap">{{ "보관" if row.archived else "사용 중" }}</td>
+          <td class="nowrap grid__actions">
+            <button type="button" class="btn btn--small" hx-get="/settings/projects/{{ row.slug }}/edit" hx-target="closest tr" hx-swap="outerHTML">수정</button>
+{% if row.archived %}
+            <button type="button" class="btn btn--small" hx-post="/settings/projects/{{ row.slug }}/unarchive" hx-vals='{{ {"version": row.version}|tojson }}' hx-target="#project-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">보관 해제</button>
+{% elif not row.is_common %}
+            <button type="button" class="btn btn--small btn--danger" hx-post="/settings/projects/{{ row.slug }}/archive" hx-vals='{{ {"version": row.version}|tojson }}' hx-target="#project-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this" hx-confirm="{{ row.archive_confirm }}">보관</button>
+{% endif %}
+          </td>
+        </tr>

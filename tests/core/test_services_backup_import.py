@@ -12,13 +12,14 @@ from sqlalchemy.orm import Session
 
 from logbook.core import db, services
 from logbook.core.errors import DatabaseBusyError, InvalidInputError
-from logbook.core.models import ActiveTimer, Project, Task, WorkLog
+from logbook.core.models import ActiveTimer, Project, Task, WeekNote, WorkLog
 from logbook.core.services import backup, backup_import
 from logbook.core.taskstatus import TaskStatus
 
 from .backup_helpers import (
     COMMON,
     HEADER,
+    HEADER_V2,
     LS,
     NEL,
     NON_EMPTY_MESSAGE,
@@ -26,6 +27,9 @@ from .backup_helpers import (
     PAY,
     PS,
     TASK,
+    TIMER,
+    WEEK_NOTE,
+    WORKLOG,
     add_exotic_rows,
     line,
     populate,
@@ -38,7 +42,7 @@ from .backup_helpers import (
 def test_imports_valid_file_and_returns_counts(fresh: Session) -> None:
     counts = services.import_records(fresh, valid())
 
-    assert counts == services.BackupCounts(projects=2, tasks=1, worklogs=1, timers=1)
+    assert counts == services.BackupCounts(projects=2, tasks=1, worklogs=1, timers=1, week_notes=0)
     fresh.flush()
     assert [(p.id, p.slug) for p in fresh.scalars(select(Project).order_by(Project.id))] == [
         (1, "common"),
@@ -54,7 +58,30 @@ def test_imports_valid_file_and_returns_counts(fresh: Session) -> None:
 def test_allows_db_with_only_common_or_no_projects(session: Session) -> None:
     counts = services.import_records(session, [HEADER, COMMON])
 
-    assert counts == services.BackupCounts(projects=1, tasks=0, worklogs=0, timers=0)
+    assert counts == services.BackupCounts(projects=1, tasks=0, worklogs=0, timers=0, week_notes=0)
+
+
+def test_imports_format_2_file_with_week_notes(fresh: Session) -> None:
+    other = line("week_notes", week="2026-W40", risks="", notes="앞")
+    lines = [HEADER_V2, COMMON, PAY, TASK, WORKLOG, TIMER, other, WEEK_NOTE]
+
+    counts = services.import_records(fresh, lines)
+    fresh.flush()
+
+    assert counts.week_notes == 2
+    notes = fresh.scalars(select(WeekNote).order_by(WeekNote.week)).all()
+    assert [(n.week, n.risks, n.notes) for n in notes] == [
+        ("2026-W40", "", "앞"),
+        ("2026-W41", "리스크", "특이사항"),
+    ]
+    assert notes[1].updated_at == datetime(2026, 9, 1, 0, 0, 0, tzinfo=UTC)
+
+
+def test_imports_format_1_file_without_week_notes(fresh: Session) -> None:
+    counts = services.import_records(fresh, valid())
+
+    assert counts.week_notes == 0
+    assert fresh.scalars(select(WeekNote)).all() == []
 
 
 def test_allows_trailing_newlines_and_crlf(fresh: Session) -> None:
@@ -166,7 +193,12 @@ def _add_project(s: Session) -> None:
     s.add(Project(slug="extra", name="추가", created_at=NOW))
 
 
-@pytest.mark.parametrize("add", [_add_task, _add_worklog, _add_timer, _add_project])
+def _add_week_note(s: Session) -> None:
+    services.ensure_common_project(s)
+    s.add(WeekNote(week="2026-W41", risks="", notes="x", updated_at=NOW))
+
+
+@pytest.mark.parametrize("add", [_add_task, _add_worklog, _add_timer, _add_project, _add_week_note])
 def test_rejects_db_with_data_and_changes_nothing(fresh: Session, add: Any) -> None:
     add(fresh)
     fresh.flush()
@@ -230,6 +262,9 @@ def test_flush_operational_error_is_not_translated(
 
 def test_validation_kind_tables_are_consistent() -> None:
     assert tuple(backup_import._KINDS) == backup.TABLE_ORDER
+    assert backup_import.SUPPORTED_FORMATS == (1, 2)
+    assert backup_import.FORMAT_TABLES[1] == backup.TABLE_ORDER[:4]
+    assert backup_import.FORMAT_TABLES[2] == backup.TABLE_ORDER
     assert set(backup_import._REFERENCES) == set(backup.TABLE_ORDER)
     used_kinds = set()
     for table, fields in backup.FIELDS.items():

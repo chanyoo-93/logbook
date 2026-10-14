@@ -15,7 +15,7 @@ from logbook.core.errors import LogbookError
 from logbook.core.models import Project
 from tests.helpers import add_extra_column, add_project, column_names, project_slugs, set_version
 
-TABLES = {"projects", "tasks", "worklogs", "active_timer", "schema_version"}
+TABLES = {"projects", "tasks", "worklogs", "active_timer", "schema_version", "week_notes"}
 
 MakeEngine = Callable[[Path | str], Engine]
 
@@ -165,7 +165,7 @@ def test_init_db_survives_autocommit_false_default(
     monkeypatch.setattr(sqlite3.dbapi2, "connect", connect_with_new_default)
     engine = make_engine(tmp_path / "logbook.db")
 
-    assert db.init_db(engine) == 1
+    assert db.init_db(engine).version == db.SCHEMA_VERSION
 
     with engine.connect() as conn:
         assert conn.exec_driver_sql("PRAGMA foreign_keys").scalar() == 1
@@ -192,20 +192,20 @@ def test_dispose_releases_database_file(tmp_path: Path) -> None:
 def test_init_db_creates_schema_on_new_file(tmp_path: Path, make_engine: MakeEngine) -> None:
     engine = make_engine(tmp_path / "logbook.db")
 
-    assert db.init_db(engine) == 1
+    assert db.init_db(engine).version == db.SCHEMA_VERSION
 
     assert set(inspect(engine).get_table_names()) == TABLES
-    assert version_rows(engine) == [1]
-    assert db.current_version(engine) == 1
+    assert version_rows(engine) == [db.SCHEMA_VERSION]
+    assert db.current_version(engine) == db.SCHEMA_VERSION
 
 
 def test_init_db_is_idempotent(engine: Engine) -> None:
     add_project(engine)
 
-    assert db.init_db(engine) == 1
-    assert db.init_db(engine) == 1
+    assert db.init_db(engine).version == db.SCHEMA_VERSION
+    assert db.init_db(engine).version == db.SCHEMA_VERSION
 
-    assert version_rows(engine) == [1]
+    assert version_rows(engine) == [db.SCHEMA_VERSION]
     assert project_slugs(engine) == ["payment"]
 
 
@@ -223,64 +223,68 @@ def test_init_db_fills_empty_version_table(engine: Engine) -> None:
         conn.execute(text("DELETE FROM schema_version"))
     assert db.current_version(engine) is None
 
-    assert db.init_db(engine) == 1
+    assert db.init_db(engine).version == db.SCHEMA_VERSION
 
-    assert version_rows(engine) == [1]
+    assert version_rows(engine) == [db.SCHEMA_VERSION]
 
 
 def test_init_db_migrates_and_keeps_data(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    current = db.SCHEMA_VERSION
     add_project(engine)
-    monkeypatch.setattr(db, "SCHEMA_VERSION", 2)
-    monkeypatch.setitem(db.MIGRATIONS, 2, add_extra_column)
+    monkeypatch.setattr(db, "SCHEMA_VERSION", current + 1)
+    monkeypatch.setitem(db.MIGRATIONS, current + 1, add_extra_column)
 
-    assert db.init_db(engine) == 2
+    assert db.init_db(engine).version == current + 1
 
     assert "extra" in column_names(engine, "projects")
-    assert version_rows(engine) == [2]
+    assert version_rows(engine) == [current + 1]
     assert project_slugs(engine) == ["payment"]
     # 이미 최신이면 마이그레이션을 다시 실행하지 않는다 (ALTER가 두 번 돌면 실패).
-    assert db.init_db(engine) == 2
+    assert db.init_db(engine).version == current + 1
 
 
 def test_init_db_runs_migrations_in_order(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    current = db.SCHEMA_VERSION
     calls: list[int] = []
 
-    def upgrade_to_2(conn: Connection) -> None:
-        calls.append(2)
+    def upgrade_first(conn: Connection) -> None:
+        calls.append(current + 1)
         add_extra_column(conn)
 
-    def upgrade_to_3(conn: Connection) -> None:
-        calls.append(3)
-        conn.exec_driver_sql("UPDATE projects SET extra = 'v3'")
+    def upgrade_second(conn: Connection) -> None:
+        calls.append(current + 2)
+        conn.exec_driver_sql("UPDATE projects SET extra = 'second'")
 
     add_project(engine)
-    monkeypatch.setattr(db, "SCHEMA_VERSION", 3)
-    monkeypatch.setitem(db.MIGRATIONS, 3, upgrade_to_3)
-    monkeypatch.setitem(db.MIGRATIONS, 2, upgrade_to_2)
+    monkeypatch.setattr(db, "SCHEMA_VERSION", current + 2)
+    monkeypatch.setitem(db.MIGRATIONS, current + 2, upgrade_second)
+    monkeypatch.setitem(db.MIGRATIONS, current + 1, upgrade_first)
 
-    assert db.init_db(engine) == 3
+    assert db.init_db(engine).version == current + 2
 
-    assert calls == [2, 3]
-    assert version_rows(engine) == [3]
+    assert calls == [current + 1, current + 2]
+    assert version_rows(engine) == [current + 2]
     with engine.connect() as conn:
-        assert conn.scalar(text("SELECT extra FROM projects")) == "v3"
+        assert conn.scalar(text("SELECT extra FROM projects")) == "second"
 
 
 def test_failed_migration_rolls_back_schema_change(
     engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    current = db.SCHEMA_VERSION
+
     def broken_upgrade(conn: Connection) -> None:
         add_extra_column(conn)
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(db, "SCHEMA_VERSION", 2)
-    monkeypatch.setitem(db.MIGRATIONS, 2, broken_upgrade)
+    monkeypatch.setattr(db, "SCHEMA_VERSION", current + 1)
+    monkeypatch.setitem(db.MIGRATIONS, current + 1, broken_upgrade)
 
     with pytest.raises(RuntimeError, match="boom"):
         db.init_db(engine)
 
     assert "extra" not in column_names(engine, "projects")
-    assert db.current_version(engine) == 1
+    assert db.current_version(engine) == current
 
 
 def test_init_db_rejects_newer_database(engine: Engine) -> None:
@@ -296,14 +300,15 @@ def test_init_db_rejects_newer_database(engine: Engine) -> None:
 
 
 def test_init_db_requires_every_migration(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(db, "SCHEMA_VERSION", 3)
-    monkeypatch.setitem(db.MIGRATIONS, 2, add_extra_column)
+    current = db.SCHEMA_VERSION
+    monkeypatch.setattr(db, "SCHEMA_VERSION", current + 2)
+    monkeypatch.setitem(db.MIGRATIONS, current + 1, add_extra_column)
 
-    with pytest.raises(LogbookError, match="v3"):
+    with pytest.raises(LogbookError, match=f"v{current + 2}"):
         db.init_db(engine)
 
     # 하나라도 빠져 있으면 아무 마이그레이션도 적용하지 않는다.
-    assert db.current_version(engine) == 1
+    assert db.current_version(engine) == current
     assert "extra" not in column_names(engine, "projects")
 
 
@@ -333,8 +338,8 @@ def test_init_db_rechecks_version_under_lock(
     db.init_db(engine)
     monkeypatch.setattr(db, "current_version", lambda _engine: None)
 
-    assert db.init_db(engine) == 1
-    assert version_rows(engine) == [1]
+    assert db.init_db(engine).version == db.SCHEMA_VERSION
+    assert version_rows(engine) == [db.SCHEMA_VERSION]
 
 
 def test_init_db_reads_version_under_write_lock(
@@ -352,7 +357,7 @@ def test_init_db_reads_version_under_write_lock(
     monkeypatch.setattr(db, "current_version", lambda _engine: None)
     monkeypatch.setattr(db, "_read_version", probing_read_version)
 
-    assert db.init_db(engine) == 1
+    assert db.init_db(engine).version == db.SCHEMA_VERSION
 
     # 잠금 안에서 버전을 다시 읽는 순간 다른 연결은 쓰기 잠금을 잡을 수 없어야 한다.
     assert states == ["locked"]
@@ -361,11 +366,12 @@ def test_init_db_reads_version_under_write_lock(
 def test_init_db_rejects_newer_version_found_under_lock(
     engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # 잠금 전에는 v1로 보였지만, 그 사이 다른 프로세스가 더 새로운 버전으로 올린 상황.
+    # 잠금 전에는 최신 이전 버전으로 보였지만, 그 사이 다른 프로세스가 더 새로운 버전으로 올린 상황.
+    current = db.SCHEMA_VERSION
     set_version(engine, 99)
-    monkeypatch.setattr(db, "current_version", lambda _engine: 1)
-    monkeypatch.setattr(db, "SCHEMA_VERSION", 2)
-    monkeypatch.setitem(db.MIGRATIONS, 2, no_op_migration)
+    monkeypatch.setattr(db, "current_version", lambda _engine: current)
+    monkeypatch.setattr(db, "SCHEMA_VERSION", current + 1)
+    monkeypatch.setitem(db.MIGRATIONS, current + 1, no_op_migration)
 
     with pytest.raises(LogbookError, match="v99"):
         db.init_db(engine)

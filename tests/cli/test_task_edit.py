@@ -195,7 +195,9 @@ def test_value_and_clear_conflict(
 ) -> None:
     result = lb("task", "edit", "1", *args)
 
-    assert_rejected(result, f"{names[0]}와 {names[1]}는 함께 쓸 수 없습니다. 하나만 지정하세요.")
+    assert_rejected(
+        result, f"{names[0]} 옵션과 {names[1]} 옵션은 함께 쓸 수 없습니다. 하나만 지정하세요."
+    )
     assert snapshot(open_db, 1) == TASK_1
     os.replace(seeded, seeded.with_name("moved.db"))
 
