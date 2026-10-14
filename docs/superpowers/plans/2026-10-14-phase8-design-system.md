@@ -138,14 +138,15 @@
 
 ```html
 {# partials/marks.html #}
-{% macro pill(text, tone="") -%}
-<span class="pill{% if tone %} pill--{{ tone }}{% endif %}">{{ text }}</span>
+{% macro pill(text, tone="", extra="") -%}
+<span class="pill{% if tone %} pill--{{ tone }}{% endif %}{% if extra %} {{ extra }}{% endif %}">{{ text }}</span>
 {%- endmacro %}
 {% macro project_mark(slug, color) -%}
 <span class="project-mark"><svg class="dot" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="4" fill="{{ color }}"/></svg>{{ slug }}</span>
 {%- endmacro %}
 ```
 - `tone`은 `""`(중립), `"ok"`, `"danger"`만 쓴다.
+- `extra`는 기존 테스트와 화면 코드가 찾는 class(예: `task-card__category`)를 남길 때 쓴다. 그 class의 CSS 규칙은 지워도 class 이름은 표지로 남긴다.
 - `color`는 항상 서버가 검증한 `#rrggbb`다(`project_color()`의 결과).
 
 ---
@@ -176,7 +177,7 @@
 | 입력칸 hover | `border-color: var(--ink)` | `border-color: var(--ink-muted)` (기본보다 진하게) |
 | 입력칸 focus | `var(--accent)` | 그대로 |
 | `.btn` 테두리 | `1px solid var(--ink)` | `1px solid var(--rule-strong)`. 버튼은 글자로 알아볼 수 있어 경계 대비 기준(1.4.11) 대상이 아니다 |
-| `.grid thead th` 아래 선, `.grid tfoot td` 위 선 | `var(--ink)` | `var(--rule-strong)` |
+| `.grid thead th`의 `border-bottom-color`(dashboard.css), `.grid tfoot td`의 `border-top`(logs.css) | `var(--ink)` | `var(--rule-strong)` |
 | 그대로 둠 | 내비 현재 페이지 밑줄(`--ink`), 건너뛰기 링크 테두리, 알림 왼쪽 띠, 타이머 진행 중 띠 | |
 
 - 입력칸 셀렉터는 `grep -rn "border: 1px solid var(--ink-muted)" src/logbook/web/static/css`로 모두 찾는다(빠른 기록, 타이머 시작, 태스크 추가·편집, 필터·편집 행, 프로젝트 폼·편집 행, 특이사항 textarea).
@@ -268,7 +269,7 @@ def fonts_stylesheet(ctx: Ctx) -> Response:
     return Response(fonts_css(ctx.cfg.web), media_type="text/css; charset=utf-8")
 ```
 - `/static/` 밖이라 보안 미들웨어가 `Cache-Control: no-store`를 붙인다. 설정을 고친 뒤 새로 고침만 하면 바뀐다.
-- `assets.FONTS_CSS_URL = "/fonts.css"`. `templating.py`가 전역으로 넘기고 `base.html`은 스타일시트 반복 다음에 `<link rel="stylesheet" href="{{ FONTS_CSS_URL }}">`을 둔다. 오류 페이지(`errors._stylesheet_links()`)도 같은 링크를 마지막에 더한다.
+- `assets.FONTS_CSS_URL = "/fonts.css"`. `STYLESHEETS`에는 넣지 않는다(`test_stylesheet_list_has_every_css_file_exactly_once`가 `static/css`의 파일 목록과 비교한다). `templating.py`가 전역으로 넘기고 `base.html`은 스타일시트 반복 다음에 `<link rel="stylesheet" href="{{ FONTS_CSS_URL }}">`을 둔다. 오류 페이지(`errors._stylesheet_links()`)도 같은 링크를 마지막에 더한다.
 
 **설정 화면**
 - `SettingsInfoView.fonts: tuple[FontRowView, ...]`(`label`, `name`, `preview_class`)
@@ -292,7 +293,7 @@ def fonts_stylesheet(ctx: Ctx) -> Response:
 | `fonts_css` | 기본 / 셋 다 빈 값 / body만 있음 | 위 출력 예와 같다 / 빈 `:root` / `--font-body` 줄만 |
 | `/fonts.css` | GET | 200, `text/css; charset=utf-8`, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`, CSP 있음 |
 | `/fonts.css` | 설정 파일에서 `heading_font`를 바꾸고 다시 GET | 새 이름(설정 자동 반영) |
-| 링크 | 대시보드 HTML | 스타일시트 링크가 `STYLESHEETS` 순서 + 마지막 `/fonts.css` |
+| 링크 | 대시보드 HTML | 스타일시트 링크가 `STYLESHEETS` 순서 + 마지막 `/fonts.css`. `test_static.py`의 `test_base_template_links_every_stylesheet_in_order` 기대를 `[f"/static/css/{n}" for n in STYLESHEETS] + ["/fonts.css"]`로 바꾼다 |
 | 링크 | 오류 페이지 | 대시보드와 같은 링크 목록 |
 | 설정 화면 | 기본 설정 / `body_font = ""` | 세 줄과 미리보기 class, 빈 값은 `기본 글꼴`, 안내 문구 |
 | CSS | `body`가 `var(--font-body)`, 글꼴 토큰 기본값이 `:root`에 있다 | |
@@ -332,7 +333,7 @@ def fonts_stylesheet(ctx: Ctx) -> Response:
 ## Task 8-5: 꼬리표(pill) 통일
 
 **Files:**
-- Modify: `app.css`(토큰 `--tag-bg`·`--ok-soft`·`--danger-soft` 두 블록), `components.css`(`.pill`), `tasks.css`(`.task-card__tag`·`.task-card__over` 삭제)
+- Modify: `app.css`(토큰 `--tag-bg`·`--ok-soft`·`--danger-soft` 두 블록), `components.css`(`.pill` 추가, `.timer__state` 규칙 삭제: `pill pill--ok`가 대신한다), `tasks.css`(`.task-card__tag`·`.task-card__over` 규칙 삭제)
 - Create: `src/logbook/web/templates/partials/marks.html`(`pill` 매크로만, `project_mark`는 Task 8-6)
 - Modify templates: `task_card.html`, `task_plan.html`, `log_row.html`, `recent.html`, `timer.html`, `project_row.html`
 - Modify tests: `tests/web/test_theme.py`, `test_tasks_page.py`, `test_tasks_plan.py`, `test_logs_page.py`, `test_dashboard.py`, `test_timer_panel.py`, `test_settings_projects.py`
@@ -357,7 +358,7 @@ def fonts_stylesheet(ctx: Ctx) -> Response:
 
 | 화면 | 지금 | 바꾼 뒤 |
 |---|---|---|
-| 태스크 카드 | 카테고리 글자, 주차 꼬리표(`.task-card__tag`), `예상 초과`(`.task-card__over`) | 카테고리 `pill`, 주차 꼬리표 `pill`(주차 라벨 `2026-W42`는 옆에 보조 글자로 남김), `예상 초과` `pill(…, "danger")` |
+| 태스크 카드 | 카테고리 글자, 주차 꼬리표(`.task-card__tag`), `예상 초과`(`.task-card__over`) | `pill(category, extra="task-card__category")`, `pill(week_tag, extra="task-card__tag")`(주차 라벨 `2026-W42`는 옆에 보조 글자로 남김), `pill("예상 초과", "danger", "task-card__over")` |
 | 다음 주 계획 | `(이월 후보)` 글자 | `pill("이월 후보")`(괄호 없음) |
 | 기록 표 | 카테고리 칸 글자 | 카테고리 `pill` |
 | 최근 기록 | `payment/dev` 한 칸 | 프로젝트 글자 + 카테고리 `pill`(칸 머리 `프로젝트/카테고리` 그대로) |
@@ -365,6 +366,11 @@ def fonts_stylesheet(ctx: Ctx) -> Response:
 | 프로젝트 표 | 상태 칸 `보관`/`사용 중` 글자 | `pill("보관")` / `pill("사용 중", "ok")` |
 
 - 표 행 높이(36px)는 그대로다. 꼬리표 높이(1.25rem)가 행 안에 들어간다.
+- 고칠 기존 테스트:
+  - `test_tasks_page.py`(119·147·160행 부근): class 표지(`task-card__over`·`__tag`·`__category`)는 그대로 남으므로 찾기는 통과한다. 각 요소에 `pill`(위험은 `pill--danger`) class가 있는지 단언을 더한다.
+  - `test_tasks_plan.py`(60·61·133행 부근): `(이월 후보)` 글자 대신 `<span class="pill">이월 후보</span>`를 확인한다.
+  - `test_dashboard.py`(226행 부근): 최근 기록 행 글자 기대를 새 마크업의 글자로 고친다(Task 8-6에서 한 번 더 바뀐다).
+  - 타이머 `진행 중`(test_dashboard.py 264행 부근), 프로젝트 표 `보관`(test_settings_page.py 48행 부근)은 글자가 같아 그대로 통과한다.
 - 화면 낭독기에는 글자 그대로 읽힌다(꼬리표는 장식 class만 더한다).
 
 **테스트 케이스**
@@ -402,9 +408,9 @@ def project_color(project: Project) -> str:
         return color
     return CHART_PALETTE[(project.id - 1) % len(CHART_PALETTE)]
 ```
-- `CHART_PALETTE`는 `summary.py`에서 `views.py`로 옮기고 `summary.py`는 import한다(순환 import가 생기면 `web/palette.py`로 뺀다).
-- 차트: `summary.py`의 `project_colors(slugs, explicit)`를 `project_color()` 기반으로 바꾼다. 막대·도넛 색이 이번 주에 나타난 순서가 아니라 프로젝트 ID로 정해진다(색 점과 같음). 카테고리 색 규칙은 그대로다.
-- 템플릿: 태스크 카드의 프로젝트 이름, 기록 표의 프로젝트 칸, 최근 기록의 프로젝트 글자를 `project_mark(slug, color)`로 바꾼다.
+- `CHART_PALETTE`는 `summary.py`에서 `views.py`로 옮긴다. `summary.py`와 `tests/web/test_views.py`는 `logbook.web.pages.views`에서 import한다. `views`와 `summary`는 서로 import하지 않으므로 순환 import는 없다(검토에서 확인). `Project` 타입은 `TYPE_CHECKING` 안에서 import한다.
+- 차트: `summary.py`는 `services.list_projects(s, include_archived=True)`로 얻은 Project 객체로 `{slug: project_color(project)}`를 만들고, `project_colors(slugs, explicit)`는 없앤다. 막대·도넛 색이 이번 주에 나타난 순서가 아니라 프로젝트 ID로 정해진다(색 점과 같음). 카테고리 색 규칙은 그대로다.
+- 템플릿: 태스크 카드의 프로젝트 이름, 기록 표의 프로젝트 칸, 최근 기록의 프로젝트 글자를 `project_mark(slug, color)`로 바꾼다. 태스크 카드는 `<span class="task-card__project">` 안에 `project_mark`를 넣어 기존 class 표지와 굵은 글씨 규칙을 남긴다.
 - `.project-mark { display: inline-flex; align-items: center; gap: var(--space-1); }`, `.dot { flex: none; }`
 
 **테스트 케이스**
@@ -414,6 +420,9 @@ def project_color(project: Project) -> str:
 | `project_color` | 지정 색 / 없음(ID 1, 2, 팔레트 길이+1) / 잘못된 값(`"red"`) | 그 색 / `CHART_PALETTE[0]`, `[1]`, `[0]` / 팔레트 색 |
 | 차트 | 이번 주에 프로젝트 b(ID 2)만 기록 | b의 색이 `CHART_PALETTE[1]`(전에는 순서상 `[0]`) |
 | 차트 | 지정 색 프로젝트 | 지정 색(지금과 같음) |
+| 기존 테스트 | `test_views.py`의 `project_colors` 테스트 세 개 | `project_color` 테스트로 바꾼다 |
+| 기존 테스트 | `test_dashboard.py`의 `EXPECTED_CHART`(50·55행 부근) | `common`(ID 1)의 색을 `PALETTE_ORANGE`에서 `PALETTE_BLUE`(`CHART_PALETTE[0]`)로 고친다. 카테고리 색은 그대로 |
+| 기존 테스트 | `test_dashboard.py` 최근 기록 행 글자(226행 부근) | 색 점 마크업 뒤의 글자로 고친다 |
 | 마크업 | 태스크 카드·기록 표·최근 기록 | `<svg class="dot" … fill="#…">` + slug, `aria-hidden="true"` |
 | CSP | 위 화면 HTML | `style=` 속성이 없다 |
 
@@ -463,6 +472,15 @@ def project_color(project: Project) -> str:
 - 글꼴: 폰트 파일을 넣지 않고 설치된 글꼴을 설정에서 지정한다(방법 A). 설치 글꼴 목록에서 고르기(방법 B)는 하지 않는다.
 - 구현: Task마다 서브에이전트 구현 1명 + 검토 1명, Task마다 사용자 승인
 - 1번(색 토큰)을 계획 없이 먼저 적용한 커밋은 되돌리고 이 계획대로 다시 한다.
+
+---
+
+## 계획 검토 (2026-10-14)
+
+사실 확인 에이전트 1명(Sonnet)이 코드·대비 수치·정규식·CSS 동작을 확인했다(Edge 헤드리스 실험 포함).
+- 맞음: 기존 코드 전제, 대비 26개 수치, 글꼴 이름 정규식 판정, `overflow: clip` 안의 가로 스크롤 유지, reduced-motion 규칙이 transition을 끔, 나중 스타일시트의 `var(--font-sans)` 참조
+- 반영: 팔레트는 `views.py`로 옮김(순환 import 없음), 차트 색 테스트(`common` 색)·`project_colors` 테스트 교체, `.timer__state` 규칙 삭제, 꼬리표에 기존 class 표지를 남기는 `extra` 인자, 표 머리·바닥 선의 실제 속성 이름, `/fonts.css`를 `STYLESHEETS`에 넣지 않음과 링크 테스트 기대
+- 참고: 이 PC의 Edge는 `prefers-reduced-motion: reduce`가 켜져 있다. 누름 효과(scale)는 transition 없이 즉시 적용된다.
 
 ---
 
