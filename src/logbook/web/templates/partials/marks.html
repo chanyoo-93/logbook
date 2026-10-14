@@ -2,3 +2,7 @@
 {% macro pill(text, tone="", extra="") -%}
 <span class="pill{% if tone %} pill--{{ tone }}{% endif %}{% if extra %} {{ extra }}{% endif %}">{{ text }}</span>
 {%- endmacro %}
+{# 프로젝트 색 점과 이름. color는 서버가 검증한 #rrggbb다(CSP 때문에 style 속성 대신 SVG fill로 칠한다). #}
+{% macro project_mark(slug, color) -%}
+<span class="project-mark"><svg class="dot" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="4" fill="{{ color }}"/></svg>{{ slug }}</span>
+{%- endmacro %}

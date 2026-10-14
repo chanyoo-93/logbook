@@ -1,8 +1,8 @@
-{% from "partials/marks.html" import pill %}
+{% from "partials/marks.html" import pill, project_mark %}
         <tr id="log-{{ row.id }}">
           <td class="num">{{ row.id }}</td>
           <td class="nowrap">{{ row.day }}</td>
-          <td class="nowrap">{{ row.project }}</td>
+          <td class="nowrap">{{ project_mark(row.project, row.project_color) }}</td>
           <td class="nowrap">{{ pill(row.category) }}</td>
           <td class="num nowrap">{{ row.duration }}</td>
           <td class="grid__note">{{ row.note }}</td>

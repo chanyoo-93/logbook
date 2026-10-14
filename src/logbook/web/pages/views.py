@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from logbook.core.config import Config
-    from logbook.core.models import ActiveTimer, WorkLog
+    from logbook.core.models import ActiveTimer, Project, WorkLog
     from logbook.core.weeks import Week
 
 RECENT_LIMIT = 10
@@ -34,9 +34,33 @@ CANCEL_CONFIRM = (
     "버릴까요? 기록은 남지 않습니다."
 )
 LOGS_PATH = "/logs"
+# 색을 정하지 않은 프로젝트와 카테고리에 돌려 쓰는 색. 모두 흰 배경에서 구분된다.
+CHART_PALETTE = (
+    "#2f6fde",
+    "#e8590c",
+    "#2b8a3e",
+    "#c2255c",
+    "#7048e8",
+    "#0b7285",
+    "#e67700",
+    "#5c940d",
+    "#a61e4d",
+    "#495057",
+)
 # 버전 문자열에서 필드를 가르는 구분자(필드 값에 나올 수 없는 제어 문자)
 _FIELD_SEPARATOR = "\x1f"
 _VERSION_LENGTH = 16
+
+
+def project_color(project: Project) -> str:
+    """지정한 색(검증된 #rrggbb)이 있으면 그 색, 없으면 프로젝트 ID로 고른 CHART_PALETTE 색.
+
+    ID는 바뀌지 않으므로 같은 프로젝트는 어느 화면·어느 주에서도 같은 색이다.
+    """
+    color = project.color or ""
+    if services.is_valid_color(color):
+        return color
+    return CHART_PALETTE[(project.id - 1) % len(CHART_PALETTE)]
 
 
 @dataclass(frozen=True)
@@ -46,6 +70,7 @@ class LogRowView:
     full_day: str  # '2026-10-01 (목)' (삭제 확인 문구)
     iso_date: str  # '2026-10-01' (편집 행의 date 입력)
     project: str
+    project_color: str  # '#rrggbb' (색 점)
     category: str
     duration: str
     note: str
@@ -130,6 +155,7 @@ def log_row(log: WorkLog) -> LogRowView:
         full_day=full_day(log.date),
         iso_date=log.date.isoformat(),
         project=log.project.slug,
+        project_color=project_color(log.project),
         category=log.category,
         duration=format_duration(log.minutes),
         note=log.note,

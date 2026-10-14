@@ -1,11 +1,11 @@
-{% from "partials/marks.html" import pill %}
+{% from "partials/marks.html" import pill, project_mark %}
         <li id="task-{{ card.id }}" class="task-card{% if card.over %} task-card--over{% endif %}">
           <p class="task-card__title">
             <span class="task-card__id">#{{ card.id }}</span>
             {{ card.title }}
           </p>
           <p class="task-card__meta">
-            <span class="task-card__project">{{ card.project }}</span>
+            <span class="task-card__project">{{ project_mark(card.project, card.project_color) }}</span>
 {% if card.category %}
             {{ pill(card.category, extra="task-card__category") }}
 {% endif %}

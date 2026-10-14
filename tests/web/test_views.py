@@ -6,11 +6,12 @@ from datetime import UTC, date, datetime, timedelta, timezone
 import pytest
 
 from logbook.core.models import ActiveTimer, Project, WorkLog
-from logbook.web.pages.summary import CHART_PALETTE, project_colors
 from logbook.web.pages.views import (
+    CHART_PALETTE,
     RECENT_LIMIT,
     content_version,
     log_row,
+    project_color,
     record_text,
     timer_version,
     timer_view,
@@ -88,22 +89,29 @@ def test_worklog_version_separates_fields() -> None:
     )
 
 
-def test_project_colors_uses_explicit_color_or_palette_position() -> None:
-    colors = project_colors(["a", "b", "c"], {"a": None, "b": "#123456", "c": None})
-
-    assert colors == {"a": CHART_PALETTE[0], "b": "#123456", "c": CHART_PALETTE[2]}
+def test_project_color_uses_explicit_color() -> None:
+    assert project_color(Project(id=3, slug="a", name="a", color="#123456")) == "#123456"
 
 
-def test_project_colors_cycles_through_the_palette() -> None:
-    slugs = [f"p{i}" for i in range(len(CHART_PALETTE) + 1)]
+@pytest.mark.parametrize(
+    ("project_id", "expected"),
+    [
+        (1, CHART_PALETTE[0]),
+        (2, CHART_PALETTE[1]),
+        (len(CHART_PALETTE) + 1, CHART_PALETTE[0]),
+    ],
+)
+def test_project_color_falls_back_to_palette_by_id(project_id: int, expected: str) -> None:
+    assert project_color(Project(id=project_id, slug="a", name="a")) == expected
 
-    colors = project_colors(slugs, {})
 
-    assert colors[slugs[-1]] == CHART_PALETTE[0]
+@pytest.mark.parametrize("color", ["red", "#12345", "#12345g"])
+def test_project_color_ignores_invalid_color(color: str) -> None:
+    assert project_color(Project(id=2, slug="a", name="a", color=color)) == CHART_PALETTE[1]
 
 
-def test_project_colors_ignores_unknown_explicit_slugs() -> None:
-    assert project_colors(["a"], {"zzz": "#111111"}) == {"a": CHART_PALETTE[0]}
+def test_log_row_has_project_color() -> None:
+    assert log_row(_log()).project_color == CHART_PALETTE[0]
 
 
 def test_timer_view_converts_started_at_to_local_time() -> None:

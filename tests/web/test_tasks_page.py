@@ -1,6 +1,7 @@
 """태스크 화면 GET /tasks 테스트 (W40 = 09-28 ~ 10-04, 오늘 = 2026-10-01 목요일 09:30 +09:00)."""
 
 import json
+import re
 from datetime import UTC, date, datetime
 from html import unescape
 
@@ -166,6 +167,9 @@ def test_card_shows_project_and_category(client: TestClient, web_engine: Engine)
     html = client.get("/tasks").text
 
     assert [e.text for e in by_class(html, "task-card__project")] == ["payment"]
+    assert '<svg class="dot" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">' in html
+    assert re.search(r'<circle cx="4" cy="4" r="4" fill="#[0-9a-f]{6}"/></svg>payment', html)
+    assert "style=" not in html
     assert [e.text for e in by_class(html, "task-card__category")] == ["design"]
     category = by_class(html, "task-card__category")[0]
     assert str(category.attrs["class"]).split() == ["pill", "task-card__category"]

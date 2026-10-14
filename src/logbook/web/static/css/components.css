@@ -96,6 +96,16 @@
   white-space: nowrap;
 }
 
+.project-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.dot {
+  flex: none;
+}
+
 .pill--ok {
   background: var(--ok-soft);
   color: var(--ok);

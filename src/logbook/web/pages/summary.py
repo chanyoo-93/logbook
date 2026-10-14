@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, TypedDict
@@ -10,25 +10,12 @@ from typing import TYPE_CHECKING, TypedDict
 from logbook.core import services
 from logbook.core.duration import format_duration
 from logbook.core.weeks import Week, day_label, week_heading
+from logbook.web.pages.views import CHART_PALETTE, project_color
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
     from logbook.web.context import WebContext
-
-# 색을 정하지 않은 프로젝트와 카테고리에 순서대로 돌려 쓰는 색. 모두 흰 배경에서 구분된다.
-CHART_PALETTE = (
-    "#2f6fde",
-    "#e8590c",
-    "#2b8a3e",
-    "#c2255c",
-    "#7048e8",
-    "#0b7285",
-    "#e67700",
-    "#5c940d",
-    "#a61e4d",
-    "#495057",
-)
 
 
 class DailyDataset(TypedDict):
@@ -76,11 +63,6 @@ def _palette_color(position: int) -> str:
     return CHART_PALETTE[position % len(CHART_PALETTE)]
 
 
-def project_colors(slugs: Sequence[str], explicit: Mapping[str, str | None]) -> dict[str, str]:
-    """설정한 색(projects.color)이 있으면 그 색, 없으면 slugs 순서대로 CHART_PALETTE를 돌려 쓴다."""
-    return {slug: explicit.get(slug) or _palette_color(i) for i, slug in enumerate(slugs)}
-
-
 def category_colors(present: Sequence[str], configured: Sequence[str]) -> dict[str, str]:
     """카테고리 색. 설정 순서 위치로 팔레트에서 고르므로 주마다 같은 카테고리는 같은 색이다.
 
@@ -99,10 +81,9 @@ def build_summary(s: Session, ctx: WebContext, week: Week, now: datetime) -> Sum
     by_project = services.stats_by(s, week, "project")
     by_category = services.stats_by(s, week, "category", category_labels=cfg.categories)
     done_count = services.count_done_tasks(s, week, tz=now.tzinfo or UTC)
-    explicit = {p.slug: p.color for p in services.list_projects(s, include_archived=True)}
+    colors = {p.slug: project_color(p) for p in services.list_projects(s, include_archived=True)}
 
-    # 막대와 도넛이 같은 프로젝트 순서·색을 쓴다(둘 다 합계 내림차순, 같으면 slug 순).
-    colors = project_colors(daily.projects, explicit)
+    # 막대와 도넛이 같은 프로젝트 순서(합계 내림차순, 같으면 slug 순)와 색 점과 같은 색을 쓴다.
     project_minutes = {row.key: row.minutes for row in by_project.rows}
     category_color = category_colors([row.key for row in by_category.rows], tuple(cfg.categories))
     chart: ChartData = {
