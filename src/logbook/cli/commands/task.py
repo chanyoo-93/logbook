@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from rich.text import Text
 
     from logbook.core.config import Config
+    from logbook.core.services.github_import import IssueImport
     from logbook.core.taskstatus import TaskStatus
 
 task_app = typer.Typer(
@@ -192,6 +193,84 @@ def edit(
     console.print_line(
         render.ok_mark(), " 수정했습니다: ", render.task_line(task), render.task_details(task)
     )
+
+
+@task_app.command("import-gh", cls=LogbookCommand)
+def import_gh(
+    repo: Annotated[
+        str, typer.Argument(metavar="OWNER/REPO", help="GitHub 저장소 (예: chanyoo-93/logbook)")
+    ],
+    label: Annotated[
+        list[str] | None,
+        typer.Option("--label", "-l", help="이 라벨이 붙은 이슈만 (여러 번 쓸 수 있습니다)"),
+    ] = None,
+    state: Annotated[str, typer.Option("--state", help="이슈 상태: open, closed, all")] = "open",
+    limit: Annotated[int, typer.Option("--limit", help="가져올 최대 개수 (1~1000)")] = 100,
+    project: runtime.ProjectOpt = None,
+    category: runtime.CategoryOpt = None,
+    week: runtime.WeekOpt = None,
+    dry_run: Annotated[
+        bool, typer.Option("--dry-run", help="추가하지 않고 가져올 이슈만 보여 줍니다.")
+    ] = False,
+) -> None:
+    """GitHub 이슈를 할 일 태스크로 가져옵니다. gh CLI가 필요합니다.
+    이미 가져온 이슈는 건너뜁니다."""
+    from logbook.core import github
+    from logbook.core.weeks import parse_week
+
+    # DB 없이 끝낼 수 있는 검증을 먼저 한다(실패하면 SQLAlchemy를 로드하지 않는다).
+    the_repo = github.parse_repo(repo)
+    the_state = github.check_state(state)
+    the_limit = github.check_limit(limit)
+    cfg = runtime.settings()
+    planned_week = (
+        parse_week(week, today=runtime.today(), week_start=cfg.week_start)
+        if week is not None
+        else None
+    )
+
+    issues = github.list_issues(the_repo, labels=label or [], state=the_state, limit=the_limit)
+    if not issues:
+        console.print_line(render.info_mark(), f" 가져올 이슈가 없습니다: {the_repo}")
+        return
+
+    # services는 SQLAlchemy를 로드하므로 검증이 끝난 뒤에 import한다.
+    from logbook.core import services
+
+    with runtime.session(cfg) as s:
+        if dry_run:
+            plan = services.plan_issue_import(s, the_repo, issues)
+            _print_import_plan(plan)
+            return
+        result = services.import_issues(
+            s,
+            the_repo,
+            issues,
+            project_slug=project if project is not None else cfg.default_project,
+            category=category,
+            planned_week=planned_week,
+            allowed_categories=tuple(cfg.categories),
+        )
+
+    console.print_line(
+        render.ok_mark(),
+        f" 이슈를 태스크로 가져왔습니다: 추가 {len(result.created)}건, "
+        f"건너뜀 {len(result.skipped)}건 (이미 있음)",
+    )
+    for task in result.created:
+        console.print_line("  ", render.task_line(task))
+
+
+def _print_import_plan(plan: "IssueImport") -> None:
+    from rich.text import Text
+
+    console.print_line(
+        render.info_mark(),
+        f" 가져올 이슈: {len(plan.new)}건, 건너뛸 이슈: {len(plan.skipped)}건 (이미 있음). "
+        "--dry-run이라 추가하지 않았습니다.",
+    )
+    for item in plan.new:
+        console.print_line(Text(f"  #{item.number} {item.title}"))
 
 
 @task_app.command("start", cls=LogbookCommand)

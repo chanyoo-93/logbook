@@ -52,6 +52,14 @@ def create_task(
     return task
 
 
+def existing_external_refs(s: Session, refs: Collection[str]) -> set[str]:
+    """refs 가운데 이미 어떤 태스크(상태·보관 무관)의 external_ref인 것."""
+    if not refs:
+        return set()
+    found = s.scalars(select(Task.external_ref).where(Task.external_ref.in_(refs)))
+    return {ref for ref in found if ref is not None}
+
+
 def get_task(s: Session, task_id: int) -> Task:
     """id로 태스크를 찾는다 (project 함께 로드). 없으면 NotFoundError."""
     return load_task(s, task_id)

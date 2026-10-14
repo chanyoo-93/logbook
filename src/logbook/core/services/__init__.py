@@ -10,6 +10,12 @@ from logbook.core.services.backup import (
     export_records,
 )
 from logbook.core.services.backup_import import import_records
+from logbook.core.services.github_import import (
+    IssueImport,
+    IssueImportResult,
+    import_issues,
+    plan_issue_import,
+)
 from logbook.core.services.projects import (
     COMMON_SLUG,
     SLUG_PATTERN,
@@ -42,6 +48,7 @@ from logbook.core.services.tasks import (
     count_done_tasks,
     create_task,
     done_tasks_in_week,
+    existing_external_refs,
     get_task,
     list_tasks,
     set_task_status,
@@ -128,4 +135,9 @@ __all__ = [
     "get_week_note",
     "save_week_note",
     "done_tasks_in_week",
+    "existing_external_refs",
+    "IssueImport",
+    "IssueImportResult",
+    "import_issues",
+    "plan_issue_import",
 ]
