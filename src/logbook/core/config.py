@@ -74,8 +74,8 @@ class WebConfig:
     host: str = "127.0.0.1"
     port: int = 8765
     heading_font: str = "Bookk Gothic"
-    document_font: str = "Bookk Myungjo"
-    body_font: str = ""
+    document_font: str = "Bookk Gothic"
+    body_font: str = "Bookk Gothic"
 
 
 @dataclass(frozen=True)

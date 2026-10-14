@@ -141,7 +141,8 @@ def test_settings_info_shows_font_rows_with_previews(client: TestClient) -> None
     assert "문서 글꼴" in html
     assert "본문 글꼴" in html
     assert "Bookk Gothic" in html
-    assert "Bookk Myungjo" in html
+    assert "Bookk Myungjo" not in html
+    assert html.count("Bookk Gothic") >= 3
     assert FONT_NOTE in html
     for cls in ("font-preview--heading", "font-preview--document", "font-preview--body"):
         assert len(by_class(html, cls)) == 1

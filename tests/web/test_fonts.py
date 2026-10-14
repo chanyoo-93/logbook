@@ -23,7 +23,8 @@ def test_fonts_css_default_config() -> None:
         COMMENT
         + ":root {\n"
         + '  --font-heading: "Bookk Gothic", var(--font-sans);\n'
-        + '  --font-document: "Bookk Myungjo", var(--font-serif);\n'
+        + '  --font-document: "Bookk Gothic", var(--font-sans);\n'
+        + '  --font-body: "Bookk Gothic", var(--font-sans);\n'
         + "}\n"
     )
 
@@ -72,18 +73,18 @@ def test_fonts_stylesheet_follows_config_changes(
     response = watched_client.get("/fonts.css")
 
     assert '--font-heading: "나눔고딕", var(--font-sans);' in response.text
-    assert "Bookk Gothic" not in response.text
+    assert '--font-heading: "Bookk Gothic"' not in response.text
 
 
 def test_app_css_defines_font_tokens_and_body_uses_font_body() -> None:
     css = (CSS_ROOT / "app.css").read_text(encoding="utf-8")
     root = css[css.index(":root") : css.index("}", css.index(":root"))]
 
-    assert '--font-serif: "AppleMyungjo", "Batang", "Noto Serif KR", serif;' in root
+    assert "--font-serif" not in root
     for line in (
         "--font-body: var(--font-sans);",
         "--font-heading: var(--font-sans);",
-        "--font-document: var(--font-serif);",
+        "--font-document: var(--font-sans);",
         "--tracking-title: -0.01em;",
         "--tracking-display: -0.035em;",
     ):
@@ -100,3 +101,15 @@ def test_settings_css_has_font_preview_rules() -> None:
     assert "var(--font-heading)" in css
     assert "var(--font-document)" in css
     assert "var(--font-body)" in css
+
+
+def test_no_css_uses_the_removed_serif_token() -> None:
+    for path in CSS_ROOT.glob("*.css"):
+        assert "--font-serif" not in path.read_text(encoding="utf-8"), path.name
+
+
+def test_dashboard_chart_font_follows_the_body_font() -> None:
+    js = (CSS_ROOT.parent / "js" / "dashboard.js").read_text(encoding="utf-8")
+
+    assert 'Chart.defaults.font.family = cssVariable("--font-body");' in js
+    assert "--font-sans" not in js

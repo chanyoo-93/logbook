@@ -24,11 +24,10 @@
   /* 글꼴: 웹 글꼴을 내려받지 않고 OS 한글 글꼴을 쓴다(오프라인, 의존성 없음). */
   --font-sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui,
     sans-serif;
-  --font-serif: "AppleMyungjo", "Batang", "Noto Serif KR", serif;
   /* /fonts.css가 설정 값으로 덮어쓴다. */
   --font-body: var(--font-sans);
   --font-heading: var(--font-sans);
-  --font-document: var(--font-serif);
+  --font-document: var(--font-sans);
   --tracking-title: -0.01em;
   --tracking-display: -0.035em;
 

@@ -186,7 +186,7 @@
     if (!data || !daily || !projects || !categories) {
       return;
     }
-    Chart.defaults.font.family = cssVariable("--font-sans");
+    Chart.defaults.font.family = cssVariable("--font-body");
     Chart.defaults.color = cssVariable("--ink-muted");
     addChart(daily, dailyConfig(data.daily));
     addChart(projects, doughnutConfig(data.projects));

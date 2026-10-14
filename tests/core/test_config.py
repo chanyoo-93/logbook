@@ -636,8 +636,8 @@ def test_write_default_config_document(config_file: Path) -> None:
             "host": "127.0.0.1",
             "port": 8765,
             "heading_font": "Bookk Gothic",
-            "document_font": "Bookk Myungjo",
-            "body_font": "",
+            "document_font": "Bookk Gothic",
+            "body_font": "Bookk Gothic",
         },
         "llm": {
             "provider": "",
@@ -737,8 +737,8 @@ def test_font_keys_default_when_absent(config_file: Path) -> None:
 
     assert (web.heading_font, web.document_font, web.body_font) == (
         "Bookk Gothic",
-        "Bookk Myungjo",
-        "",
+        "Bookk Gothic",
+        "Bookk Gothic",
     )
 
 

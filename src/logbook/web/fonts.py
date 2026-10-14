@@ -9,7 +9,7 @@ def fonts_css(web: WebConfig) -> str:
     """빈 값은 줄을 내지 않아 app.css의 기본값이 남는다."""
     rules = (
         ("--font-heading", web.heading_font, "--font-sans"),
-        ("--font-document", web.document_font, "--font-serif"),
+        ("--font-document", web.document_font, "--font-sans"),
         ("--font-body", web.body_font, "--font-sans"),
     )
     lines = "".join(
