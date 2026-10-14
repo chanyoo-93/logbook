@@ -311,7 +311,8 @@ def fonts_stylesheet(ctx: Ctx) -> Response:
 
 | 대상 | 바꾼 뒤 |
 |---|---|
-| `.masthead__brand`, `.panel__title`, `.board__title`, `.board__col-title`, `.plan__title`, `.report__title`, `.report-notes__title` | `font-family: var(--font-heading); letter-spacing: var(--tracking-title);` (굵기 700 유지) |
+| `.panel__title`, `.board__title`, `.board__col-title`, `.plan__title`, `.report__title`, `.report-notes__title` | `font-family: var(--font-heading); letter-spacing: var(--tracking-title);` (굵기 700 유지) |
+| `.masthead__brand` | `font-family: var(--font-heading); letter-spacing: var(--tracking-display);` (아래 줄 참고, 2026-10-14 계획 모순 정정) |
 | `.stat__value` | `font-family: var(--font-heading); letter-spacing: var(--tracking-display);` (기존 `-0.02em` 대체) |
 | `.report__preview`, `.report-polish__text` | `font-family: var(--font-document);` (`.report__preview`의 `font: inherit` 뒤에 둔다) |
 | 그대로 | 본문, 표, 입력칸, 버튼, 차트 글꼴 |
@@ -325,8 +326,8 @@ def fonts_stylesheet(ctx: Ctx) -> Response:
 | CSS | 위 표의 선언이 각 셀렉터에 있다 | `_declarations`로 확인(파라미터 표에 행 추가) |
 | CSS | 자간 토큰 두 개가 `:root`에 있다 | |
 
-- [ ] RED → GREEN → 커밋 `style: 제목·큰 숫자에 제목 글꼴과 자간, 보고서 미리보기에 문서 글꼴 적용`
-- [ ] 메인 세션: 전후 스크린샷(다섯 화면, 보고서 요약 패널 포함) → 사용자 승인
+- [x] RED → GREEN → 커밋 `style: 제목·큰 숫자에 제목 글꼴과 자간, 보고서 미리보기에 문서 글꼴 적용` (3385a51, 사용자 결정으로 보고서 미리보기 15px ec08c57)
+- [x] 메인 세션: 전후 스크린샷(다섯 화면, 보고서 요약 패널 포함) → 사용자 승인 (2026-10-14, 글꼴 통일 Task 8-4b와 함께 승인)
 
 ---
 
@@ -360,8 +361,8 @@ Task 8-4 확인 중 사용자가 "글꼴이 다 달라 통일성이 떨어진다
 | JS | `dashboard.js` | `cssVariable("--font-body")`로 차트 글꼴을 정하고 `--font-sans`를 쓰지 않는다 |
 | 설정 화면 | 기본 설정 | 세 줄 모두 `Bookk Gothic` |
 
-- [ ] RED → GREEN → 커밋 `style: 글꼴 기본값을 부크크 고딕으로 통일하고 차트도 본문 글꼴을 따르게 함`
-- [ ] 메인 세션: 전후 스크린샷(8-4 결과 대비) → 사용자 승인. 승인되면 8-4도 함께 체크한다
+- [x] RED → GREEN → 커밋 `style: 글꼴 기본값을 부크크 고딕으로 통일하고 차트도 본문 글꼴을 따르게 함` (eb15067)
+- [x] 메인 세션: 전후 스크린샷(8-4 결과 대비) → 사용자 승인. 승인되면 8-4도 함께 체크한다 (2026-10-14)
 
 ---
 
