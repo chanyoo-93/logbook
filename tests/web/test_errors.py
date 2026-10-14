@@ -15,7 +15,7 @@ from logbook.core.errors import (
 )
 from logbook.web import errors
 from logbook.web.api.envelope import fail, ok
-from logbook.web.assets import STYLESHEETS
+from logbook.web.assets import FONTS_CSS_URL, STYLESHEETS
 from logbook.web.errors import ConflictError, ErrorKind, classify
 from tests.web.conftest import RAISED_ERRORS
 from tests.web.helpers import all_by_tag
@@ -129,7 +129,8 @@ def test_page_errors_render_error_page(probe_client: TestClient) -> None:
     assert title.text == "오류 · logbook"
     sheets = [e for e in all_by_tag(response.text, "link") if e.attrs.get("rel") == "stylesheet"]
     assert [sheet.attrs["href"] for sheet in sheets] == [
-        f"/static/css/{name}" for name in STYLESHEETS
+        *[f"/static/css/{name}" for name in STYLESHEETS],
+        FONTS_CSS_URL,
     ]
     [back] = all_by_tag(response.text, "a")
     assert back.attrs["href"] == "/"

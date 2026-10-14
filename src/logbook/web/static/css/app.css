@@ -24,6 +24,13 @@
   /* 글꼴: 웹 글꼴을 내려받지 않고 OS 한글 글꼴을 쓴다(오프라인, 의존성 없음). */
   --font-sans: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui,
     sans-serif;
+  --font-serif: "AppleMyungjo", "Batang", "Noto Serif KR", serif;
+  /* /fonts.css가 설정 값으로 덮어쓴다. */
+  --font-body: var(--font-sans);
+  --font-heading: var(--font-sans);
+  --font-document: var(--font-serif);
+  --tracking-title: -0.01em;
+  --tracking-display: -0.035em;
 
   /* 글자 크기 단계 */
   --text-xs: 0.75rem;
@@ -88,7 +95,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: var(--text-base);
   line-height: 1.55;
   font-variant-numeric: tabular-nums;

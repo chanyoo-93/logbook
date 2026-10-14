@@ -9,6 +9,7 @@ from sqlalchemy import Engine
 from logbook.core import db, services
 from logbook.core.taskstatus import TaskStatus
 from logbook.web.app import create_app
+from logbook.web.assets import FONTS_CSS_URL
 from logbook.web.context import WebContext
 from tests.helpers import Clock, hold_lock
 from tests.web.conftest import LOCAL_BASE_URL, LockedApp
@@ -358,7 +359,7 @@ def test_dashboard_references_only_local_assets(client: TestClient) -> None:
         if e.attrs.get(name)
     ]
     assert urls
-    assert all(str(url).startswith("/static/") for url in urls)
+    assert all(str(url).startswith(("/static/", FONTS_CSS_URL)) for url in urls)
     assert "https://" not in html and "http://" not in html
 
 

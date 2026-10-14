@@ -13,3 +13,5 @@ STYLESHEETS: tuple[str, ...] = (
     "responsive.css",
 )
 STATIC_CSS_URL = "/static/css/"
+# 설정 글꼴을 CSS 변수로 내는 스타일시트. STYLESHEETS 뒤에 링크한다(static/css 파일이 아니다).
+FONTS_CSS_URL = "/fonts.css"

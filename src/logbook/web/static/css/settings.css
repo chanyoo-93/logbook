@@ -82,6 +82,24 @@
   list-style: none;
 }
 
+.font-preview {
+  margin-left: var(--space-3);
+  font-size: var(--text-md);
+}
+
+.font-preview--heading {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.font-preview--document {
+  font-family: var(--font-document);
+}
+
+.font-preview--body {
+  font-family: var(--font-body);
+}
+
 .info__note {
   margin: 0;
   padding: 0 var(--space-4) var(--space-3);

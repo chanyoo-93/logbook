@@ -12,7 +12,7 @@ from logbook.core.config import load_config
 from logbook.web.app import create_app
 from logbook.web.config_watch import ConfigWatcher
 from logbook.web.context import WebContext
-from logbook.web.pages.settings import CATEGORY_NOTE
+from logbook.web.pages.settings import CATEGORY_NOTE, FONT_NOTE
 from tests.web.conftest import LOCAL_BASE_URL
 from tests.web.helpers import (
     add_project,
@@ -132,3 +132,36 @@ def test_changed_db_path_shows_running_db_and_restart_notice(
     ]
     assert len(notices) == 1
     assert "db_path" in notices[0].text
+
+
+def test_settings_info_shows_font_rows_with_previews(client: TestClient) -> None:
+    html = client.get("/settings").text
+
+    assert "제목 글꼴" in html
+    assert "문서 글꼴" in html
+    assert "본문 글꼴" in html
+    assert "Bookk Gothic" in html
+    assert "Bookk Myungjo" in html
+    assert FONT_NOTE in html
+    for cls in ("font-preview--heading", "font-preview--document", "font-preview--body"):
+        assert len(by_class(html, cls)) == 1
+    body_row = by_class(html, "font-preview--body")[0]
+    assert body_row.text == "가나다 ABC 123 · 8h 55m"
+
+
+def test_settings_info_shows_default_font_label_for_empty_body_font(client: TestClient) -> None:
+    html = client.get("/settings").text
+
+    assert "기본 글꼴" in html
+
+
+def test_settings_font_rows_follow_config(watched_client: TestClient, config_file: Path) -> None:
+    config_file.write_text(
+        '[web]\nport = 8765\nheading_font = "나눔고딕"\nbody_font = "Batang"\n',
+        encoding="utf-8",
+    )
+
+    html = watched_client.get("/settings").text
+
+    assert "나눔고딕" in html
+    assert "Batang" in html

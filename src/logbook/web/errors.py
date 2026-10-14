@@ -24,7 +24,7 @@ from logbook.core.errors import (
     NotFoundError,
 )
 from logbook.web.api.envelope import fail
-from logbook.web.assets import STATIC_CSS_URL, STYLESHEETS
+from logbook.web.assets import FONTS_CSS_URL, STATIC_CSS_URL, STYLESHEETS
 from logbook.web.htmx import is_htmx
 from logbook.web.security import is_api_path, security_headers
 
@@ -94,9 +94,8 @@ def _flash_fragment(message: str) -> str:
 
 
 def _stylesheet_links() -> str:
-    return "".join(
-        f'<link rel="stylesheet" href="{STATIC_CSS_URL}{name}">\n' for name in STYLESHEETS
-    )
+    hrefs = [f"{STATIC_CSS_URL}{name}" for name in STYLESHEETS] + [FONTS_CSS_URL]
+    return "".join(f'<link rel="stylesheet" href="{href}">\n' for href in hrefs)
 
 
 def _error_page(message: str) -> str:

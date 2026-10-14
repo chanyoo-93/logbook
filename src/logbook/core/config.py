@@ -41,6 +41,11 @@ DEFAULT_CATEGORIES: Mapping[str, str] = MappingProxyType(
 )
 
 _CATEGORY_KEY = re.compile(r"[a-z][a-z0-9_-]*", re.ASCII)
+# 글꼴 이름: 100자 이하, 따옴표·역슬래시·세미콜론·쉼표·중괄호·꺾쇠·제어 문자 없음. 빈 값은 기본.
+_FONT_NAME = re.compile(r"[^\x00-\x1f\x7f\"'\\;,{}<>]{0,100}")
+FONT_NAME_RULE = (
+    "글꼴 이름 하나(100자 이하, 따옴표·역슬래시·세미콜론·쉼표·중괄호·꺾쇠 없이) 또는 빈 값"
+)
 # 오류 메시지에 그대로 보여줄 경로 값의 최대 길이
 _MAX_ECHO_CHARS = 40
 
@@ -68,6 +73,9 @@ class GitConfig:
 class WebConfig:
     host: str = "127.0.0.1"
     port: int = 8765
+    heading_font: str = "Bookk Gothic"
+    document_font: str = "Bookk Myungjo"
+    body_font: str = ""
 
 
 @dataclass(frozen=True)
@@ -376,7 +384,16 @@ class _Table:
         return WebConfig(
             host=self._local_host(self.string("host", defaults.host, non_empty=True)),
             port=self.integer("port", defaults.port, MAX_PORT),
+            heading_font=self._font("heading_font", defaults.heading_font),
+            document_font=self._font("document_font", defaults.document_font),
+            body_font=self._font("body_font", defaults.body_font),
         )
+
+    def _font(self, name: str, default: str) -> str:
+        value = self.string(name, default)
+        if value != value.strip() or not _FONT_NAME.fullmatch(value):
+            raise self._invalid(name, value, FONT_NAME_RULE)
+        return value
 
     def to_llm(self) -> LlmConfig:
         self.check_keys(_keys(LlmConfig))

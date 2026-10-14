@@ -48,6 +48,12 @@ ARCHIVE_CONFIRM = (
 CATEGORY_NOTE = (
     "카테고리와 기본값은 설정 파일에서 바꿉니다. 저장한 뒤 화면을 새로 고치면 반영됩니다."
 )
+FONT_NOTE = (
+    "글꼴은 이 PC에 설치된 글꼴 이름으로 정합니다"
+    "(설정 [web]의 heading_font·document_font·body_font). "
+    "설치되지 않은 글꼴이면 기본 글꼴로 보입니다."
+)
+DEFAULT_FONT_LABEL = "기본 글꼴"
 
 
 def project_version(project: Project) -> str:
@@ -107,6 +113,13 @@ class ProjectSectionView:
 
 
 @dataclass(frozen=True)
+class FontRowView:
+    label: str
+    name: str  # 설정 값. 비어 있으면 '기본 글꼴'
+    preview_class: str
+
+
+@dataclass(frozen=True)
 class SettingsInfoView:
     config_file: str  # str(Path) 그대로(Windows 역슬래시)
     db_path: str  # 실제로 연 DB. 설정의 db_path는 다시 시작하기 전에는 다를 수 있다
@@ -114,6 +127,7 @@ class SettingsInfoView:
     default_project: str
     week_start: str
     daily_target: str
+    fonts: tuple[FontRowView, ...]
 
 
 def project_row(project: Project) -> ProjectRowView:
@@ -151,6 +165,15 @@ def info_view(ctx: WebContext) -> SettingsInfoView:
         default_project=cfg.default_project,
         week_start=cfg.week_start,
         daily_target=format_duration(cfg.daily_target_minutes),
+        fonts=(
+            FontRowView(
+                "제목 글꼴", cfg.web.heading_font or DEFAULT_FONT_LABEL, "font-preview--heading"
+            ),
+            FontRowView(
+                "문서 글꼴", cfg.web.document_font or DEFAULT_FONT_LABEL, "font-preview--document"
+            ),
+            FontRowView("본문 글꼴", cfg.web.body_font or DEFAULT_FONT_LABEL, "font-preview--body"),
+        ),
     )
 
 
@@ -171,6 +194,7 @@ def settings_page(request: Request, ctx: Ctx) -> HTMLResponse:
         "section": section,
         "info": info_view(ctx),
         "category_note": CATEGORY_NOTE,
+        "font_note": FONT_NOTE,
     }
     return render(request, PAGE_TEMPLATE, context)
 

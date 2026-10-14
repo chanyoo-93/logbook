@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 import logbook.web
 from logbook.web.app import create_app
-from logbook.web.assets import STYLESHEETS
+from logbook.web.assets import FONTS_CSS_URL, STYLESHEETS
 from logbook.web.context import WebContext
 from tests.web.conftest import LOCAL_BASE_URL
 from tests.web.helpers import all_by_tag
@@ -171,7 +171,11 @@ def _linked_sheets(html: str) -> list[str | None]:
 
 
 def test_base_template_links_every_stylesheet_in_order(client: TestClient) -> None:
-    assert _linked_sheets(client.get("/").text) == [f"/static/css/{n}" for n in STYLESHEETS]
+    assert _linked_sheets(client.get("/").text) == [
+        *[f"/static/css/{n}" for n in STYLESHEETS],
+        "/fonts.css",
+    ]
+    assert FONTS_CSS_URL == "/fonts.css"
 
 
 def test_error_page_links_the_same_stylesheets_in_the_same_order(client: TestClient) -> None:
