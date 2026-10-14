@@ -24,6 +24,8 @@ LOCAL_HOSTS = ("127.0.0.1", "localhost")
 # 기본 설정 파일에 쓰는 OS 공통 표기
 _DEFAULT_DB_PATH_TEXT = f"~/{DATA_DIR_NAME}/{DB_FILE_NAME}"
 
+LLM_PROVIDERS = ("", "anthropic", "openai")
+
 DEFAULT_CATEGORIES: Mapping[str, str] = MappingProxyType(
     {
         "dev": "개발",
@@ -69,6 +71,13 @@ class WebConfig:
 
 
 @dataclass(frozen=True)
+class LlmConfig:
+    provider: str = ""  # "" | "anthropic" | "openai". ""는 키가 있는 쪽을 고른다
+    anthropic_model: str = "claude-opus-5-5"
+    openai_model: str = "gpt-6.1-sol"
+
+
+@dataclass(frozen=True)
 class Config:
     """전체 설정.
 
@@ -84,6 +93,7 @@ class Config:
     report: ReportConfig = field(default_factory=ReportConfig)
     git: GitConfig = field(default_factory=GitConfig)
     web: WebConfig = field(default_factory=WebConfig)
+    llm: LlmConfig = field(default_factory=LlmConfig)
 
     def __post_init__(self) -> None:
         # dict를 넘겨도 순서를 유지한 읽기 전용 복사본으로 고정한다.
@@ -179,6 +189,7 @@ def _default_document() -> dict[str, object]:
         # repos는 쓰지 않는다: 인라인 배열은 뒤에 덧붙인 [[git.repos]] 블록과 충돌한다.
         "git": {"author_email": defaults.git.author_email},
         "web": asdict(defaults.web),
+        "llm": asdict(defaults.llm),
     }
 
 
@@ -299,6 +310,7 @@ class _Table:
             report=self.table("report").to_report(),
             git=self.table("git").to_git(),
             web=self.table("web").to_web(),
+            llm=self.table("llm").to_llm(),
         )
 
     def _db_path(self, default: Path) -> Path:
@@ -364,4 +376,18 @@ class _Table:
         return WebConfig(
             host=self._local_host(self.string("host", defaults.host, non_empty=True)),
             port=self.integer("port", defaults.port, MAX_PORT),
+        )
+
+    def to_llm(self) -> LlmConfig:
+        self.check_keys(_keys(LlmConfig))
+        defaults = LlmConfig()
+        provider = self.string("provider", defaults.provider)
+        if provider not in LLM_PROVIDERS:
+            raise self._invalid("provider", provider, "'', 'anthropic', 'openai'")
+        return LlmConfig(
+            provider=provider,
+            anthropic_model=self.string(
+                "anthropic_model", defaults.anthropic_model, non_empty=True
+            ),
+            openai_model=self.string("openai_model", defaults.openai_model, non_empty=True),
         )

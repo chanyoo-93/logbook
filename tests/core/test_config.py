@@ -12,6 +12,7 @@ from logbook.core.config import (
     Config,
     GitConfig,
     GitRepo,
+    LlmConfig,
     ReportConfig,
     WebConfig,
     config_path,
@@ -81,6 +82,9 @@ def test_missing_file_gives_defaults(config_file: Path) -> None:
     )
     assert config.git == GitConfig(author_email="", repos=())
     assert config.web == WebConfig(host="127.0.0.1", port=8765)
+    assert config.llm == LlmConfig(
+        provider="", anthropic_model="claude-opus-5-5", openai_model="gpt-6.1-sol"
+    )
 
 
 def test_load_config_without_path_reads_default_location() -> None:
@@ -344,6 +348,7 @@ def test_unreadable_config_path_raises_logbook_error(tmp_path: Path) -> None:
         ('[report]\nautor = "홍길동"\n', "report.autor"),
         ('[git]\nemail = "me@example.com"\n', "git.email"),
         ("[web]\nprot = 9000\n", "web.prot"),
+        ('[llm]\nmodel = "x"\n', "llm.model"),
         ('[[git.repos]]\nproject = "a"\npath = "b"\nbranch = "main"\n', "git.repos[1].branch"),
         ('[extra]\nkey = "value"\n', "extra"),
     ],
@@ -359,6 +364,38 @@ def test_invalid_week_start(config_file: Path) -> None:
 @pytest.mark.parametrize("value", ["-1", "0", "1441", '"480"', "true", "480.0"])
 def test_invalid_daily_target_minutes(config_file: Path, value: str) -> None:
     assert_invalid(config_file, f"daily_target_minutes = {value}\n", "daily_target_minutes")
+
+
+def test_llm_table_is_read(config_file: Path) -> None:
+    write_toml(
+        config_file,
+        '[llm]\nprovider = "openai"\nanthropic_model = "claude-x"\nopenai_model = "gpt-x"\n',
+    )
+
+    assert load_config(config_file).llm == LlmConfig(
+        provider="openai", anthropic_model="claude-x", openai_model="gpt-x"
+    )
+
+
+def test_invalid_llm_provider(config_file: Path) -> None:
+    assert_invalid(
+        config_file,
+        '[llm]\nprovider = "gemini"\n',
+        "llm.provider",
+        "설정할 수 있는 값: '', 'anthropic', 'openai'",
+    )
+
+
+@pytest.mark.parametrize("name", ["anthropic_model", "openai_model"])
+def test_empty_llm_model_is_rejected(config_file: Path, name: str) -> None:
+    assert_invalid(config_file, f'[llm]\n{name} = ""\n', f"llm.{name}", "비어 있지 않은 문자열")
+
+
+def test_default_config_file_has_llm_table(config_file: Path) -> None:
+    write_default_config(config_file)
+
+    assert "[llm]" in config_file.read_text(encoding="utf-8")
+    assert load_config(config_file).llm == LlmConfig()
 
 
 @pytest.mark.parametrize("host", ["localhost", "127.0.0.1"])
@@ -596,6 +633,11 @@ def test_write_default_config_document(config_file: Path) -> None:
         },
         "git": {"author_email": ""},
         "web": {"host": "127.0.0.1", "port": 8765},
+        "llm": {
+            "provider": "",
+            "anthropic_model": "claude-opus-5-5",
+            "openai_model": "gpt-6.1-sol",
+        },
     }
     assert list(document["categories"]) == list(EXPECTED_CATEGORIES)
 

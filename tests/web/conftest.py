@@ -16,6 +16,7 @@ from logbook.core.config import Config
 from logbook.core.errors import (
     DatabaseBusyError,
     DatabaseNotInitializedError,
+    ExternalServiceError,
     InvalidInputError,
     LogbookError,
     NotFoundError,
@@ -59,6 +60,7 @@ RAISED_ERRORS = {
     "uninitialized": DatabaseNotInitializedError("먼저 'lb init'을 실행하세요."),
     "plain": LogbookError("읽기 전용 DB입니다."),
     "markup": InvalidInputError("<b>굵게</b> & '따옴표'"),
+    "external": ExternalServiceError("명령이 실패했습니다: gh issue list (종료 코드 1)."),
     "conflict": ConflictError("다른 곳에서 기록이 바뀌었습니다: #7. 다시 시도하세요."),
 }
 

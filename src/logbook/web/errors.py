@@ -18,6 +18,7 @@ from logbook.core.duration import echo_input
 from logbook.core.errors import (
     DatabaseBusyError,
     DatabaseNotInitializedError,
+    ExternalServiceError,
     InvalidInputError,
     LogbookError,
     NotFoundError,
@@ -83,6 +84,8 @@ def classify(error: LogbookError) -> ErrorKind:
         return ErrorKind(503, "busy")
     if isinstance(error, DatabaseNotInitializedError):
         return ErrorKind(503, "not_initialized")
+    if isinstance(error, ExternalServiceError):
+        return ErrorKind(502, "upstream")
     return ErrorKind(400, "error")
 
 
