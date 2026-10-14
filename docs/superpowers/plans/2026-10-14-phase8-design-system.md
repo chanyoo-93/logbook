@@ -192,8 +192,8 @@
 | CSS | 입력칸 규칙 어디에도 `border: 1px solid var(--ink-muted)`가 없다(전 CSS 문자열 검사), `.task-edit` 테두리는 `var(--control-border)` | `test_css_layout` 기대를 고친다 |
 | CSS | 입력칸 hover 규칙이 `var(--ink-muted)`를 쓴다 | |
 
-- [ ] RED → GREEN → 커밋 `style: 색·표면 토큰을 따뜻한 바탕과 옅은 경계·겹 그림자로 바꾸고 입력칸 경계 대비를 맞춤`
-- [ ] 메인 세션: 전후 스크린샷 → 사용자 승인
+- [x] RED → GREEN → 커밋 `style: 색·표면 토큰을 따뜻한 바탕과 옅은 경계·겹 그림자로 바꾸고 입력칸 경계 대비를 맞춤` (f3386e7)
+- [x] 메인 세션: 전후 스크린샷 → 사용자 승인 (2026-10-14)
 
 ---
 
