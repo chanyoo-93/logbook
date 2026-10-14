@@ -5,6 +5,7 @@ import pytest
 from logbook.core.errors import (
     DatabaseBusyError,
     DatabaseNotInitializedError,
+    ExternalServiceError,
     InvalidInputError,
     LogbookError,
     NotFoundError,
@@ -23,6 +24,12 @@ def test_errors_are_subclasses() -> None:
     assert not issubclass(NotFoundError, InvalidInputError)
     assert not issubclass(InvalidInputError, LookupError)
     assert not issubclass(NotFoundError, ValueError)
+
+
+def test_external_service_error_is_plain_logbook_error() -> None:
+    assert issubclass(ExternalServiceError, LogbookError)
+    assert not issubclass(ExternalServiceError, InvalidInputError)
+    assert not issubclass(ExternalServiceError, NotFoundError)
 
 
 def test_database_errors_are_logbook_errors_and_unrelated() -> None:
@@ -54,6 +61,7 @@ def test_errors_can_be_caught_by_both_bases(
         NotFoundError,
         DatabaseNotInitializedError,
         DatabaseBusyError,
+        ExternalServiceError,
     ],
 )
 def test_message_is_korean_roundtrip(error_type: type[LogbookError]) -> None:

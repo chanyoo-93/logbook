@@ -421,6 +421,19 @@ def _add_logs_today(db_path: Path, count: int) -> None:
         ),
         pytest.param(["task", "start", "abc"], 1, "오류: 태스크 ID가", id="task-start-bad-id"),
         pytest.param(["task", "done", "--help"], 0, None, id="task-done-help"),
+        pytest.param(["task", "import-gh", "--help"], 0, None, id="task-import-gh-help"),
+        pytest.param(
+            ["task", "import-gh", "x"],
+            1,
+            "오류: 저장소 형식이 올바르지 않습니다",
+            id="task-import-gh-bad-repo",
+        ),
+        pytest.param(
+            ["task", "import-gh", "a/b", "--state", "x"],
+            1,
+            "오류: 이슈 상태가 올바르지 않습니다",
+            id="task-import-gh-bad-state",
+        ),
         pytest.param(["plan", "--help"], 0, None, id="plan-help"),
         pytest.param(["plan", "carry", "--help"], 0, None, id="plan-carry-help"),
         pytest.param(["plan", "-w", "x"], 1, "오류: 주차 형식이", id="plan-bad-week"),
@@ -452,6 +465,20 @@ def _add_logs_today(db_path: Path, count: int) -> None:
             "오류: 저장할 폴더가 없습니다",
             id="report-missing-dir",
         ),
+        pytest.param(
+            ["report", "--provider", "openai"],
+            1,
+            "오류: --provider 옵션은 --polish와 함께 쓰세요.",
+            id="report-provider-without-polish",
+        ),
+        pytest.param(
+            ["report", "--polish", "--provider", "x"],
+            1,
+            "오류: 제공자 이름이 올바르지 않습니다",
+            id="report-bad-provider",
+        ),
+        pytest.param(["git-collect", "--help"], 0, None, id="git-collect-help"),
+        pytest.param(["git-collect", "-w", "x"], 1, "오류: 주차 형식이", id="git-collect-bad-week"),
         pytest.param(["serve", "--help"], 0, None, id="serve-help"),
         pytest.param(
             ["serve", "--port", "abc"], 1, "오류: 포트가 올바르지 않습니다", id="serve-bad-port"

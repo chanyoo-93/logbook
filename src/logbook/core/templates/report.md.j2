@@ -2,6 +2,11 @@
 {% if data.author %}
 작성자: {{ data.author }}
 {% endif %}
+{% if data.summary %}
+
+## 요약 (자동 생성)
+{{ data.summary }}
+{% endif %}
 
 ## 1. 공수 요약
 총 {{ data.total }} (기록 {{ data.log_count }}건, 완료 태스크 {{ data.done_task_count }}건)
@@ -61,3 +66,16 @@
 - {{ item.title }} (#{{ item.task_id }}){{ (' — 예상 ' ~ item.estimate) if item.estimate else '' }}{{ ' (이월 후보)' if item.carried else '' }}
 {% endfor %}
 {% endfor %}
+{% if data.commits %}
+
+## 부록. 커밋 내역
+{% for group in data.commits %}
+{% if not loop.first %}
+
+{% endif %}
+### {{ group.project }} ({{ group.repo }})
+{% for commit in group.commits %}
+- {{ commit.date }} {{ commit.hash }} {{ commit.subject }}
+{% endfor %}
+{% endfor %}
+{% endif %}

@@ -3,7 +3,7 @@
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, tzinfo
 from pathlib import Path
 from typing import Literal
 
@@ -11,7 +11,10 @@ from sqlalchemy import Connection, Engine, inspect, select, text
 from sqlalchemy.orm import Session
 
 from logbook.core import db
+from logbook.core.config import GitConfig
+from logbook.core.gitcollect import RepoCommits
 from logbook.core.models import Project
+from logbook.core.weeks import Week
 
 SUBPROCESS_TIMEOUT_SECONDS = 60
 
@@ -120,3 +123,17 @@ def make_v1_database(path: Path) -> None:
             conn.execute(text("INSERT INTO schema_version (version) VALUES (1)"))
     finally:
         engine.dispose()
+
+
+class FakeCollect:
+    """gitcollect.collect_commits 대역: 정해 둔 결과를 돌려주고 받은 인자를 기록한다."""
+
+    def __init__(self, results: tuple[RepoCommits, ...]) -> None:
+        self.results = results
+        self.calls: list[tuple[GitConfig, Week, tzinfo]] = []
+
+    def __call__(
+        self, git: GitConfig, week: Week, *, tz: tzinfo, run: object = None
+    ) -> tuple[RepoCommits, ...]:
+        self.calls.append((git, week, tz))
+        return self.results

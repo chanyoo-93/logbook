@@ -14,7 +14,7 @@ from logbook.core.weeks import parse_week
 from logbook.web.api.envelope import ok
 from logbook.web.api.schemas import optional_text
 from logbook.web.context import Ctx
-from logbook.web.reporting import report_data, report_markdown
+from logbook.web.reporting import report_data, report_markdown, report_with_commits
 
 router = APIRouter()
 
@@ -39,6 +39,7 @@ def get_report(
     )
     with ctx.session() as s:
         data = report_data(s, ctx, the_week, now)
+    data, _ = report_with_commits(ctx, data, the_week, now)  # 경고는 응답에 넣지 않는다
     # 렌더링(jinja2)은 세션을 닫은 뒤에 한다.
     if fmt == FORMAT_JSON:
         return ok(dataclasses.asdict(data))

@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from logbook.core.errors import (
     DatabaseBusyError,
     DatabaseNotInitializedError,
+    ExternalServiceError,
     InvalidInputError,
     LogbookError,
     NotFoundError,
@@ -26,6 +27,7 @@ CASES = [
     ("uninitialized", 503, "not_initialized"),
     ("plain", 400, "error"),
     ("conflict", 409, "conflict"),
+    ("external", 502, "upstream"),
 ]
 JSON_HEADERS = {"Content-Type": "application/json"}
 
@@ -52,6 +54,7 @@ def api_error(response_json: dict[str, object]) -> dict[str, str]:
         (DatabaseBusyError("x"), ErrorKind(503, "busy")),
         (DatabaseNotInitializedError("x"), ErrorKind(503, "not_initialized")),
         (ConflictError("x"), ErrorKind(409, "conflict")),
+        (ExternalServiceError("x"), ErrorKind(502, "upstream")),
         (LogbookError("x"), ErrorKind(400, "error")),
     ],
 )

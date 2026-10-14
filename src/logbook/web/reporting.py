@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
-from logbook.core import services
+from logbook.core import gitcollect, services
 from logbook.core.report import ReportData, render_markdown, user_template_path
 
 if TYPE_CHECKING:
@@ -27,6 +28,14 @@ def report_data(s: Session, ctx: WebContext, week: Week, now: datetime) -> Repor
         author=ctx.cfg.report.author,
         category_labels=ctx.cfg.categories,
     )
+
+
+def report_with_commits(
+    ctx: WebContext, data: ReportData, week: Week, now: datetime
+) -> tuple[ReportData, tuple[str, ...]]:
+    """커밋 부록을 채운 데이터와 수집 경고. git을 실행하므로 DB 세션을 닫은 뒤에 부른다."""
+    commits, warnings = gitcollect.report_commits(ctx.cfg, week, tz=now.tzinfo or UTC)
+    return replace(data, commits=commits), warnings
 
 
 def report_markdown(ctx: WebContext, data: ReportData) -> str:

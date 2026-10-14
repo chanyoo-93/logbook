@@ -136,3 +136,31 @@ def test_report_format_blank_means_default(client: TestClient, fmt: str) -> None
 
     assert "markdown" in default
     assert client.get("/api/report", params={"format": fmt}).status_code == 200
+
+
+def test_report_json_includes_commits(git_client: TestClient) -> None:
+    response = git_client.get("/api/report", params={"format": "json"})
+
+    data = response.json()["data"]
+    assert data["commits"] == [
+        {
+            "project": "payment",
+            "repo": "payment-server",
+            "commits": [
+                {"date": "2026-09-30", "hash": "a1b2c3d", "subject": "재시도 <백오프> 구현"}
+            ],
+        }
+    ]
+    assert "warnings" not in response.text
+
+
+def test_report_markdown_includes_appendix(git_client: TestClient) -> None:
+    markdown = git_client.get("/api/report").json()["data"]["markdown"]
+
+    assert "## 부록. 커밋 내역" in markdown
+
+
+def test_report_json_commits_empty_without_repos(client: TestClient) -> None:
+    data = client.get("/api/report", params={"format": "json"}).json()["data"]
+
+    assert data["commits"] == []

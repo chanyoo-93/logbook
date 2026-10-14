@@ -275,3 +275,15 @@ def run_import_guard(args: Sequence[str], *, env: dict[str, str], cwd: Path) -> 
         pytest.fail(f"import 가드 드라이버 실패: {completed.stderr.decode('utf-8', 'replace')}")
     result: dict[str, Any] = json.loads(result_path.read_text(encoding="utf-8"))
     return GuardRun(result["loaded"], result["exit_code"], _decode(completed.stderr))
+
+
+class Clipboard:
+    """copy_to_clipboard 대역: 받은 텍스트를 기록하고 정해 둔 결과를 돌려준다."""
+
+    def __init__(self, ok: bool) -> None:
+        self.ok = ok
+        self.copied: list[str] = []
+
+    def __call__(self, text: str) -> bool:
+        self.copied.append(text)
+        return self.ok

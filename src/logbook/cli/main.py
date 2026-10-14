@@ -10,6 +10,7 @@ from logbook.cli.commands import (
     CommandModule,
     add,
     data,
+    gitcollect,
     init,
     log,
     plan,
@@ -28,7 +29,7 @@ app = typer.Typer(
     cls=LogbookGroup,
     help="업무 기록·공수 집계 도구",
     no_args_is_help=True,
-    add_completion=False,  # 영어 자동완성 옵션은 Phase 7에서 다시 켠다.
+    add_completion=True,
 )
 
 # 등록 순서대로 help에 나온다. 단, Typer는 단일 명령(init, add, start, status, stats, report,
@@ -43,6 +44,7 @@ COMMAND_MODULES: tuple[CommandModule, ...] = (
     timer,
     stats,
     report,
+    gitcollect,
     serve,
     data,
 )

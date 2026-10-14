@@ -54,7 +54,7 @@
       return;
     }
     copyText(target).then(function (done) {
-      showStatus(done ? COPIED : COPY_FAILED);
+      showStatus(done ? button.getAttribute("data-copy-done") || COPIED : COPY_FAILED);
     });
   });
 })();

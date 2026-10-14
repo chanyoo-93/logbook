@@ -2,7 +2,7 @@
 
 import os
 from collections.abc import Callable
-from datetime import UTC, date, datetime
+from datetime import UTC, date
 from pathlib import Path
 
 import pytest
@@ -12,41 +12,12 @@ from logbook.cli import runtime
 from logbook.core import platform, services
 from logbook.core.config import load_config
 from logbook.core.report import render_markdown, user_template_path
-from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import parse_week
-from tests.cli.helpers import FIXED_NOW, OpenDb, assert_rejected, run_ok
+from tests.cli.helpers import FIXED_NOW, Clipboard, OpenDb, assert_rejected, run_ok
 
 BAD_WEEK_MESSAGE = "주차 형식이 올바르지 않습니다: 'x'. 예: this, last, next, 2026-W41"
 COPY_FAILED = "주의: 클립보드에 복사하지 못했습니다. --out으로 파일에 저장하세요.\n"
-# W40(2026-09-28 ~ 10-04) 안, 정오 부근이라 날짜 경계와 멀다
-DONE_AT = datetime(2026, 9, 30, 3, 0, tzinfo=UTC)
 LAST_WEEK_TITLE = "# 주간업무보고 (2026-09-21 ~ 2026-09-27)"
-
-
-@pytest.fixture
-def seeded(initialized: Path, open_db: OpenDb, today: date) -> Path:
-    """W40에 기록 2건과 완료 태스크 1건, 다음 주 계획 1건이 있는 DB."""
-    with open_db() as s:
-        services.create_project(s, "payment", "결제 서버")
-        services.add_worklog(
-            s, minutes=120, note="결제 재시도", project_slug="payment", category="dev",
-            work_date=date(2026, 9, 30), today=today,
-        )  # fmt: skip
-        services.add_worklog(
-            s, minutes=60, note="주간 회의", category="meeting",
-            work_date=date(2026, 10, 1), today=today,
-        )  # fmt: skip
-        task = services.create_task(
-            s, title="결제 재시도 구현", project_slug="payment", estimate_minutes=180,
-            planned_week=parse_week("2026-W40", today=today, week_start="monday"),
-        )  # fmt: skip
-        task.status = TaskStatus.DONE
-        task.done_at = DONE_AT
-        services.create_task(
-            s, title="환불 API 구현", project_slug="payment", estimate_minutes=480,
-            planned_week=parse_week("2026-W41", today=today, week_start="monday"),
-        )  # fmt: skip
-    return initialized
 
 
 def expected_report(week: str = "this") -> str:
@@ -67,32 +38,6 @@ def expected_report(week: str = "this") -> str:
     return render_markdown(
         data, template_path=user_template_path(Path(os.environ["LOGBOOK_CONFIG"]))
     )
-
-
-class Clipboard:
-    """copy_to_clipboard 대역: 받은 텍스트를 기록하고 정해 둔 결과를 돌려준다."""
-
-    def __init__(self, ok: bool) -> None:
-        self.ok = ok
-        self.copied: list[str] = []
-
-    def __call__(self, text: str) -> bool:
-        self.copied.append(text)
-        return self.ok
-
-
-@pytest.fixture
-def clipboard(monkeypatch: pytest.MonkeyPatch) -> Clipboard:
-    fake = Clipboard(ok=True)
-    monkeypatch.setattr(platform, "copy_to_clipboard", fake)
-    return fake
-
-
-@pytest.fixture
-def failing_clipboard(monkeypatch: pytest.MonkeyPatch) -> Clipboard:
-    fake = Clipboard(ok=False)
-    monkeypatch.setattr(platform, "copy_to_clipboard", fake)
-    return fake
 
 
 def test_report_prints_rendered_markdown(lb: Callable[..., Result], seeded: Path) -> None:

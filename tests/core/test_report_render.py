@@ -14,6 +14,8 @@ import pytest
 from logbook.core.errors import InvalidInputError
 from logbook.core.report import (
     TEMPLATE_NAME,
+    CommitGroup,
+    CommitLine,
     MatrixRow,
     PlanGroup,
     PlanItem,
@@ -169,6 +171,47 @@ def test_no_author_drops_author_line() -> None:
     text = render_markdown(replace(three_project_data(), author=""))
     assert "작성자" not in text
     assert text.startswith("# 주간업무보고 (2026-09-28 ~ 2026-10-04)\n\n## 1.")
+
+
+def test_empty_summary_and_commits_keep_output_unchanged() -> None:
+    data = replace(three_project_data(), summary="", commits=())
+    assert render_markdown(data) == THREE_PROJECTS
+
+
+def test_summary_section_goes_between_author_and_section_1() -> None:
+    text = render_markdown(replace(three_project_data(), summary="요약 문단"))
+    assert "작성자: 홍길동\n\n## 요약 (자동 생성)\n요약 문단\n\n## 1. 공수 요약\n" in text
+
+
+def test_summary_without_author_follows_title() -> None:
+    text = render_markdown(replace(three_project_data(), author="", summary="요약 문단"))
+    assert text.startswith(
+        "# 주간업무보고 (2026-09-28 ~ 2026-10-04)\n\n## 요약 (자동 생성)\n요약 문단\n\n## 1."
+    )
+
+
+def test_commit_appendix_follows_section_4() -> None:
+    commits = (
+        CommitGroup("payment", "pay-api", (CommitLine("2026-10-12", "a1b2c3d", "제목"),)),
+        CommitGroup(
+            "admin",
+            "admin-web",
+            (
+                CommitLine("2026-10-13", "b2c3d4e", "수정"),
+                CommitLine("2026-10-14", "c3d4e5f", "추가"),
+            ),
+        ),
+    )
+    text = render_markdown(replace(three_project_data(), commits=commits))
+    assert text == THREE_PROJECTS + (
+        "\n## 부록. 커밋 내역\n"
+        "### payment (pay-api)\n"
+        "- 2026-10-12 a1b2c3d 제목\n"
+        "\n"
+        "### admin (admin-web)\n"
+        "- 2026-10-13 b2c3d4e 수정\n"
+        "- 2026-10-14 c3d4e5f 추가\n"
+    )
 
 
 SECTION3_EMPTY = "## 3. 특이사항 / 리스크\n(작성하세요)\n\n## 4. 다음 주 계획"

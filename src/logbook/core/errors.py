@@ -19,3 +19,7 @@ class DatabaseNotInitializedError(LogbookError):
 
 class DatabaseBusyError(LogbookError):
     """다른 프로세스가 DB 잠금을 잡고 있어 작업하지 못한 경우. Web(Phase 5)은 503으로 매핑한다."""
+
+
+class ExternalServiceError(LogbookError):
+    """외부 명령(git, gh)이나 외부 API(Anthropic, OpenAI)가 실패한 경우. Web은 502로 매핑한다."""

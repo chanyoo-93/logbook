@@ -21,9 +21,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.engine import URL
 from sqlalchemy.engine.interfaces import DBAPIConnection
-from sqlalchemy.exc import DatabaseError, OperationalError
+from sqlalchemy.exc import DatabaseError, OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
-from sqlalchemy.pool import ConnectionPoolEntry
+from sqlalchemy.pool import ConnectionPoolEntry, NullPool
 
 # 설정 로드와 같은 기본 경로 규칙을 쓰도록 config의 함수를 재노출한다.
 from logbook.core.config import default_db_path as default_db_path
@@ -88,6 +88,30 @@ def create_engine_for(path: Path | str) -> Engine:
     )
     event.listen(engine, "connect", _enable_foreign_keys)
     return engine
+
+
+def open_readonly(path: Path | str) -> Engine | None:
+    """자동완성 전용. 파일이 있고 스키마 버전이 SCHEMA_VERSION과 같을 때만 읽기 전용 엔진을 준다.
+
+    파일을 만들거나 마이그레이션하지 않는다. 없거나 버전이 다르거나 열 수 없으면 None이다.
+    엔진의 dispose는 호출자 책임이다.
+    """
+    db_path = Path(path).expanduser()
+    if not db_path.is_file():
+        return None
+    uri = db_path.absolute().as_uri() + "?mode=ro"
+
+    def connect() -> sqlite3.Connection:
+        return sqlite3.connect(uri, uri=True, timeout=BUSY_TIMEOUT_SECONDS)
+
+    engine = create_engine("sqlite+pysqlite://", creator=connect, poolclass=NullPool)
+    try:
+        if current_version(engine) == SCHEMA_VERSION:
+            return engine
+    except (LogbookError, SQLAlchemyError):
+        pass
+    engine.dispose()
+    return None
 
 
 def _enable_foreign_keys(
