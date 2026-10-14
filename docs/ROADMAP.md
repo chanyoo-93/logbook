@@ -51,9 +51,10 @@ CLI만 필요하면 Phase 4까지, 웹 대시보드까지 원하면 Phase 6까�
 - [x] 다크모드 대응 CSS
 
 ## Phase 7. 선택 기능
-- [ ] LLM 문장 다듬기 (`--polish`, `ANTHROPIC_API_KEY` 있을 때만)
-- [ ] GitHub 이슈 가져오기: `lb task import-gh owner/repo --label ...` (gh CLI 또는 API)
-- [ ] 셸 자동완성(`lb --install-completion`), 프로젝트·태스크 ID 자동완성
+- [x] LLM 문장 다듬기 (`lb report --polish`와 웹 버튼, Claude·ChatGPT, 키와 선택 설치 패키지가 있을 때만)
+- [x] GitHub 이슈 가져오기: `lb task import-gh owner/repo --label ...` (gh CLI)
+- [x] 셸 자동완성(`lb --install-completion`), 프로젝트·태스크 ID 자동완성
+- [x] `lb git-collect`와 보고서 커밋 부록
 
 ---
 

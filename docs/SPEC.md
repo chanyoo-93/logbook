@@ -109,10 +109,10 @@ admin = "행정/기타"
 [report]
 author = "홍길동"
 title_format = "주간업무보고 ({start} ~ {end})"
-include_commits = true
+include_commits = true         # 보고서 부록(커밋 내역)을 붙일지. [[git.repos]]가 있을 때만 의미가 있다
 
 [git]
-author_email = "me@example.com"
+author_email = "me@example.com"   # 비우면 저장소마다 git config user.email을 쓴다
 
 [[git.repos]]
 project = "payment"
@@ -125,9 +125,16 @@ path = "~/work/admin-web"
 [web]
 host = "127.0.0.1"             # 127.0.0.1 | localhost (표시용 주소)
 port = 8765
+
+[llm]
+provider = ""                  # "" | anthropic | openai. ""는 키와 패키지가 있는 제공자를 고른다
+anthropic_model = "claude-opus-5-5"
+openai_model = "gpt-6.1-sol"
 ```
 
 - `[web].host`는 `127.0.0.1`과 `localhost`만 받는다. 다른 값(`0.0.0.0` 등)은 설정 오류(종료 코드 1)다. 서버는 값과 무관하게 항상 127.0.0.1에만 열리고, 이 값은 시작 문구와 `--open`이 여는 주소에만 쓴다.
+- `[git]`(Phase 7): `author_email`이 비어 있으면 저장소마다 `git -C <경로> config user.email`의 첫 줄을 쓰고, 그것도 없으면 그 저장소는 `작성자 이메일을 알 수 없습니다: 경로. 설정 [git].author_email을 지정하세요.` 오류로 건너뛴다. `[[git.repos]]`의 `project`는 부록에서 묶음 제목으로 쓰는 이름이고, `path`는 저장소 폴더다. `include_commits = false`이거나 `[[git.repos]]`가 없으면 부록을 만들지 않는다.
+- `[llm]`(Phase 7): 문장 다듬기(7장)용 설정이다. `provider`는 `""`, `anthropic`, `openai`만 받는다(다른 값은 설정 오류). 모델 이름은 비울 수 없다. `lb init`이 만드는 설정 파일에는 기본값이 들어 있다. API 키는 설정 파일이 아니라 환경변수(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`)로만 읽는다.
 - **설정 자동 반영(`lb serve`):** 요청마다 설정 파일 내용의 해시를 보고(수정 시각에 기대지 않는다), 바뀌었으면 다시 읽어 그 요청부터 새 설정을 쓴다. 카테고리, `default_project`, `week_start`, `daily_target_minutes`, `[report]`는 바로 반영된다. `db_path`, `web.host`, `web.port`는 서버를 시작할 때 정해지므로 바뀌면 다시 시작해야 하고, 화면 위에 알림(`다시 시작해야 반영되는 설정이 바뀌었습니다: …`)만 보여 준다. 읽기에 실패하면(문법 오류 등) 이전 설정으로 동작하고 오류 알림(`설정 파일을 다시 읽지 못해 이전 설정으로 동작합니다: …`)을 띄운다. CLI 명령은 실행할 때마다 설정을 읽는다.
 
 ---
@@ -219,6 +226,7 @@ lb task done 43
 lb task drop 43
 lb plan [--week next]                    # 해당 주 계획 태스크 + 예상 공수 합계
 lb plan carry [--week last] [--yes]      # 해당 주(기본 이번 주) 미완료 태스크를 다음 주로 이월
+lb task import-gh chanyoo-93/logbook [--label bug] [--state open|closed|all] [--limit 100] [-p payment] [-c dev] [-w next] [--dry-run]
 ```
 - `lb task add <title>`: `-p`를 생략하면 `default_project`. 옵션은 `-c/--category`, `-e/--est`(예상 공수, 하루를 넘을 수 있으므로 24시간 상한 없음, 예: `40h`), `-w/--week`(계획 주차), `--ref`(외부 참조, `"#43"`·URL·Jira 키), `--due`(마감일, 날짜 입력 규칙과 같음).
   - 출력: `✔ 태스크 추가: #43 payment/design 환불 API 설계 (예상 4h · 2026-W42 · 참조 #43 · 마감 10-15)`. 괄호에는 값이 있는 항목만 쓰고, 하나도 없으면 괄호를 생략한다.
@@ -226,6 +234,11 @@ lb plan carry [--week last] [--yes]      # 해당 주(기본 이번 주) 미완�
   - 출력: 표(ID, 상태, 프로젝트, 카테고리, 제목, 예상, 실적, 주차, 참조) + `태스크 3건 / 예상 10h / 실적 1h 45m`. 상태는 key(`todo`, `doing`, `done`, `dropped`)로 표시해 그대로 `--status`에 쓸 수 있다. 실적은 연결된 WorkLog 합계다.
 - `lb task edit <ID>`: 지정한 항목만 바꾼다. 옵션은 `--title`, `-c/--category`, `-e/--est`, `-w/--week`, `--ref`, `--due`, 값을 비우는 `--no-category`, `--no-est`, `--no-week`, `--no-ref`, `--no-due`. 하나도 없거나 값과 같은 항목의 `--no-…`를 함께 주면 오류. 프로젝트는 바꿀 수 없다(연결된 기록과 어긋나지 않도록, 필요하면 drop 후 다시 만든다).
 - `lb task start|done|drop <ID>`: 상태를 doing·done·dropped로 바꾼다. 출력 `✔ #43 todo → doing: payment/design 환불 API 설계`, `done`은 ` (실적 5h 30m / 예상 4h)`를 덧붙인다. 이미 같은 상태면 `· 태스크 #43 상태는 이미 doing입니다: …`를 출력하고 종료 코드 0이다. 완료·중단된 태스크도 다시 시작할 수 있다.
+- `lb task import-gh <OWNER/REPO>`(Phase 7, 선택 기능): GitHub 이슈를 `todo` 태스크로 가져온다. 외부 명령 `gh issue list -R <저장소> --state <상태> --limit <개수> --json number,title,url [--label …]`을 `shell=False`로 실행하므로 GitHub CLI(`gh`)를 설치하고 `gh auth login`을 마쳐야 한다. 새 의존성은 없다.
+  - 옵션: `--label`(`-l`, 여러 번 쓸 수 있고 모두 가진 이슈만), `--state`(`open`(기본)·`closed`·`all`), `--limit`(1~1000, 기본 100), `-p`(기본 `default_project`), `-c`, `-w`(계획 주차), `--dry-run`. 저장소는 `owner/repo` 형식의 ASCII만 받는다(앞뒤 공백은 지운다). 형식·상태·개수·주차 검증은 DB와 `gh`를 쓰기 전에 한다.
+  - 태스크 제목은 이슈 제목, 외부 참조(`external_ref`)는 `owner/repo#번호`다. 같은 참조의 태스크가 이미 있으면 상태·보관 여부와 상관없이 건너뛴다(다시 가져와도 지운 태스크가 되살아나지 않고, 중복도 생기지 않는다). 이슈 번호 오름차순으로 추가한다.
+  - 출력: `✔ 이슈를 태스크로 가져왔습니다: 추가 3건, 건너뜀 1건 (이미 있음)`과 추가한 태스크 줄. 이슈가 없으면 `· 가져올 이슈가 없습니다: owner/repo`. `--dry-run`은 `· 가져올 이슈: 3건, 건너뛸 이슈: 1건 (이미 있음). --dry-run이라 추가하지 않았습니다.`와 `  #번호 제목` 줄만 보이고 DB를 바꾸지 않는다.
+  - 오류(`오류: …` 한 줄, 종료 코드 1): `gh`가 없으면 `명령을 찾을 수 없습니다: gh. GitHub CLI를 설치한 뒤 'gh auth login'을 실행하세요: https://cli.github.com`, 실패하거나 30초 안에 끝나지 않으면 `명령이 실패했습니다: gh issue list (종료 코드 1). …`(stderr 첫 줄 포함)·`명령이 30초 안에 끝나지 않았습니다: gh issue list.`, 출력을 읽을 수 없으면 `gh 출력을 읽지 못했습니다. gh를 최신 버전으로 업데이트하세요.`
 - `lb plan`: 기본은 이번 주다. 그 주에 계획된 todo·doing·done 태스크를 프로젝트, ID 순으로 보여 주고 dropped와 보관한 프로젝트의 태스크는 뺀다.
   - 머리줄: `2026-W41 (10-05 ~ 10-11) 계획   예상 6h / 실적 1h 45m / 태스크 2건 (완료 1건)`, 표(ID, 상태, 프로젝트, 제목, 예상, 실적), 하단 `프로젝트별 예상: admin 4h · payment 8h`와 `예상이 없는 태스크 N건`.
 - `lb plan carry`: `-w`로 고른 원본 주(기본 이번 주)에 계획된 todo·doing 태스크를 다음 주로 옮긴다. 더 이전 주에 밀린 태스크와 보관한 프로젝트의 태스크는 옮기지 않는다.
@@ -237,13 +250,18 @@ lb plan carry [--week last] [--yes]      # 해당 주(기본 이번 주) 미완�
 ### 집계 / 보고서
 ```bash
 lb stats [--week this] [--by project|category|day]
-lb report [--week this] [--out report.md] [--copy] [--yes]
+lb report [--week this] [--out report.md] [--copy] [--yes] [--polish] [--provider anthropic|openai]
 ```
 - `lb report`: 주간업무보고(7장 형식)를 Markdown으로 만든다. 기본은 이번 주를 stdout에 출력한다. `--week`(`-w`)는 `lb stats`와 같다(`this`, `last`, `next`, `2026-W40`).
 - `--out`(`-o`): 파일로 저장한다(UTF-8, LF). 저장하면 보고서는 stdout에 출력하지 않고 `✔ 보고서를 저장했습니다: 경로` 한 줄만 보여 준다. 경로는 `~`로 시작할 수 있고 상대 경로는 현재 폴더 기준이다. 폴더이거나 부모 폴더가 없으면 오류(종료 코드 1)다.
   - 덮어쓰기 확인(R4): 파일이 이미 있으면 `파일이 이미 있습니다: 경로`와 `덮어쓸까요? [y/N]:`로 확인한다. 거절하거나 입력이 없으면 파일을 그대로 두고 종료 코드 1로 끝난다. `--yes`/`-y`로 확인을 생략한다.
 - `--copy`: `pyperclip`으로 클립보드에 복사하고 `✔ 보고서를 클립보드에 복사했습니다.`를 출력한다(이때 stdout에는 보고서를 쓰지 않는다). 복사에 실패하면 오류로 끝내지 않고(종료 코드 0) stderr에 `주의: 클립보드에 복사하지 못했습니다. …` 경고를 쓴다. `--out`을 함께 줬으면 파일로 저장했다고 안내하고, 주지 않았으면 `--out` 사용을 안내하며 보고서를 stdout에 출력한다.
 - `--out`과 `--copy`는 함께 쓸 수 있다.
+- **커밋 부록(Phase 7):** 설정의 `[[git.repos]]`가 있고 `[report].include_commits`가 켜져 있으면(기본) 보고서 끝에 `## 부록. 커밋 내역`을 붙인다(7장). 커밋 수집에 실패한 저장소는 stderr에 `주의: 커밋을 모으지 못했습니다: payment (사유)` 경고를 쓰고 그 저장소만 뺀 채 보고서를 만든다(종료 코드 0).
+- `--polish`(Phase 7, 선택 기능): 보고서 데이터를 외부 AI 서비스(Claude 또는 ChatGPT)로 보내 요약 문단을 받아 보고서 맨 위(제목·작성자 아래)에 `## 요약 (자동 생성)`으로 넣는다. 7장의 "선택 기능"을 본다.
+  - `--provider`(`anthropic`·`openai`)는 이번 한 번만 제공자를 고른다. `--polish` 없이 쓰면 `--provider 옵션은 --polish와 함께 쓰세요.`, 모르는 이름이면 `제공자 이름이 올바르지 않습니다: '이름'. anthropic 또는 openai를 쓰세요.`(종료 코드 1). 이 검증은 DB·설정을 읽기 전에 한다.
+  - 보내기 전에 확인한다: `보낼 내용: 2026-W41 보고서 데이터(프로젝트 2개, 태스크 3건, 특이사항·리스크 포함). 커밋 내역과 작성자는 보내지 않습니다.`와 `Claude(claude-opus-5-5)로 보낼까요? [y/N]:`. 거절하면 `문장 다듬기를 취소했습니다. 보고서를 만들지 않았습니다.`(종료 코드 1), 입력이 없으면(파이프 등) `확인 입력이 없습니다. 보내려면 --yes를 붙이세요.`다. `--yes`(`-y`)는 이 확인과 `--out` 덮어쓰기 확인을 함께 생략한다. `--out` 덮어쓰기 확인은 비용이 드는 요청 전에 미리 받는다.
+  - 요청하는 동안 stderr에 ` Claude에 요약을 요청하는 중입니다…`를 보인다. 요청이 실패하면(키 없음, 패키지 없음, 한도 초과, 네트워크 등) 한국어 `오류: …` 한 줄(종료 코드 1)로 끝나고 요약 없는 보고서를 대신 내보내지 않는다.
 - 템플릿 오류(문법, 없는 값, UTF-8이 아닌 파일 등)는 `오류: …` 한 줄(종료 코드 1)로 파일 경로와 줄 번호를 알린다.
 `lb stats` 예시 출력 (열 이름은 설정의 카테고리 라벨, 기록이 있는 카테고리만 표시):
 ```
@@ -262,7 +280,7 @@ common       -         -    5h         3h    8h
 ```bash
 lb export [--out backup.jsonl] [--yes]  # 전 테이블 JSONL 내보내기 (git 백업용)
 lb import backup.jsonl                   # 빈 DB(lb init 직후)에만 복원
-lb git-collect [--week this]             # 설정된 레포에서 본인 커밋 수집 (보고서 첨부용, DB 저장 안 함)
+lb git-collect [--week this]             # 설정된 레포에서 본인 커밋 수집 (보고서 부록과 같은 수집, DB 저장 안 함)
 lb serve [--port 8765] [--open]          # 웹 대시보드 실행
 ```
 - `lb export`: 프로젝트·태스크·기록·진행 중 타이머·주차별 특이사항을 JSONL 한 파일로 내보낸다. `--out`(`-o`)을 생략하면 현재 폴더에 `logbook-export-20261008-153000.jsonl`처럼 만든다. 기존 파일은 `lb report --out`과 같은 덮어쓰기 확인을 거치고 `--yes`로 생략한다(R4). 출력: `✔ 내보냈습니다: 경로 (프로젝트 3 · 태스크 1 · 기록 2 · 타이머 0 · 특이사항 0)`.
@@ -272,17 +290,31 @@ lb serve [--port 8765] [--open]          # 웹 대시보드 실행
   - 파일 전체를 먼저 검증하고(머리글 형식·버전, 필드 이름·값, 참조 무결성 등) 통과했을 때만 한 번에 쓴다. 검증에 실패하면 `오류: N번째 줄: …` 한 줄로 알리고 DB는 바뀌지 않는다. 더 새로운 스키마로 내보낸 파일은 거부한다. 성공 출력: `✔ 가져왔습니다: 경로 (프로젝트 2 · 태스크 5 · 기록 41 · 타이머 0 · 특이사항 0)`. 형식 1 파일은 특이사항이 0이다.
   - 가져오기는 줄을 LF로만 나눈다. 파일 앞의 BOM은 허용한다.
   - `week_notes` 행은 쓴 내용이 있는 행만 허용한다. `risks`와 `notes`가 모두 빈 행, 그리고 저장할 때 정리한 모양이 아닌 값(CRLF, 줄 끝 공백, 앞뒤 빈 줄)은 거부한다.
+- `lb git-collect`(Phase 7): `[[git.repos]]`의 저장소마다 `--week`(`-w`, 기본 이번 주) 동안의 본인 커밋을 `git log`로 모아 보여 준다. DB에는 저장하지 않는다.
+  - 수집 규칙: 외부 명령 `git`을 `shell=False`·목록 인자로 실행한다. 모든 브랜치(`--all`)의 병합 아닌 커밋(`--no-merges`) 중 작성자 이메일이 설정 `[git].author_email`(비면 저장소의 `git config user.email`)과 같은 것(대소문자 무시)만 오래된 순으로 모은다. 날짜는 작성 날짜를 로컬 시간대로 바꾼 값이고, `--since/--until`이 커미터 날짜를 기준으로 하므로 작성 날짜가 그 주 밖인 커밋은 걸러 낸다. 출력은 UTF-8로 읽는다(Windows 콘솔 코드 페이지와 무관).
+  - 출력: 저장소마다 `payment (payment-server) 2건`과 그 아래 `  2026-10-05 a1b2c3d 결제 재시도 로직 구현`(날짜, 해시 7자리, 제목) 줄. 커밋이 없는 저장소는 `0건`이다.
+  - 저장소 하나가 실패해도(폴더 없음 `저장소 폴더가 없습니다: 경로. 설정의 [[git.repos]] path를 확인하세요.`, 이메일을 알 수 없음, `git` 없음 `명령을 찾을 수 없습니다: git. git을 설치하세요: https://git-scm.com`, 10초 안에 끝나지 않음 등) 나머지를 계속 모으고, 실패한 저장소마다 stderr에 `주의: …` 한 줄을 쓴다. 하나라도 실패했으면 마지막에 `오류: 저장소 N곳에서 커밋을 읽지 못했습니다.`로 종료 코드 1이다.
+  - `[[git.repos]]`가 없으면 `오류: 설정된 저장소가 없습니다. 설정 파일에 [[git.repos]]를 추가하세요.`(종료 코드 1)다.
 - `lb serve`: 웹 대시보드(6장)를 실행한다. `--port`(기본은 설정 `web.port`, 8765)는 1~65535의 ASCII 숫자만 받는다. 값은 설정·DB를 읽기 전에 검사한다.
   - 시작: `✔ 웹 대시보드: http://127.0.0.1:8765 (끄려면 Ctrl+C)`. `--open`이면 `webbrowser.open()`으로 브라우저를 연다. 열지 못하면 `주의: 브라우저를 열지 못했습니다. 주소를 직접 여세요: 주소` 경고만 내고 서버는 계속 돈다.
   - 종료: Ctrl+C로 `웹 대시보드를 종료했습니다.`를 출력하고 종료 코드 0으로 끝난다.
   - 오류(`오류: …` 한 줄, 종료 코드 1): 잘못된 `--port`, 설정 `host`가 허용 값이 아님, `lb init` 전(DB가 없거나 초기화되지 않음, `lb init`을 안내), 포트를 열 수 없음(이미 사용 중 등, `--port`로 다른 포트를 안내). DB를 연 뒤 포트 소켓을 먼저 열고 나서 서버를 띄우므로, 실패하면 서버는 뜨지 않는다.
   - 서버를 돌리는 동안에도 CLI(`lb add` 등)를 함께 쓸 수 있다. 화면은 요청할 때마다 DB를 읽는다.
 
+### 셸 자동완성
+```bash
+lb --install-completion                  # 현재 셸에 자동완성 설치 (bash, zsh, fish, PowerShell)
+lb --show-completion                     # 설치하지 않고 스크립트만 출력
+```
+- Typer의 자동완성을 쓴다. 설치하면 셸 설정 파일(PowerShell은 프로필)에 줄을 더하므로 **새 셸(PowerShell은 새 창)을 열어야 반영된다**. Windows·macOS 모두 지원한다(`lb.exe`여도 완성 변수 이름은 `_LB_COMPLETE`).
+- 후보: 프로젝트 `-p/--project` 값과 `lb project edit|archive`의 slug는 보관하지 않은 프로젝트(설명에 프로젝트 이름), `lb project unarchive`의 slug는 보관한 프로젝트다. 조회용 `lb task list -p`는 보관한 프로젝트까지 포함한다. 태스크 ID(`-t/--task`, `lb task edit|start|done|drop`의 ID)는 todo·doing 태스크이고 설명에 제목(60자까지)이 붙는다. `#`으로 시작하면 `#42` 형태로 완성한다.
+- 탭 한 번이 DB를 바꾸지 않도록 **읽기 전용**(`core.db.open_readonly`)으로만 연다. DB가 없거나, 현재 스키마 버전과 다르거나(옛 버전 DB), 어떤 오류가 나도 후보 없이 조용히 끝난다.
+
 ### 오류와 종료 코드
 | 코드 | 의미 |
 |---|---|
 | 0 | 성공 |
-| 1 | 입력·데이터 오류(stderr에 `오류: …` 한 줄), 삭제·이월·타이머 취소·파일 덮어쓰기 확인을 거절했거나 확인 입력이 없음 |
+| 1 | 입력·데이터 오류(stderr에 `오류: …` 한 줄), 외부 명령·API 실패(`git`·`gh`·AI 서비스), 삭제·이월·타이머 취소·파일 덮어쓰기·문장 다듬기 전송 확인을 거절했거나 확인 입력이 없음 |
 | 2 | 명령 문법 오류(없는 옵션, 인자 누락·초과 등) |
 | 130 | Ctrl+C로 중단 |
 
@@ -294,7 +326,7 @@ lb serve [--port 8765] [--open]          # 웹 대시보드 실행
 
 FastAPI + Jinja2 서버 렌더링, 상호작용은 HTMX, 차트는 Chart.js. 로컬 전용(127.0.0.1 바인딩), 인증 없음. htmx·Chart.js는 `static/vendor/`의 로컬 파일이라 인터넷 없이 동작한다.
 
-Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했고, Phase 6에서 태스크(`/tasks`)·보고서(`/report`)·설정(`/settings`) 화면, 타이머 시작·취소, 다크모드, 설정 자동 반영을 더했다. 머리 메뉴는 대시보드, 기록, 태스크, 보고서, 설정이다.
+Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했고, Phase 6에서 태스크(`/tasks`)·보고서(`/report`)·설정(`/settings`) 화면, 타이머 시작·취소, 다크모드, 설정 자동 반영을 더했다. 머리 메뉴는 대시보드, 기록, 태스크, 보고서, 설정이다. Phase 7에서 보고서 화면에 커밋 부록과 문장 다듬기(선택 기능)를 더했다.
 
 ### 실행과 보안
 - 서버는 항상 127.0.0.1에만 연다. `[web].host`는 표시용 주소이고 `127.0.0.1`, `localhost`만 받는다(3장). 같은 PC의 다른 사용자나 다른 PC에서는 접속할 수 없다. 인증이 없으므로 LAN에 공개하지 않는다.
@@ -330,7 +362,14 @@ Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했
 - **설정(`/settings`):** 프로젝트 표(보관 포함)와 색 견본(형식을 확인한 색만), `lb project add`와 같은 추가 폼(slug·이름·색, 색을 비우면 색 없음), 행 수정(이름·색·설명), 보관·보관 해제(`common`은 보관할 수 없다)가 있다. 설정 정보(설정 파일 경로, 실제로 연 DB 경로, 기본값, 카테고리)는 읽기 전용이다. 설정 파일 편집은 웹에서 하지 않는다.
 - **다크모드:** OS·브라우저 설정(`prefers-color-scheme`)을 따르고 토글은 없다. 색 값은 `static/css/app.css`의 `:root` 토큰 두 벌(밝은·어두운)에만 있고, 다른 스타일 파일은 토큰만 쓴다(`web/assets.py`의 `STYLESHEETS`가 `app.css`, `dashboard.css`, `logs.css`, `components.css`, `tasks.css`, `report.css`, `settings.css`, `responsive.css` 순서를 정하고 `base.html`과 오류 페이지가 그대로 링크한다. `components.css`는 타이머·버튼·알림처럼 여러 화면이 함께 쓰는 부품이다). 어두운 테마는 `screen`에만 적용되고 인쇄는 밝은 색이다. 테마가 바뀌면 차트를 다시 그린다.
 - **버전 확인(409) 대상:** 기록 수정·삭제(Phase 5)에 더해 태스크 상태 변경·수정, 특이사항 저장, 프로젝트 수정·보관·보관 해제, 타이머 취소다. 화면이 들고 있는 대상의 버전(내용 해시)을 요청에 함께 보내고, 그사이 CLI 등으로 바뀌었으면 409로 거부하고 새로 고치라고 안내한다. 타이머 정지는 버전을 보지 않는다. 검사와 변경 사이의 경쟁 구간은 막지 않는다(후속 항목). JSON API는 버전을 보지 않는다.
-- 화면 라우트(HTMX 조각 포함)는 브라우저용이고 계약이 아니다. 연동에는 아래 JSON API를 쓴다.
+- 화면 라우트(HTMX 조각 포함, `POST /report/polish` 포함)는 브라우저용이고 계약이 아니다. 연동에는 아래 JSON API를 쓴다.
+
+### 화면 동작 (Phase 7)
+- **커밋 부록(`/report`):** 설정에 `[[git.repos]]`가 있고 `include_commits`가 켜져 있으면 미리보기·복사·`.md` 내려받기·`GET /api/report`에 7장의 부록이 들어간다. 화면을 열 때마다 `git`을 실행한다(DB 세션은 이미 닫은 뒤라 DB를 잡고 있지 않다). 수집에 실패한 저장소는 미리보기 위의 경고 목록(`커밋을 모으지 못했습니다: payment (사유)`)으로 알리고 보고서는 그대로 만든다. API 응답에는 경고를 넣지 않는다.
+- **문장 다듬기(`/report`):** 키와 패키지가 모두 준비된 제공자마다 `문장 다듬기 (Claude)`·`문장 다듬기 (ChatGPT)` 버튼을 보여 준다(`ANTHROPIC_API_KEY`·`anthropic` 패키지, `OPENAI_API_KEY`·`openai` 패키지). 둘 다 없으면 문장 다듬기 영역 전체를 숨긴다. 이 판정은 화면을 열 때 한다.
+  - 버튼을 누르면 브라우저 확인 창이 `2026-W41 보고서 데이터(태스크 제목·특이사항·리스크 포함)를 외부 AI 서비스로 보냅니다. 커밋 내역과 작성자는 보내지 않습니다. 계속할까요?`를 보여 주고, `확인`해야 `POST /report/polish`(`week`, `provider`)를 보낸다. 요청하는 동안 버튼을 잠그고 `요약을 만드는 중입니다…`를 보여 준다.
+  - 서버는 그 주의 보고서 데이터를 DB에서 만든 뒤 세션을 닫고 나서 외부에 요청한다(커밋 부록은 수집하지 않는다). 성공하면 미리보기 위의 결과 패널에 `요약 (자동 생성 · Claude claude-opus-5-5)`와 요약 문단, `요약 복사` 버튼을 보여 준다. 요약은 **저장하지 않는다**: 미리보기 Markdown·내려받기 파일·`lb report`에는 들어가지 않고, 주나 본문이 바뀌면 패널은 사라진다. 필요하면 `요약 복사`로 가져가 붙인다.
+  - 잘못된 주차·제공자 이름, 키·패키지 없음은 400, 외부 서비스 실패(한도 초과·네트워크·모델 없음 등)는 502(`upstream`)로 화면 알림에 한국어 문구를 보여 준다. 교차 출처 요청은 다른 쓰기 요청처럼 403이다.
 
 ### 페이지
 1. **대시보드** (`/`) — Phase 5, 타이머 시작·취소는 Phase 6
@@ -348,6 +387,7 @@ Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했
 4. **보고서** (`/report?week=2026-W40`) — Phase 6
    - 주차 선택, Markdown 미리보기, 원문 복사 버튼, `.md` 다운로드
    - 보고서 하단 "특이사항/리스크" 입력란 (해당 주차에 저장)
+   - 커밋 부록과 수집 경고, 문장 다듬기 버튼과 결과 패널 — Phase 7
 5. **설정** (`/settings`): 프로젝트 관리(추가·수정·보관·보관 해제), 설정 정보(카테고리 등) 확인 — Phase 6
 
 ### JSON API (CLI 이외의 연동·테스트용)
@@ -385,6 +425,7 @@ Phase 5에서 구현했고, Phase 6에서 `GET /api/timer`와 `POST /api/timer/c
 | 403 | `forbidden` | Host 검사·교차 출처 쓰기 차단에 걸림 |
 | 404 | `not_found` | 없는 기록·태스크·프로젝트 ID나 slug, 진행 중인 타이머가 없을 때의 정지·취소, 없는 API 주소 |
 | 405 | `method_not_allowed` | 그 주소가 받지 않는 메서드 |
+| 502 | `upstream` | 외부 명령이나 외부 API가 실패함(`git`·`gh` 실행 실패, Claude·ChatGPT 요청 실패). 문장 다듬기(`POST /report/polish`)와 같은 화면 라우트에서 나온다 |
 | 503 | `busy` | DB가 다른 프로세스에 잠겨 있음(잠시 후 다시 시도) |
 | 503 | `not_initialized` | DB가 없거나 초기화되지 않음(`lb init`) |
 | 500 | `internal` | 예상하지 못한 서버 오류(상세는 `lb serve`를 실행한 터미널에 남는다) |
@@ -423,9 +464,9 @@ Phase 5에서 구현했고, Phase 6에서 `GET /api/timer`와 `POST /api/timer/c
 - 태스크: `{id, project, title, description, status, category, estimate_minutes, planned_week, due_date, external_ref, created_at, updated_at, done_at, actual_minutes}`. `actual_minutes`는 연결된 기록의 합계다. `POST`·`PATCH`는 태스크 하나, `GET`은 배열이다.
 - 타이머: `POST /api/timer/start`는 `{timer: {project, category, note, task_id, started_at, elapsed_minutes}, task_started}`(`task_started`는 todo 태스크가 doing으로 바뀌었는지)다. `POST /api/timer/stop`은 `{log, elapsed_minutes, day_total_minutes}`다. `GET /api/timer`는 `{timer}`이고 타이머가 없으면 `timer`가 `null`이다. `POST /api/timer/cancel`은 버린 타이머를 `{timer}`로 돌려주고, 타이머가 없으면 404다.
 - 통계: `{week, start, end, by, total_minutes, count, rows: [{key, label, minutes, count}]}`.
-- 보고서: `format=md`는 `{week, markdown}`, `format=json`은 보고서 데이터(7장의 `ReportData`를 그대로 직렬화한 구조)다.
+- 보고서: `format=md`는 `{week, markdown}`, `format=json`은 보고서 데이터(7장의 `ReportData`를 그대로 직렬화한 구조)다. Phase 7부터 `commits`(커밋 부록, `[{project, repo, commits: [{date, hash, subject}]}]`, 없으면 `[]`)와 `summary`(문장 다듬기 요약, API는 만들지 않으므로 늘 `""`)가 들어 있고, `format=md`는 부록을 포함한다. 커밋 수집 경고는 응답에 없다.
 
-### 후속 항목 (Phase 6 범위 밖)
+### 후속 항목 (Phase 6·7 범위 밖)
 - **웹 전용 오류 문구:** core 문구의 CLI 안내가 웹에도 보인다(예: 타이머 시작 실패의 `'lb stop'으로 저장하거나`).
 - **브라우저 E2E 테스트:** 새 dev 의존성이 필요하다.
 - **버전 확인과 변경 사이의 경쟁 구간:** 기록·태스크·프로젝트·특이사항·타이머 취소 모두 해당한다.
@@ -436,7 +477,8 @@ Phase 5에서 구현했고, Phase 6에서 `GET /api/timer`와 `POST /api/timer/c
 - **특이사항 CLI 입력**(`lb report note` 등)
 - **다크모드 수동 토글**
 - **오래된 마이그레이션 백업 정리:** 자동으로 지우지 않는다. 정리 명령이나 안내를 더할 수 있다.
-- **Phase 4 후속 항목:** `git-collect`, LLM 다듬기, 가져오기 병합, DST, 템플릿 샌드박스, 오프라인 휠 테스트.
+- **Phase 4 후속 항목:** 가져오기 병합, DST, 템플릿 샌드박스, 오프라인 휠 테스트.
+- **Phase 7 후속 항목:** 웹에서 GitHub 이슈 가져오기, 요약 저장(주차별)과 보고서 3절 자동 채우기, 커밋 수집 결과 캐시(웹 보고서를 열 때마다 `git`을 실행한다), 제공자 추가(Gemini 등)와 사용자 정의 프롬프트, Jira 등 다른 이슈 추적기.
 - LAN 공개는 비목표다(1장).
 
 ---
@@ -487,7 +529,22 @@ Phase 5에서 구현했고, Phase 6에서 `GET /api/timer`와 `POST /api/timer/c
 - 환불 API 설계 (#43) — 예상 4h (이월 후보)
 ```
 
-부록(커밋 내역)은 `lb git-collect`를 구현할 때까지 나오지 않는다(`report.include_commits` 설정은 아직 쓰지 않는다).
+**부록(커밋 내역, Phase 7):** 설정의 `[[git.repos]]`에서 모은 본인 커밋이 있으면 4절 뒤에 다음 부록을 붙인다. `report.include_commits`를 `false`로 하거나 `[[git.repos]]`가 없거나 커밋이 하나도 없으면 부록 전체를 생략한다.
+
+```markdown
+## 부록. 커밋 내역
+### payment (payment-server)
+- 2026-09-29 a1b2c3d 결제 재시도 로직 구현
+- 2026-10-02 e4f5a6b 재시도 횟수 설정 추가
+
+### admin (admin-web)
+- 2026-09-30 1234abc 권한 화면 정리
+```
+
+- 저장소는 설정 순서대로이고 커밋이 있는 저장소만 나온다. 제목은 `### <project> (<저장소 폴더 이름>)`, 줄은 `- 작성 날짜 해시 7자리 제목`이며 오래된 커밋부터다. 수집 규칙은 5장 `lb git-collect`와 같다.
+- 커밋 제목은 보고서 데이터(`ReportData.commits`)와 Markdown에만 들어간다. 문장 다듬기로는 보내지 않는다.
+
+**요약 절(Phase 7, 선택):** `lb report --polish`나 웹 문장 다듬기로 요약을 만들면 제목·작성자 바로 아래, 1절 앞에 `## 요약 (자동 생성)` 절과 문단 하나가 붙는다. 요약이 없으면(기본) 이 절은 나오지 않는다. 절 번호(1~4)는 바뀌지 않는다.
 
 실적 그룹핑 규칙:
 - 공수 요약 표의 열 이름은 설정의 카테고리 라벨이고 기록이 있는 카테고리만 나온다. 프로젝트는 합계 내림차순(같으면 slug 순), 비율은 프로젝트 합계 / 주 합계(정수 반올림)다.
@@ -498,8 +555,19 @@ Phase 5에서 구현했고, Phase 6에서 `GET /api/timer`와 `POST /api/timer/c
 - 기록이 없는 주는 1절이 `총 0m (기록 0건, 완료 태스크 N건)` 한 줄(표 없음), 2절이 `기록이 없습니다.`다. 계획이 없으면 4절은 `계획된 태스크가 없습니다.`다. `author`가 비면 `작성자:` 줄을 뺀다.
 - 3절은 `week_notes`의 두 칸을 `### 특이사항`, `### 리스크`로 나누어 싣고(템플릿 값 `data.notes`, `data.risks`), 비어 있는 칸은 뺀다. 둘 다 비면 `(작성하세요)` 한 줄이다. 입력은 웹 `/report`에서만 하고, `lb report` 출력에도 같은 내용이 들어간다.
 
-### 선택 기능: LLM 문장 다듬기
-`lb report --polish` 또는 웹 보고서의 "문장 다듬기" 버튼. 환경변수 `ANTHROPIC_API_KEY`가 있을 때만 활성화. 구조화 데이터를 보내 실적 요약 문단을 생성하고, 원본 Markdown과 나란히 보여준다. 키가 없으면 기능을 숨긴다.
+### 선택 기능: LLM 문장 다듬기 (Phase 7)
+`lb report --polish` 또는 웹 보고서의 "문장 다듬기" 버튼. 보고서 데이터로 실적 요약 문단을 생성해 Markdown에 `## 요약 (자동 생성)`으로 넣는다. 네트워크가 필요한 선택 기능이라 없어도 다른 기능은 모두 동작한다.
+
+- **제공자:** Anthropic(Claude)과 OpenAI(ChatGPT)를 공식 SDK로 부른다. SDK는 선택 설치다: `uv sync --extra anthropic`, `uv sync --extra openai`. 제공자는 **API 키 환경변수와 패키지가 모두 있을 때만** 쓸 수 있다(키는 `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`이고 비어 있지 않아야 한다).
+- **제공자 선택:** `--provider`(CLI)나 누른 버튼(웹) > 설정 `[llm].provider` > 쓸 수 있는 제공자 중 첫째(anthropic, openai 순). 설정이나 `--provider`로 고른 제공자의 키나 패키지가 없으면 오류다.
+  - 쓸 수 있는 제공자가 없으면: `문장 다듬기를 쓸 수 있는 제공자가 없습니다. ANTHROPIC_API_KEY나 OPENAI_API_KEY를 설정하고 'uv sync --extra anthropic'이나 'uv sync --extra openai'로 패키지를 설치하세요.`
+  - 키가 없으면: `환경변수가 없습니다: ANTHROPIC_API_KEY. Claude 문장 다듬기를 쓰려면 API 키를 설정하세요.` 패키지가 없으면: `패키지가 설치되어 있지 않습니다: anthropic. 'uv sync --extra anthropic'로 설치하세요.`
+  - 웹은 쓸 수 있는 제공자마다 버튼을 보여 주고 하나도 없으면 영역을 숨긴다(6장).
+- **모델:** 설정 `[llm].anthropic_model`(기본 `claude-opus-5-5`), `[llm].openai_model`(기본 `gpt-6.1-sol`). 둘 다 추론 강도(effort)는 `low`로 고정한다(요약에는 깊은 추론이 필요 없다). Claude는 모델이 거절하면 서버가 대체 모델로 다시 시도하는 기능(beta)을 지원하는 모델에서 켠다. 요청 제한 시간은 60초, 자동 재시도는 2회다.
+- **보내는 데이터(외부 전송):** 그 주의 보고서 데이터(공수 표, 프로젝트별 태스크 제목·시간, 특이사항·리스크, 다음 주 계획)를 JSON으로 보낸다. **커밋 부록(커밋 제목)과 작성자 이름은 보내지 않는다.** API 키와 DB 파일은 보내지 않는다. 시스템 프롬프트는 데이터에 없는 사실을 지어내지 말고 3~5문장의 평문 한 문단만 쓰도록 요구한다. 응답은 줄바꿈을 한 칸 공백으로 합쳐 문단 하나로 정리한다.
+- **확인과 비용:** 외부 AI 서비스 사용에는 제공자의 API 요금이 든다. 그래서 보내기 전에 항상 확인한다(CLI는 `[y/N]` 프롬프트, `--yes`로 생략. 웹은 브라우저 확인 창). 확인 문구는 보내는 범위(주차, 프로젝트·태스크 수, 특이사항·리스크 포함 여부)와 커밋·작성자를 보내지 않는다는 점을 알린다(5장, 6장).
+- **실패:** 키 거부(`Claude API 키가 올바르지 않거나 권한이 없습니다. 확인할 환경변수: ANTHROPIC_API_KEY.`), 모델 없음(`Claude 모델을 쓸 수 없습니다: 모델. 설정 [llm].anthropic_model을 확인하세요.`), 한도 초과(`Claude 요청 한도를 넘었습니다. 잠시 후 다시 시도하세요.`), 시간 초과(`Claude 응답이 60초 안에 오지 않았습니다. 잠시 후 다시 시도하세요.`), 연결 실패(`Claude 서버에 연결하지 못했습니다. 인터넷 연결을 확인하세요.`), 그 밖의 HTTP 오류(`Claude 요청이 실패했습니다 (HTTP 500). 잠시 후 다시 시도하세요.`), 모델 거절(`Claude 모델이 요약을 거절했습니다. 다른 제공자로 다시 시도하세요.`), 길이 제한(`… 응답이 길이 제한에 걸려 끝까지 오지 않았습니다. 다시 시도하세요.`), 빈 응답(`… 응답에 요약 문장이 없습니다. 다시 시도하세요.`). ChatGPT는 이름과 환경변수만 다르다. CLI는 요약 없는 보고서를 대신 내보내지 않고 종료 코드 1로 끝나며, 웹은 502 알림이다.
+- 요약 문단은 만들 때마다 다를 수 있고 저장하지 않는다.
 
 ---
 
@@ -510,4 +578,6 @@ Phase 5에서 구현했고, Phase 6에서 `GET /api/timer`와 `POST /api/timer/c
 - 한글 메모·프로젝트명이 Windows Terminal, PowerShell, macOS Terminal/iTerm2에서 깨지지 않을 것
 - `--help`, `--version`, 사용법 오류, 입력 형식 오류는 SQLAlchemy와 웹 스택을 로드하지 않는다(서브프로세스 테스트로 강제). `lb add` 응답 시간은 CI 보고서(`scripts/bench_cli.py`)로 추적한다(파이썬 내부 처리 시간 참고값: Windows 약 500 ms, macOS 약 350 ms). `lb serve`를 실행할 때만 FastAPI·uvicorn을 import한다(서브프로세스 테스트로 강제).
 - 모든 에러 메시지는 한국어로, 다음 행동을 안내 (예: "프로젝트를 찾을 수 없습니다: 'paymnt'. `lb project list`로 확인하세요.") 단, 명령 문법 오류(없는 옵션, 인자 누락 등, 종료 코드 2)와 --help의 틀(Usage, Options 등)은 Typer/Click 기본 영어 문구를 쓴다.
+- 외부 명령·API 실패는 한국어 한 줄이다. 공통 형식: `명령을 찾을 수 없습니다: 이름. 설치 안내`, `명령이 N초 안에 끝나지 않았습니다: 이름.`, `명령이 실패했습니다: 이름 (종료 코드 N). stderr 첫 줄`. `git`·`gh`는 `shutil.which`로 찾아 `shell=False`·목록 인자로 실행하고 대화형 입력을 기다리지 않게 한다(`GIT_TERMINAL_PROMPT=0`, `GH_PROMPT_DISABLED=1`). 커밋 수집 실패는 보고서를 막지 않고 경고가 되며(CLI 보고서·웹), `lb git-collect`·`lb task import-gh`·`--polish`는 오류(종료 코드 1)로 끝난다.
+- 자동 테스트는 외부 서비스를 부르지 않는다. `git`·`gh`·Claude·ChatGPT는 가짜 실행 함수·SDK 클라이언트 대역으로 대신하고(임시 git 저장소를 만드는 테스트만 실제 `git`을 쓴다), 실제 키·`gh` 로그인이 필요한 확인은 사람이 두 OS에서 따로 한다.
 - 데이터 손실 방지: 삭제 명령은 확인 프롬프트(`--yes`로 생략), `export`로 언제든 전체 백업 가능

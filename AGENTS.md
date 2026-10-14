@@ -36,8 +36,8 @@ src/logbook/
   core/          # 도메인 로직. CLI/Web에 의존하지 않는다.
     models.py    # SQLAlchemy 모델
     taskstatus.py# 태스크 상태와 상태 목록 파서 (SQLAlchemy 없음)
-    db.py        # 엔진/세션, 스키마 생성 및 마이그레이션, DB 진입점(open_database·initialize_database)
-    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer, report, week_notes, backup, backup_import)
+    db.py        # 엔진/세션, 스키마 생성 및 마이그레이션, DB 진입점(open_database·initialize_database), 자동완성용 읽기 전용 open_readonly
+    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer, report, week_notes, backup, backup_import, github_import)
     duration.py  # "1h30m", "1.5h", "90m" 파싱/포맷
     weeks.py     # ISO 주차 계산 (YYYY-Www)와 시각·날짜 표기(clock_label, total_label, full_day)
     ids.py       # ID 파싱·검증 (parse_id, check_id, MAX_ID)
@@ -46,14 +46,18 @@ src/logbook/
     config.py    # 설정 로드
     errors.py    # 사용자에게 보여줄 한국어 오류 타입 (LogbookError 계열)
     platform.py  # OS별 처리 (콘솔 인코딩, 클립보드, 데이터 디렉터리)
-    gitcollect.py# git 커밋 수집 (선택 기능)
+    external.py  # 외부 명령(git, gh) 실행 공용 함수 run_tool (shell=False, 시간 제한, 한국어 오류 문구)
+    gitcollect.py# git 커밋 수집(`lb git-collect`와 보고서 커밋 부록, DB 접근 없음)
+    github.py    # gh CLI로 GitHub 이슈 목록 읽기(`lb task import-gh`, DB 접근 없음)
+    polish/      # LLM 문장 다듬기: 제공자 공통(__init__), 프롬프트·보낼 데이터(prompt), Claude(claude)·ChatGPT(chatgpt), SDK 오류 문구(sdk_errors). SDK는 선택 설치라 호출할 때만 import
   cli/
     main.py      # Typer 루트 앱, 진입점 run() (`lb`)
     group.py     # 단일 오류 경계 (LogbookError → 한국어 한 줄, exit 1)
     console.py   # Rich 출력 (마크업 해석 안 함, 비 TTY 폭 1000, 좁은 화면 대체 출력)
     runtime.py   # 설정·DB 세션·today·공용 옵션·ID 파싱·확인 프롬프트
     render.py    # 한 줄 요약과 표
-    commands/    # 명령별 모듈 (init, project, add, log, stats, task, plan, timer, report, data, serve)
+    completion.py# 셸 자동완성 후보(프로젝트 slug·태스크 ID, 읽기 전용, 오류는 빈 후보)
+    commands/    # 명령별 모듈 (init, project, add, log, stats, task, plan, timer, report, data, gitcollect, serve)
   web/
     context.py   # WebContext(설정·엔진·시계), 요청별 의존성, 공용 별칭 Ctx·TASK_LABEL
     assets.py    # 스타일시트 목록 STYLESHEETS (base.html과 오류 페이지가 공유, 다른 web 모듈을 import하지 않음)
@@ -65,7 +69,7 @@ src/logbook/
     reporting.py # 보고서 화면·내려받기 공용 처리(내려받기 파일 이름 등)
     server.py    # 루프백 소켓을 열고 uvicorn 실행 (`lb serve`가 호출)
     api/         # JSON API (/api/*): logs, tasks, stats, report, timer
-    pages/       # 화면 라우트 (대시보드, 기록, 타이머, 태스크·보고서·설정), tasks.py·task_views.py(칸반·계획 패널), report.py, settings.py, panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText)
+    pages/       # 화면 라우트 (대시보드, 기록, 타이머, 태스크·보고서·설정), tasks.py·task_views.py(칸반·계획 패널), report.py, report_polish.py(POST /report/polish 문장 다듬기), settings.py, panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText)
     templates/   # Jinja2 + HTMX
     static/      # 최소한의 CSS와 JS(js/report.js 포함), vendor/에 htmx·Chart.js 로컬 파일 (CDN 없음)
                  # css/: app.css(색 토큰 :root 두 벌은 여기에만), dashboard·logs·components·tasks·report·settings·responsive.css (순서는 web/assets.py의 STYLESHEETS가 정하고 base.html·오류 페이지가 그대로 링크)
@@ -76,7 +80,7 @@ docs/
 ## 아키텍처 규칙
 
 - CLI와 Web은 반드시 `core.services`의 함수만 호출한다. SQL/ORM 쿼리를 CLI·Web 레이어에 직접 쓰지 않는다.
-  단, DB 연결·설정·입력 파싱용 core 공개 진입점(core.db.open_database·initialize_database·session_scope, core.config, core.duration, core.weeks, core.ids, core.platform, core.errors, core.taskstatus(상태 파서), core.report(보고서 렌더링: render_markdown·user_template_path, DB에 접근하지 않음))은 쓸 수 있다. SQL·ORM 쿼리는 어느 경우에도 CLI·Web에 쓰지 않는다.
+  단, DB 연결·설정·입력 파싱용 core 공개 진입점(core.db.open_database·initialize_database·session_scope, core.config, core.duration, core.weeks, core.ids, core.platform, core.errors, core.taskstatus(상태 파서), core.report(보고서 렌더링: render_markdown·user_template_path, DB에 접근하지 않음), core.gitcollect·core.github(git·gh 실행, DB에 접근하지 않음), core.polish(문장 다듬기, DB에 접근하지 않음), core.external(외부 명령 실행), core.db.open_readonly(자동완성용 읽기 전용 엔진))은 쓸 수 있다. SQL·ORM 쿼리는 어느 경우에도 CLI·Web에 쓰지 않는다.
 - web은 cli를 import하지 않는다(cli는 `lb serve`에서만 web을 지연 import한다).
 - 시간은 내부적으로 항상 **정수 분(minutes)** 으로 저장한다. 표시할 때만 `1h 30m` 형태로 변환.
 - 날짜는 `date`(로컬 기준)로 저장, 타임스탬프는 ISO 8601 문자열 또는 timezone-aware datetime.

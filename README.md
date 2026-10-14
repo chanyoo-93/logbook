@@ -111,6 +111,7 @@ uv run lb report --copy
 |---|---|
 | `lb report` | 이번 주 주간업무보고를 Markdown으로 화면(stdout)에 출력합니다. `-w last`, `-w 2026-W40`처럼 주차를 고릅니다. |
 | `lb report -o <파일>` | 보고서를 파일로 저장하고 화면에는 저장한 경로만 보여 줍니다(UTF-8, LF). 파일이 이미 있으면 `덮어쓸까요? [y/N]:`로 확인하고, `--yes`(`-y`)로 확인을 생략합니다. 거절하거나 입력이 없으면 파일을 그대로 두고 종료 코드 1로 끝납니다. |
+| `lb report --polish` | AI(Claude·ChatGPT)로 요약 문단을 만들어 보고서 맨 위에 넣습니다. 외부로 데이터를 보내고 비용이 듭니다. 아래 "AI 문장 다듬기"를 보세요. |
 | `lb report --copy` | 보고서를 클립보드에 복사합니다. 복사하면 화면에는 보고서를 출력하지 않습니다. 클립보드를 쓸 수 없으면 `주의:` 경고를 내고, `-o`를 함께 줬으면 파일로 저장한 것을 안내하고, 주지 않았으면 보고서를 화면에 출력합니다. |
 
 보고서는 공수 요약 표, 프로젝트별 실적, 특이사항 / 리스크, 다음 주 계획 네 절로 이루어집니다. 특이사항 / 리스크는 웹 대시보드의 `/report` 화면에서 주차별로 입력해 저장합니다(CLI 입력은 없습니다). 저장한 내용은 `lb report` 출력에도 들어가고, 3절이 `### 특이사항`과 `### 리스크`로 나뉩니다(비어 있는 칸은 뺍니다). 둘 다 비어 있으면 `(작성하세요)`가 나옵니다. 작성자와 제목은 설정 파일의 `[report]`(`author`, `title_format`)에서 바꿉니다. `title_format`에서 쓸 수 있는 이름은 `{start}`와 `{end}`(YYYY-MM-DD)이고, 다른 이름이나 짝이 맞지 않는 중괄호는 오류가 납니다.
@@ -148,6 +149,8 @@ PowerShell에서는 `Copy-Item`으로만 복사하세요. `>`, `Out-File`, `Set-
 | `data.plan` | 다음 주 계획. 각 항목: `project`, `estimate_total`, `items` |
 | `data.plan[].items` | 각 태스크: `title`, `task_id`, `estimate`(없으면 `None`), `carried`(이번 주에서 넘어온 후보면 참) |
 | `data.notes`, `data.risks` | 그 주의 특이사항, 리스크 텍스트(웹에서 저장, 없으면 빈 문자열) |
+| `data.summary` | AI가 만든 요약 문단(`--polish`를 쓴 때만, 없으면 빈 문자열). 기본 템플릿은 제목 아래에 `## 요약 (자동 생성)`으로 넣습니다. |
+| `data.commits` | 커밋 부록. 각 묶음: `project`, `repo`(저장소 폴더 이름), `commits`(각 커밋: `date`, `hash`, `subject`). 없으면 빈 목록 |
 
 3절의 기본 템플릿 출력은 다음과 같습니다(빈 칸은 빠지고, 둘 다 비면 `(작성하세요)` 한 줄입니다).
 
@@ -161,6 +164,105 @@ PowerShell에서는 `Copy-Item`으로만 복사하세요. `>`, `Out-File`, `Set-
 ```
 
 표 칸에 넣을 값은 `{{ 값 | cell }}`로 `|`를 이스케이프합니다. 템플릿에 문법 오류가 있으면 `오류: …` 한 줄로 파일 경로와 줄 번호를 알려 줍니다. 기본 템플릿으로 돌아가려면 파일을 지우거나 이름을 바꾸세요.
+
+### 커밋 부록 (`lb git-collect`)
+
+설정 파일에 본인 커밋을 모을 저장소를 적어 두면 보고서 끝에 `## 부록. 커밋 내역`이 붙습니다. `git`이 설치되어 있어야 합니다.
+
+```toml
+[report]
+include_commits = true             # false로 하면 부록을 붙이지 않습니다
+
+[git]
+author_email = "me@example.com"    # 비워 두면 저장소마다 git config user.email을 씁니다
+
+[[git.repos]]
+project = "payment"
+path = "~/work/payment-server"
+
+[[git.repos]]
+project = "admin"
+path = 'C:\work\admin-web'         # Windows 경로는 작은따옴표로 씁니다
+```
+
+```
+uv run lb git-collect
+uv run lb git-collect -w last
+```
+
+`lb git-collect`는 저장소마다 그 주의 커밋(모든 브랜치, 병합 커밋 제외, 작성자 이메일이 같은 것)을 날짜·해시·제목으로 보여 줍니다. DB에는 저장하지 않습니다. 저장소 폴더가 없는 등 하나가 실패해도 나머지를 계속 모으고, 실패한 곳마다 `주의: …`를 보여 준 뒤 종료 코드 1로 끝납니다. `lb report`와 웹 보고서는 수집에 실패한 저장소를 경고만 하고 부록에서 빼고 보고서를 만듭니다. 웹 보고서는 화면을 열 때마다 `git`을 실행합니다.
+
+### AI 문장 다듬기 (선택, 비용·외부 전송 주의)
+
+`lb report --polish`와 웹 보고서의 `문장 다듬기` 버튼은 그 주의 보고서 데이터로 요약 문단 하나를 만들어 `## 요약 (자동 생성)`으로 넣습니다. Claude(Anthropic)와 ChatGPT(OpenAI)를 쓸 수 있고, **기본으로는 꺼져 있습니다.** 쓰려면 제공자별 패키지 설치와 API 키 설정이 모두 필요합니다.
+
+1. 패키지를 설치합니다(쓸 제공자만).
+
+```
+uv sync --extra anthropic
+uv sync --extra openai
+```
+
+   두 제공자를 모두 쓰려면 `uv sync --extra anthropic --extra openai`로 한 번에 설치합니다. 여러 번에 나눠 실행하면 앞에 설치한 패키지가 빠질 수 있습니다.
+
+2. API 키를 환경변수로 설정합니다. 키는 설정 파일이 아니라 환경변수로만 읽습니다. 아래는 현재 터미널에서만 유효하며, 계속 쓰려면 사용자 환경변수나 셸 프로필에 넣으세요.
+
+```
+# PowerShell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+$env:OPENAI_API_KEY = "sk-..."
+
+# macOS (zsh)
+export ANTHROPIC_API_KEY="sk-ant-..."
+export OPENAI_API_KEY="sk-..."
+```
+
+3. 실행합니다.
+
+```
+uv run lb report --polish
+uv run lb report -w last --polish --provider openai -o 주간보고.md
+```
+
+- **외부로 보내는 데이터:** 그 주의 보고서 데이터(공수 표, 프로젝트별 태스크 제목과 시간, 특이사항·리스크, 다음 주 계획)를 Anthropic 또는 OpenAI 서버로 보냅니다. **커밋 부록(커밋 제목)과 작성자 이름은 보내지 않습니다.** 민감한 내용이 태스크 제목이나 특이사항에 있다면 쓰지 마세요.
+- **비용:** 요청마다 제공자의 API 요금이 듭니다. 그래서 보내기 전에 항상 `보낼 내용: …` 범위를 보여 주고 `[y/N]`으로 확인합니다(`--yes`로 생략). 웹은 확인 창을 띄웁니다. 확인 입력이 없는 환경(파이프 등)에서는 `--yes`를 붙여야 합니다.
+- **제공자 선택:** `--provider anthropic|openai`, 없으면 설정 `[llm].provider`, 그것도 비었으면 키와 패키지가 모두 있는 제공자를 고릅니다(둘 다면 anthropic). 웹은 쓸 수 있는 제공자마다 버튼을 보여 주고, 하나도 없으면 숨깁니다.
+- **모델:** 설정 파일의 `[llm]`에서 바꿉니다(기본 `claude-opus-5-5`, `gpt-6.1-sol`).
+
+```toml
+[llm]
+provider = ""                      # "" | anthropic | openai
+anthropic_model = "claude-opus-5-5"
+openai_model = "gpt-6.1-sol"
+```
+
+- 실패하면(키 거부, 한도 초과, 네트워크 등) 한국어 오류 한 줄로 끝나고 요약 없는 보고서를 대신 내보내지 않습니다. 웹의 요약은 저장하지 않으며 결과 패널의 `요약 복사`로 가져갑니다.
+
+### GitHub 이슈 가져오기 (`lb task import-gh`)
+
+GitHub 이슈를 할 일 태스크로 가져옵니다. [GitHub CLI(`gh`)](https://cli.github.com)를 설치하고 로그인해 두어야 합니다.
+
+```
+gh auth login
+uv run lb task import-gh chanyoo-93/logbook --dry-run
+uv run lb task import-gh chanyoo-93/logbook --label bug -p payment -c dev -w next
+uv run lb task import-gh chanyoo-93/logbook --state all --limit 50
+```
+
+- 저장소는 `owner/repo` 형식입니다. `--label`(여러 번 가능), `--state open|closed|all`(기본 open), `--limit`(1~1000, 기본 100), `-p`(기본은 `default_project`), `-c`, `-w`를 쓸 수 있습니다.
+- `--dry-run`은 추가하지 않고 가져올 이슈와 건너뛸 이슈 건수만 보여 줍니다.
+- 태스크 제목은 이슈 제목이고 외부 참조(`--ref`)에 `owner/repo#번호`가 들어갑니다. 같은 참조의 태스크가 이미 있으면(상태와 상관없이) 건너뛰므로 여러 번 실행해도 중복되지 않습니다.
+- `gh`가 없으면 `명령을 찾을 수 없습니다: gh. GitHub CLI를 설치한 뒤 'gh auth login'을 실행하세요: https://cli.github.com`로 안내합니다.
+
+### 셸 자동완성
+
+```
+uv run lb --install-completion
+```
+
+현재 셸(PowerShell, zsh, bash, fish)에 자동완성을 설치합니다. 설치 뒤 **새 셸을 열어야 반영됩니다. PowerShell은 새 창을 여세요**(프로필을 다시 읽어야 합니다). 설치하지 않고 스크립트만 보려면 `lb --show-completion`입니다. 자동완성을 쓰려면 `uv run` 없이 `lb`를 직접 실행할 수 있어야 하므로 가상환경을 활성화하거나 `lb`를 PATH에 설치해 두세요.
+
+명령 이름·옵션에 더해 `-p`의 프로젝트 slug와 태스크 ID(`-t`, `lb task start 4<Tab>`)가 완성됩니다. 탭을 눌러도 DB를 만들거나 올리지 않도록 읽기 전용으로만 열고, DB가 없거나 옛 버전이면 후보 없이 조용히 넘어갑니다.
 
 ### 백업과 복원
 
@@ -229,7 +331,7 @@ uv run lb serve --open
 | 대시보드 | `/` | 이번 주 공수·기록 건수·완료 태스크 카드, 요일별 막대 차트(일일 목표선), 프로젝트별·카테고리별 도넛 차트, 최근 기록 10건, 타이머(시작 폼, 진행 중이면 정지·취소), 빠른 기록 폼 |
 | 기록 | `/logs` | 주차·프로젝트·카테고리 필터, 행 안에서 바로 수정, 삭제(확인 창) |
 | 태스크 | `/tasks` | 칸반 3열(할 일, 진행 중, 이번 주 완료), 상태 버튼, 추가 폼, 카드 수정, 다음 주 계획 패널과 이월 |
-| 보고서 | `/report` | 주 이동, Markdown 원문 미리보기, 복사, `.md` 내려받기, 특이사항·리스크 입력 |
+| 보고서 | `/report` | 주 이동, Markdown 원문 미리보기(커밋 부록과 수집 경고 포함), 복사, `.md` 내려받기, 특이사항·리스크 입력, 문장 다듬기(키와 패키지가 있을 때만, 확인 창 뒤 외부 전송) |
 | 설정 | `/settings` | 프로젝트 표(보관 포함)와 추가·수정·보관·보관 해제, 설정 정보(읽기 전용) |
 
 - 빠른 기록은 시간(`2h`, `90m`, `1:30`)과 메모를 입력하고 Enter를 누르면 저장합니다. 프로젝트와 카테고리를 `자동`으로 두면 태스크 또는 설정의 `default_project`를 쓰고, 태스크도 카테고리도 없으면 카테고리를 고르라고 안내합니다. 날짜는 항상 오늘이고, 다른 날짜는 기록 페이지에서 고칩니다.
@@ -283,7 +385,7 @@ port = 8765
 | `POST /api/tasks` | 태스크 추가 (`title` 필수. `project`, `category`, `estimate`, `week`, `due`, `ref`, `description`) |
 | `PATCH /api/tasks/{id}` | 보낸 항목만 수정 (`status` 포함, 비울 수 있는 항목은 `null`) |
 | `GET /api/stats?week=&by=project\|category\|day` | 주간 공수 집계 |
-| `GET /api/report?week=&format=md\|json` | 주간보고서(Markdown 문자열 또는 구조화 데이터) |
+| `GET /api/report?week=&format=md\|json` | 주간보고서(Markdown 문자열 또는 구조화 데이터. 커밋 부록이 있으면 `commits`에 들어갑니다) |
 | `GET /api/timer` | 진행 중인 타이머 조회(본문 없음. 없으면 `data.timer`가 `null`) |
 | `POST /api/timer/start` | 타이머 시작 (`task_id`만 주거나, `note`와 `category`를 함께 준다. `project`도 받는다. 본문을 생략하면 400) |
 | `POST /api/timer/stop` | 타이머 정지 (`note`, `round`. 본문 전체를 생략할 수 있다) |
