@@ -14,7 +14,7 @@ from fastapi import APIRouter
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 
-from logbook.core import services
+from logbook.core import polish, services
 from logbook.core.errors import InvalidInputError
 from logbook.core.weeks import Week, parse_week, week_heading
 from logbook.web.context import Ctx, WebContext
@@ -49,6 +49,16 @@ DEFAULT_WEEK = "this"
 REPORT_PATH = "/report"
 NOTES_SAVED = f"{RESULT_MARK} 특이사항·리스크를 저장했습니다: {{week}}"
 MARKDOWN_TYPE = "text/markdown; charset=utf-8"
+POLISH_CONFIRM = (
+    "{week} 보고서 데이터(태스크 제목·특이사항·리스크 포함)를 외부 AI 서비스로 보냅니다. "
+    "커밋 내역과 작성자는 보내지 않습니다. 계속할까요?"
+)
+
+
+@dataclass(frozen=True)
+class PolishButton:
+    provider: str  # 'anthropic' | 'openai'
+    label: str  # 'Claude' | 'ChatGPT'
 
 
 @dataclass(frozen=True)
@@ -69,6 +79,8 @@ class ReportBodyView:
     message: str = ""
     is_error: bool = False
     warnings: tuple[str, ...] = ()  # 커밋 수집 경고(미리보기 위에 보여 준다)
+    polish: tuple[PolishButton, ...] = ()  # 문장 다듬기 버튼(없으면 영역을 숨긴다)
+    polish_confirm: str = ""  # 버튼을 누를 때 보여 줄 확인 문구
 
 
 @dataclass(frozen=True)
@@ -137,6 +149,15 @@ def _body_view(
         message=message,
         is_error=is_error,
         warnings=warnings,
+        polish=_polish_buttons(),
+        polish_confirm=POLISH_CONFIRM.format(week=week.label),
+    )
+
+
+def _polish_buttons() -> tuple[PolishButton, ...]:
+    return tuple(
+        PolishButton(provider, polish.PROVIDER_LABELS[provider])
+        for provider in polish.available_providers()
     )
 
 

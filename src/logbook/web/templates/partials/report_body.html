@@ -5,10 +5,22 @@
     <div class="report__actions">
       <button type="button" class="btn btn--small" data-copy-target="report-markdown">복사</button>
       <a class="btn btn--small" href="{{ body.download_url }}" download>내려받기</a>
+{% if body.polish %}
+      <form class="report__polish-form" hx-post="/report/polish" hx-target="#report-polish" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button" hx-indicator="#polish-progress" hx-confirm="{{ body.polish_confirm }}">
+        <input type="hidden" name="week" value="{{ body.week }}">
+{% for button in body.polish %}
+        <button type="submit" class="btn btn--small" name="provider" value="{{ button.provider }}">문장 다듬기 ({{ button.label }})</button>
+{% endfor %}
+      </form>
+{% endif %}
     </div>
 {% endif %}
   </div>
   <p id="copy-status" class="form-message" role="status"></p>
+{% if body.polish and not body.preview_error %}
+  <p id="polish-progress" class="report-polish__progress htmx-indicator" role="status">요약을 만드는 중입니다…</p>
+  <section id="report-polish" class="report-polish" hidden></section>
+{% endif %}
 {% if body.warnings %}
   <ul class="report__warnings" role="status">
 {% for warning in body.warnings %}
