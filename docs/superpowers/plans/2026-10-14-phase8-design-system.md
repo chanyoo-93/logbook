@@ -216,8 +216,8 @@
 | CSS | `.btn`은 `border-radius: var(--radius-sm)`, `.panel`은 `var(--radius-md)`와 `overflow: clip`, 입력칸 규칙은 `var(--radius-xs)` | |
 | CSS | `.btn:active`는 `transform: scale(0.97)`, `.btn`에 `transition` | |
 
-- [ ] RED → GREEN → 커밋 `style: 모서리 단계(4·8·12px)와 버튼 누름 효과 추가`
-- [ ] 메인 세션: 전후 스크린샷(키보드 포커스 1장 포함) → 사용자 승인
+- [x] RED → GREEN → 커밋 `style: 모서리 단계(4·8·12px)와 버튼 누름 효과 추가` (7e9d662, 보완 b859716 요약 패널 모서리, 9e2c178 표 안 버튼 포커스 윤곽선)
+- [x] 메인 세션: 전후 스크린샷(키보드 포커스 1장 포함) → 사용자 승인 (2026-10-14)
 
 ---
 
