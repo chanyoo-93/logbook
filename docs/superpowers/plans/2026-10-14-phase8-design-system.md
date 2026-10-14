@@ -330,6 +330,41 @@ def fonts_stylesheet(ctx: Ctx) -> Response:
 
 ---
 
+## Task 8-4b: 글꼴 통일 (사용자 결정, 2026-10-14)
+
+Task 8-4 확인 중 사용자가 "글꼴이 다 달라 통일성이 떨어진다"고 했다. 전부 명조와 전부 고딕 보기용 스크린샷을 비교한 뒤 **전부 부크크 고딕**으로 정했다(보고서 문서 영역 포함, 차트 글자 포함). 8-4의 보고서 미리보기 15px(ec08c57)는 그대로 둔다.
+
+**Files:**
+- Modify: `src/logbook/core/config.py`(`WebConfig` 기본값), `src/logbook/web/static/css/app.css`(글꼴 토큰 기본값), `src/logbook/web/fonts.py`(문서 글꼴 대체 목록), `src/logbook/web/static/js/dashboard.js`(차트 글꼴)
+- Modify tests: `tests/core/test_config.py`(기본값·기본 설정 문서), `tests/web/test_fonts.py`(출력 기대), `tests/web/test_settings_page.py`(글꼴 줄), `tests/web/test_css_layout.py` 또는 `test_theme.py`(토큰), 차트 글꼴을 확인하는 정적 JS 테스트(새로 더함)
+
+| 대상 | 지금 | 바꾼 뒤 |
+|---|---|---|
+| `WebConfig` 기본값 | `heading_font="Bookk Gothic"`, `document_font="Bookk Myungjo"`, `body_font=""` | 셋 다 `"Bookk Gothic"` |
+| `app.css` 기본값(설정 스타일시트가 없을 때) | `--font-document: var(--font-serif)` | `--font-document: var(--font-sans)`. 쓰는 곳이 없어지는 `--font-serif` 토큰은 지운다 |
+| `fonts_css` 대체 목록 | 문서 글꼴 뒤에 `var(--font-serif)` | `var(--font-sans)`(세 글꼴 모두 같은 대체 목록) |
+| 차트 글꼴(`dashboard.js`) | `Chart.defaults.font.family = cssVariable("--font-sans")` | `cssVariable("--font-body")`. 테마가 바뀌어 다시 그릴 때도 같다 |
+| 굵기 | | 부크크 고딕은 Light(300)·Bold(700) 두 개뿐이다. 400·500 글자는 Light, 600 이상은 Bold로 그려진다(CSS 글꼴 고르기 규칙). 굵기 값은 바꾸지 않는다 |
+
+- 부크크를 설치하지 않은 PC는 세 글꼴 모두 기존 OS 고딕(`--font-sans`)으로 보인다.
+- 설정 화면 글꼴 줄은 세 줄 모두 `Bookk Gothic`이 된다. `body_font = ""`로 두면 지금처럼 `기본 글꼴`이다.
+- README·SPEC의 기본값 설명은 Task 8-7에서 맞춘다.
+
+**테스트 케이스**
+
+| 대상 | 케이스 | 기대 |
+|---|---|---|
+| config | `[web]` 글꼴 키 없음 / 기본 설정 문서 | 셋 다 `Bookk Gothic` |
+| `fonts_css` | 기본 설정 | `--font-heading`·`--font-document`·`--font-body` 세 줄, 모두 `var(--font-sans)` 대체 |
+| CSS | `:root` 기본값 | `--font-document: var(--font-sans)`, `--font-serif` 없음(전 CSS 검사) |
+| JS | `dashboard.js` | `cssVariable("--font-body")`로 차트 글꼴을 정하고 `--font-sans`를 쓰지 않는다 |
+| 설정 화면 | 기본 설정 | 세 줄 모두 `Bookk Gothic` |
+
+- [ ] RED → GREEN → 커밋 `style: 글꼴 기본값을 부크크 고딕으로 통일하고 차트도 본문 글꼴을 따르게 함`
+- [ ] 메인 세션: 전후 스크린샷(8-4 결과 대비) → 사용자 승인. 승인되면 8-4도 함께 체크한다
+
+---
+
 ## Task 8-5: 꼬리표(pill) 통일
 
 **Files:**
