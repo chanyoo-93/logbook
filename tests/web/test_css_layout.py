@@ -59,7 +59,11 @@ def _declarations(css: str, selector: str) -> set[str]:
         ("dashboard.css", ".chart", "min-width: 0"),
         ("tasks.css", ".plan", "padding: var(--space-3)"),
         ("tasks.css", ".task-edit input, .task-edit select", "min-height: 2.25rem"),
-        ("tasks.css", ".task-edit input, .task-edit select", "border: 1px solid var(--ink-muted)"),
+        (
+            "tasks.css",
+            ".task-edit input, .task-edit select",
+            "border: 1px solid var(--control-border)",
+        ),
         ("report.css", ".report > .form-message:empty", "margin: 0"),
     ],
 )
@@ -78,3 +82,71 @@ def test_task_board_stacks_into_one_column_below_720px() -> None:
     narrow = _media_block(_read("tasks.css"), NARROW_QUERY)
 
     assert "grid-template-columns: 1fr" in _declarations(narrow, ".board__columns")
+
+
+HEAVY_TOP_RULE = "border-top: 2px solid var(--ink)"
+
+
+@pytest.mark.parametrize(
+    ("file_name", "selector"),
+    [
+        ("dashboard.css", ".panel"),
+        ("tasks.css", ".task-form"),
+        ("tasks.css", ".board__col"),
+    ],
+)
+def test_surfaces_use_soft_shadow_instead_of_heavy_top_rule(file_name: str, selector: str) -> None:
+    declarations = _declarations(_read(file_name), selector)
+
+    assert _squash(HEAVY_TOP_RULE) not in declarations
+    assert "box-shadow: var(--shadow-soft)" in declarations
+
+
+def test_quick_bar_has_no_heavy_top_rule_but_keeps_raised_shadow() -> None:
+    declarations = _declarations(_read("app.css"), ".quick")
+
+    assert _squash(HEAVY_TOP_RULE) not in declarations
+    assert "box-shadow: var(--shadow-raised)" in declarations
+
+
+def test_masthead_uses_hairline_bottom_rule() -> None:
+    declarations = _declarations(_read("app.css"), ".masthead")
+
+    assert "border-bottom: 1px solid var(--rule)" in declarations
+
+
+def test_button_border_uses_rule_strong() -> None:
+    assert "border: 1px solid var(--rule-strong)" in _declarations(_read("components.css"), ".btn")
+
+
+@pytest.mark.parametrize(
+    ("file_name", "selector", "declaration"),
+    [
+        ("dashboard.css", ".grid thead th", "border-bottom-color: var(--rule-strong)"),
+        ("logs.css", ".grid tfoot td", "border-top: 1px solid var(--rule-strong)"),
+    ],
+)
+def test_table_head_and_foot_rules_use_rule_strong(
+    file_name: str, selector: str, declaration: str
+) -> None:
+    assert declaration in _declarations(_read(file_name), selector)
+
+
+@pytest.mark.parametrize(
+    ("file_name", "selector"),
+    [
+        ("app.css", ".quick input:hover, .quick select:hover"),
+        ("components.css", ".timer-start input:hover, .timer-start select:hover"),
+        ("report.css", ".report-notes textarea:hover"),
+        ("tasks.css", ".task-form input:hover, .task-form select:hover"),
+        ("tasks.css", ".task-edit input:hover, .task-edit select:hover"),
+    ],
+)
+def test_control_hover_border_is_darker_than_default(file_name: str, selector: str) -> None:
+    assert "border-color: var(--ink-muted)" in _declarations(_read(file_name), selector)
+
+
+def test_no_control_uses_the_old_muted_border() -> None:
+    css = " ".join(_read(path.name) for path in sorted(CSS_ROOT.glob("*.css")))
+
+    assert "border: 1px solid var(--ink-muted)" not in _squash(css)

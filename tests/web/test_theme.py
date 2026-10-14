@@ -20,12 +20,15 @@ COLOR_TOKENS = (
     "--ink",
     "--ink-muted",
     "--rule",
+    "--rule-strong",
+    "--control-border",
     "--row-hover",
     "--accent",
     "--accent-hover",
     "--accent-ink",
     "--ok",
     "--danger",
+    "--shadow-soft",
     "--shadow-raised",
 )
 CONTRAST_PAIRS = (
@@ -38,7 +41,12 @@ CONTRAST_PAIRS = (
     ("--danger", "--surface"),
     ("--ok", "--surface"),
 )
+NON_TEXT_PAIRS = (
+    ("--control-border", "--surface"),
+    ("--control-border", "--bg"),
+)
 MIN_CONTRAST = 4.5
+MIN_NON_TEXT_CONTRAST = 3.0
 
 
 def _matching_brace(text: str, open_index: int) -> int:
@@ -127,6 +135,18 @@ def test_theme_pairs_meet_wcag_contrast(
     ratio = _contrast(colors[foreground], colors[background])
 
     assert ratio >= MIN_CONTRAST, f"{theme} {foreground}/{background}: {ratio:.2f}"
+
+
+@pytest.mark.parametrize("theme", ["light", "dark"])
+@pytest.mark.parametrize(("foreground", "background"), NON_TEXT_PAIRS)
+def test_control_border_meets_non_text_contrast(
+    themes: dict[str, dict[str, str]], theme: str, foreground: str, background: str
+) -> None:
+    colors = themes[theme]
+
+    ratio = _contrast(colors[foreground], colors[background])
+
+    assert ratio >= MIN_NON_TEXT_CONTRAST, f"{theme} {foreground}/{background}: {ratio:.2f}"
 
 
 def test_colors_are_literals_only_inside_the_two_root_blocks(css: str, other_css: str) -> None:

@@ -64,7 +64,7 @@ a.btn {
 .report-notes textarea {
   width: 100%;
   padding: var(--space-2);
-  border: 1px solid var(--ink-muted);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--ink);
@@ -74,7 +74,7 @@ a.btn {
 }
 
 .report-notes textarea:hover {
-  border-color: var(--ink);
+  border-color: var(--ink-muted);
 }
 
 .report-notes textarea:focus-visible {

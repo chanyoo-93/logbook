@@ -52,7 +52,7 @@
   width: 100%;
   min-height: 2.25rem;
   padding: 0 var(--space-2);
-  border: 1px solid var(--ink-muted);
+  border: 1px solid var(--control-border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--ink);
@@ -61,7 +61,7 @@
 
 .timer-start input:hover,
 .timer-start select:hover {
-  border-color: var(--ink);
+  border-color: var(--ink-muted);
 }
 
 .timer-start input:focus-visible,
@@ -114,7 +114,7 @@
 .btn {
   min-height: 2.25rem;
   padding: 0 var(--space-4);
-  border: 1px solid var(--ink);
+  border: 1px solid var(--rule-strong);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--ink);
