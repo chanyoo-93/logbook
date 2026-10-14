@@ -204,7 +204,7 @@ class CommitGroup:
 
 ## Task 7-0: 계획 문서 저장
 
-- [ ] 이 계획서를 커밋한다: `docs: Phase 7 선택 기능 구현 계획 추가`
+- [x] 이 계획서를 커밋한다: `docs: Phase 7 선택 기능 구현 계획 추가`
 
 ---
 
@@ -240,7 +240,7 @@ uv add --dev "anthropic>=1.13" "openai>=3.29"
 | config | `write_default_config` 결과를 다시 읽기 | 기본값과 같고 `[llm]` 표가 있다 |
 | web `classify` | `ExternalServiceError("x")` | `(502, "upstream")`. HTMX 요청은 알림 영역, JSON API는 봉투 `upstream` |
 
-- [ ] RED → GREEN → 커밋 `feat: 외부 명령 실행 함수와 외부 오류, [llm] 설정, LLM 선택 설치 추가`
+- [x] RED → GREEN → 커밋 `feat: 외부 명령 실행 함수와 외부 오류, [llm] 설정, LLM 선택 설치 추가`
 
 ---
 
@@ -305,7 +305,7 @@ def report_commits(cfg: Config, week: Week, *, tz: tzinfo, run: RunTool = run_to
 | 렌더링 | author 없음 + summary | 제목 다음 빈 줄, 요약 절 |
 | 렌더링 | commits 두 묶음 | 4절 끝 빈 줄, `## 부록. 커밋 내역`, 묶음 사이 빈 줄, `- 2026-10-12 a1b2c3d 제목` |
 
-- [ ] RED → GREEN → 커밋 `feat: git 커밋 수집과 보고서 요약 절·커밋 부록 추가`
+- [x] RED → GREEN → 커밋 `feat: git 커밋 수집과 보고서 요약 절·커밋 부록 추가`
 
 ---
 
@@ -357,7 +357,7 @@ def report_commits(cfg: Config, week: Week, *, tz: tzinfo, run: RunTool = run_to
 | 웹 | 특이사항 저장 응답, 409 응답 | 부록이 남아 있다 |
 | 웹 | 저장소 설정 없음 | 경고 목록 없음, 부록 없음 |
 
-- [ ] RED → GREEN → 커밋 `feat: lb git-collect와 보고서 커밋 부록(CLI·웹·API) 추가`
+- [x] RED → GREEN → 커밋 `feat: lb git-collect와 보고서 커밋 부록(CLI·웹·API) 추가`
 
 ---
 
@@ -448,7 +448,7 @@ lb task import-gh OWNER/REPO [--label/-l 라벨 …] [--state open] [--limit 100
 | CLI | gh 없음(가짜가 `ExternalServiceError`) | 종료 1, 문구 |
 | 가드 | `--help`, 잘못된 저장소, 잘못된 상태 | SQLAlchemy 로드 안 함 |
 
-- [ ] RED → GREEN → 커밋 `feat: lb task import-gh로 GitHub 이슈를 태스크로 가져오기`
+- [x] RED → GREEN → 커밋 `feat: lb task import-gh로 GitHub 이슈를 태스크로 가져오기`
 
 ---
 
@@ -507,7 +507,7 @@ def complete_task_id(incomplete: str) -> list[tuple[str, str]]:
 
 - 실제 `--install-completion`은 실행하지 않는다(사용자 셸 프로필을 고친다). `--show-completion`도 셸 감지를 하므로 테스트하지 않는다.
 
-- [ ] RED → GREEN → 커밋 `feat: 셸 자동완성과 프로젝트·태스크 ID 완성 추가`
+- [x] RED → GREEN → 커밋 `feat: 셸 자동완성과 프로젝트·태스크 ID 완성 추가`
 
 ---
 
@@ -636,7 +636,7 @@ def summarize(system: str, user: str, *, model: str, client: Any = None) -> str:
 | `claude.summarize` | SDK 예외 6종 + 그 밖의 예외 | 표의 문구 / 그대로 전파 |
 | `polish_report` | 가짜 클라이언트 응답 `"  요약\n"` / `""` | `PolishResult("anthropic", 모델, "요약")` / 빈 응답 문구 |
 
-- [ ] RED → GREEN → 커밋 `feat: LLM 문장 다듬기 공통 core와 Claude(Anthropic) 제공자 추가`
+- [x] RED → GREEN → 커밋 `feat: LLM 문장 다듬기 공통 core와 Claude(Anthropic) 제공자 추가`
 
 ---
 
@@ -680,7 +680,7 @@ def summarize(system: str, user: str, *, model: str, client: Any = None) -> str:
 | `chatgpt.summarize` | SDK 예외 6종(실제 클래스) + 그 밖의 예외 | 표의 문구 / 그대로 전파 |
 | `polish_report` | provider `openai` | `PolishResult("openai", "gpt-6.1-sol", …)` |
 
-- [ ] RED → GREEN → 커밋 `feat: LLM 문장 다듬기에 ChatGPT(OpenAI) 제공자 추가`
+- [x] RED → GREEN → 커밋 `feat: LLM 문장 다듬기에 ChatGPT(OpenAI) 제공자 추가`
 
 ---
 
@@ -721,7 +721,7 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
 | `--provider openai`만 | 종료 1, 문구, SQLAlchemy 로드 안 함 |
 | `--polish` 없이 | 기존 출력과 같다(요약 절 없음) |
 
-- [ ] RED → GREEN → 커밋 `feat: lb report --polish로 보고서 요약 문단 생성`
+- [x] RED → GREEN → 커밋 `feat: lb report --polish로 보고서 요약 문단 생성`
 
 ---
 
@@ -787,29 +787,29 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
 
 - 화면 모양(1280·375·320px, 밝은·어두운)은 메인 세션이 Edge 헤드리스로 확인한다.
 
-- [ ] RED → GREEN → 커밋 `feat: 보고서 화면에 문장 다듬기(Claude·ChatGPT) 추가`
+- [x] RED → GREEN → 커밋 `feat: 보고서 화면에 문장 다듬기(Claude·ChatGPT) 추가`
 
 ---
 
 ## Task 7-10: 문서 마무리와 Phase 7 완료
 
-- [ ] **SPEC.md**
+- [x] **SPEC.md**
   - 3장(설정): `[llm]` 표와 설명, `[git]` 이메일 기본값(저장소의 `git config user.email`)
   - 5장(CLI): `lb git-collect`, `lb task import-gh`, `lb report --polish --provider`, 자동완성(`lb --install-completion`)
   - 6장(웹·API): 문장 다듬기 버튼·`POST /report/polish`, `/api/report` JSON의 `commits`·`summary`, 502 `upstream`
   - 7장(보고서): 요약 절과 부록 형식, "부록은 git-collect를 구현할 때까지 나오지 않는다" 문장 삭제, 선택 기능 절을 실제 동작(두 제공자, 확인, 보내는 범위)으로 고침
   - 8장: 외부 명령·API 실패 문구, 테스트가 외부 서비스를 부르지 않는다
   - 후속 항목: Phase 4 후속의 `git-collect`·LLM 다듬기 제거
-- [ ] **README.md**: 선택 설치(`uv sync --extra anthropic`/`openai`), 키 설정(PowerShell·zsh), 보내는 데이터, `lb git-collect`, `lb task import-gh`(gh 설치·로그인), 자동완성 설치(PowerShell은 프로필 다시 열기), 템플릿 값 `data.summary`·`data.commits`
-- [ ] **ROADMAP.md**: Phase 7 체크
-- [ ] **CLAUDE.md, AGENTS.md**: 디렉터리 구조(`core/external.py`, `core/github.py`, `core/polish/`, `cli/completion.py`, `web/pages/report_polish.py`), 허용 core 진입점 목록에 `core.gitcollect`·`core.github`·`core.polish`·`core.external`·`core.db.open_readonly`
-- [ ] **자동 확인(메인 세션, 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`)**
+- [x] **README.md**: 선택 설치(`uv sync --extra anthropic`/`openai`), 키 설정(PowerShell·zsh), 보내는 데이터, `lb git-collect`, `lb task import-gh`(gh 설치·로그인), 자동완성 설치(PowerShell은 프로필 다시 열기), 템플릿 값 `data.summary`·`data.commits`
+- [x] **ROADMAP.md**: Phase 7 체크
+- [x] **CLAUDE.md, AGENTS.md**: 디렉터리 구조(`core/external.py`, `core/github.py`, `core/polish/`, `cli/completion.py`, `web/pages/report_polish.py`), 허용 core 진입점 목록에 `core.gitcollect`·`core.github`·`core.polish`·`core.external`·`core.db.open_readonly`
+- [x] **자동 확인(메인 세션, 임시 `LOGBOOK_DB`·`LOGBOOK_CONFIG`)**
   - `lb git-collect`: 임시 git 저장소 두 개(하나는 없는 경로)로 출력과 종료 코드
   - `lb report`: 부록, 경고
   - `lb task import-gh`: 실제 gh로 이 저장소(`chanyoo-93/logbook`)의 `--state all --limit 5 --dry-run`(읽기 전용, 사용자 PC에 gh 로그인이 되어 있을 때만). 실제 추가는 임시 DB에서만
   - 자동완성: `_LB_COMPLETE=complete_bash`, `COMP_WORDS`, `COMP_CWORD` 환경으로 실제 `lb`의 후보 출력 확인(설치는 하지 않음. PowerShell 형식은 COMP_WORDS를 쓰지 않는다)
   - `lb report --polish`: 키 없는 상태의 안내 문구만(실제 API 호출은 사용자 확인 항목)
-- [ ] **화면 확인(메인 세션, Edge 헤드리스)**: `/report`에 가짜 제공자(확인 스크립트의 앱 래퍼에서 `available_providers`·`polish_report` 대역)로 버튼·결과 패널·경고 목록, 1280·375·320px × 밝은·어두운
+- [x] **화면 확인(메인 세션, Edge 헤드리스)**: `/report`에 가짜 제공자(확인 스크립트의 앱 래퍼에서 `available_providers`·`polish_report` 대역)로 버튼·결과 패널·경고 목록, 1280·375·320px × 밝은·어두운
 - [ ] **브라우저·실제 서비스 확인(사용자, Windows·macOS, 절차는 PR 댓글)**: 실제 키로 Claude·ChatGPT 다듬기 각 1회(비용 발생 안내), 자동완성 설치(PowerShell·zsh), gh 이슈 가져오기, git-collect
 - [ ] **전체 검증:** ruff, ruff format --check, mypy(core strict, 전체), pytest(커버리지 core·web 100%), GitHub Actions 두 OS
 - [ ] **PR:** develop 대상, `Closes #<이슈 번호>`
@@ -866,6 +866,27 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
 
 ---
 
+## 구현 기록 (2026-10-14)
+
+- **진행 규모:** 서브에이전트 22명(모두 Sonnet)
+  - 워크플로: Task 7-1~7-9마다 구현 1명 + 통합 검토 1명(18명). 수정이 필요한 Task는 없었다. effort는 7-6만 high.
+  - 문서 1명, 최종 리뷰 1명(high), 최종 리뷰 수정 1명
+- **환경:** 구현 중 사용자 `lb serve`가 포트 8765와 `lb.exe`를 잡고 있어 에이전트들은 `uv run --no-sync`로 돌렸고 `test_serve.py` 3건이 실패했다. 포트가 빈 뒤 메인 세션에서 `uv sync`와 전체 검증을 다시 해 모두 통과했다.
+- **계획과 달라진 것**
+  - SDK 오류 문구는 조사 규칙 때문에 `확인할 환경변수: {env}.`로 썼다.
+  - 커밋 수집 경고는 `커밋을 모으지 못했습니다: {project} ({message})`이고 `lb report`와 `lb git-collect`가 같이 쓴다.
+  - 확인 프롬프트 기대값은 시드 데이터 기준이다. `--out` 덮어쓰기 확인을 요청 전에 하려고 `runtime.confirm_overwrite()`를 뽑았다.
+  - 웹 Task 7-9는 테스트를 구현 뒤에 썼다(RED 미확인, 검토에서 테스트 충분성 확인).
+- **최종 리뷰로 고친 것(major 4건)**
+  - git `--author`가 부분 일치라 `some@example.com` 커밋이 `me@example.com`에 섞였다. `--author=<email>`로 정확히 맞춘다.
+  - `--polish`는 제공자 확인을 커밋 수집보다 먼저 한다(제공자가 없으면 git을 실행하지 않는다).
+  - 사용자 템플릿에 `data.summary`가 없으면 요청 전에 경고한다(비용만 들고 요약이 사라지는 일 방지).
+  - `lb git-collect` 경고에 프로젝트 이름을 넣었다.
+  - minor: git 미설치 원인 표시(`ToolNotFoundError`), import-gh `--dry-run`의 프로젝트·카테고리 검증(`check_import_target`), ChatGPT `content_filter`는 거절 문구, 실제 git 테스트의 전역 설정 격리, 자동완성 테스트 강화
+- **화면 확인:** 보고서 화면(버튼, 결과 패널, 경고, 부록)을 1280·375·320px × 밝은·어두운으로 찍었다. 가로 넘침 없음. 확인 스크립트는 프로세스 안에서만 제공자·다듬기·커밋 수집을 대역으로 바꿨다.
+
+---
+
 ## 후속 항목 (Phase 7 범위 밖, 기록만)
 
 1. 웹에서 GitHub 이슈 가져오기
@@ -873,3 +894,6 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
 3. 커밋 수집 결과 캐시(웹 보고서를 열 때마다 git을 실행한다)
 4. 제공자 추가(Gemini 등), 사용자 정의 프롬프트
 5. Jira 등 다른 이슈 추적기
+6. gh가 이슈 0건을 돌려줄 때는 DB를 열지 않아 프로젝트·카테고리를 검증하지 않는다
+7. GitHub 저장소 이름 대소문자(`A/B#1`과 `a/b#1`)를 같은 이슈로 보지 않는다
+8. `--install-completion`·`--show-completion` 도움말은 Typer 기본 영어 문구다
