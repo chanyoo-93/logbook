@@ -125,6 +125,9 @@ path = "~/work/admin-web"
 [web]
 host = "127.0.0.1"             # 127.0.0.1 | localhost (표시용 주소)
 port = 8765
+heading_font = "Bookk Gothic"   # 제목·큰 숫자 글꼴(PC에 설치된 글꼴 이름 하나). ""는 기본 고딕 목록
+document_font = "Bookk Gothic"  # 보고서 미리보기·특이사항 글꼴
+body_font = "Bookk Gothic"      # 본문·표·차트 글꼴
 
 [llm]
 provider = ""                  # "" | anthropic | openai. ""는 키와 패키지가 있는 제공자를 고른다
@@ -133,9 +136,10 @@ openai_model = "gpt-6.1-sol"
 ```
 
 - `[web].host`는 `127.0.0.1`과 `localhost`만 받는다. 다른 값(`0.0.0.0` 등)은 설정 오류(종료 코드 1)다. 서버는 값과 무관하게 항상 127.0.0.1에만 열리고, 이 값은 시작 문구와 `--open`이 여는 주소에만 쓴다.
+- `[web]` 글꼴(Phase 8): `heading_font`, `document_font`, `body_font`는 이 PC에 설치된 글꼴 이름을 하나씩 받는다. 기본값은 셋 다 `Bookk Gothic`이다. 빈 문자열이면 그 글꼴 변수를 내지 않아 기본 고딕 목록(`app.css`의 `--font-sans`)을 쓴다. 이름은 100자 이하이고 따옴표·역슬래시·세미콜론·쉼표·중괄호·꺾쇠·제어 문자를 넣을 수 없으며 앞뒤 공백이 없어야 한다. 어긋나거나 문자열이 아니면 설정 오류(종료 코드 1)다. 쉼표 목록은 받지 않는다(대체 글꼴은 서버가 기본 고딕 목록을 붙인다). 폰트 파일은 저장소와 패키지에 넣지 않는다. PC에 없는 글꼴이면 브라우저가 다음 글꼴로 넘어가 기본 고딕으로 보인다.
 - `[git]`(Phase 7): `author_email`이 비어 있으면 저장소마다 `git -C <경로> config user.email`의 첫 줄을 쓰고, 그것도 없으면 그 저장소는 `작성자 이메일을 알 수 없습니다: 경로. 설정 [git].author_email을 지정하세요.` 오류로 건너뛴다. `[[git.repos]]`의 `project`는 부록에서 묶음 제목으로 쓰는 이름이고, `path`는 저장소 폴더다. `include_commits = false`이거나 `[[git.repos]]`가 없으면 부록을 만들지 않는다.
 - `[llm]`(Phase 7): 문장 다듬기(7장)용 설정이다. `provider`는 `""`, `anthropic`, `openai`만 받는다(다른 값은 설정 오류). 모델 이름은 비울 수 없다. `lb init`이 만드는 설정 파일에는 기본값이 들어 있다. API 키는 설정 파일이 아니라 환경변수(`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`)로만 읽는다.
-- **설정 자동 반영(`lb serve`):** 요청마다 설정 파일 내용의 해시를 보고(수정 시각에 기대지 않는다), 바뀌었으면 다시 읽어 그 요청부터 새 설정을 쓴다. 카테고리, `default_project`, `week_start`, `daily_target_minutes`, `[report]`는 바로 반영된다. `db_path`, `web.host`, `web.port`는 서버를 시작할 때 정해지므로 바뀌면 다시 시작해야 하고, 화면 위에 알림(`다시 시작해야 반영되는 설정이 바뀌었습니다: …`)만 보여 준다. 읽기에 실패하면(문법 오류 등) 이전 설정으로 동작하고 오류 알림(`설정 파일을 다시 읽지 못해 이전 설정으로 동작합니다: …`)을 띄운다. CLI 명령은 실행할 때마다 설정을 읽는다.
+- **설정 자동 반영(`lb serve`):** 요청마다 설정 파일 내용의 해시를 보고(수정 시각에 기대지 않는다), 바뀌었으면 다시 읽어 그 요청부터 새 설정을 쓴다. 카테고리, `default_project`, `week_start`, `daily_target_minutes`, `[report]`, `[web]`의 글꼴 세 키는 바로 반영된다(글꼴은 `/fonts.css`를 새로 받는 새로 고침으로 반영). `db_path`, `web.host`, `web.port`는 서버를 시작할 때 정해지므로 바뀌면 다시 시작해야 하고, 화면 위에 알림(`다시 시작해야 반영되는 설정이 바뀌었습니다: …`)만 보여 준다. 읽기에 실패하면(문법 오류 등) 이전 설정으로 동작하고 오류 알림(`설정 파일을 다시 읽지 못해 이전 설정으로 동작합니다: …`)을 띄운다. CLI 명령은 실행할 때마다 설정을 읽는다.
 
 ---
 
@@ -326,7 +330,7 @@ lb --show-completion                     # 설치하지 않고 스크립트만 �
 
 FastAPI + Jinja2 서버 렌더링, 상호작용은 HTMX, 차트는 Chart.js. 로컬 전용(127.0.0.1 바인딩), 인증 없음. htmx·Chart.js는 `static/vendor/`의 로컬 파일이라 인터넷 없이 동작한다.
 
-Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했고, Phase 6에서 태스크(`/tasks`)·보고서(`/report`)·설정(`/settings`) 화면, 타이머 시작·취소, 다크모드, 설정 자동 반영을 더했다. 머리 메뉴는 대시보드, 기록, 태스크, 보고서, 설정이다. Phase 7에서 보고서 화면에 커밋 부록과 문장 다듬기(선택 기능)를 더했다.
+Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했고, Phase 6에서 태스크(`/tasks`)·보고서(`/report`)·설정(`/settings`) 화면, 타이머 시작·취소, 다크모드, 설정 자동 반영을 더했다. 머리 메뉴는 대시보드, 기록, 태스크, 보고서, 설정이다. Phase 7에서 보고서 화면에 커밋 부록과 문장 다듬기(선택 기능)를 더했다. Phase 8에서 화면 구조는 그대로 두고 디자인 시스템(설정 글꼴, 디자인 토큰, 꼬리표, 프로젝트 색 점, 프로젝트 색 규칙)을 더했다.
 
 ### 실행과 보안
 - 서버는 항상 127.0.0.1에만 연다. `[web].host`는 표시용 주소이고 `127.0.0.1`, `localhost`만 받는다(3장). 같은 PC의 다른 사용자나 다른 PC에서는 접속할 수 없다. 인증이 없으므로 LAN에 공개하지 않는다.
@@ -336,7 +340,7 @@ Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했
   1. `Sec-Fetch-Site`가 있으면 `same-origin`이나 `none`일 때만 받는다.
   2. 없고 `Origin`이 있으면 `http`이고 `host:port`가 `Host`와 같을 때만 받는다(`null`은 거부, `Origin`이 여러 개여도 거부).
   3. 둘 다 없으면 브라우저가 아닌 클라이언트(curl, 스크립트)로 보고 받는다.
-- **보안 헤더(모든 응답):** `Content-Security-Policy`(모든 출처를 `'self'`로 좁힘, 인라인 스크립트·스타일 없음, `frame-ancestors 'none'`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`. `/static/`이 아닌 응답에는 `Cache-Control: no-store`도 붙인다. `/static/` 응답은 `Cache-Control: no-cache`와 ETag(재요청은 304)라서 새로 고침만으로 최신 CSS·JS를 받는다.
+- **보안 헤더(모든 응답):** `Content-Security-Policy`(모든 출처를 `'self'`로 좁힘, 인라인 스크립트·스타일 없음, `frame-ancestors 'none'`), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: same-origin`. `/static/`이 아닌 응답(`/fonts.css` 포함)에는 `Cache-Control: no-store`도 붙인다. `/static/` 응답은 `Cache-Control: no-cache`와 ETag(재요청은 304)라서 새로 고침만으로 최신 CSS·JS를 받는다.
 - `/docs`, `/redoc`, `/openapi.json`은 열지 않는다(CDN 스크립트가 CSP와 맞지 않는다). API 계약은 이 문서가 기준이다.
 
 ### 화면 동작 (Phase 5)
@@ -360,7 +364,7 @@ Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했
   - **다음 주 계획 패널:** 보고서 4절과 같은 함수로 만든 계획(다음 주 계획 + 이월 후보)과 예상 합계를 보여 준다. `다음 주로 이월` 버튼은 이번 주의 할 일·진행 중 태스크를 다음 주로 옮기고(`lb plan carry`와 같다) 확인 창을 거친다. 일부만 옮기면 성공 줄 뒤에 `N건은 그사이 바뀌어 옮기지 않았습니다.`가 붙는다. 하나도 옮기지 못하면(0건) 409(`옮긴 태스크가 없습니다. 그사이 상태나 계획 주차가 바뀌었습니다. 패널을 지금 상태로 다시 표시했습니다.`)로 알리고 패널을 현재 상태로 다시 그린다.
 - **보고서(`/report?week=`):** 주 이동, Markdown 원문 미리보기(`lb report`와 같은 템플릿), `복사`(Clipboard API, 실패하면 선택 후 `execCommand("copy")`), `.md` 내려받기(`weekly-report-2026-W40.md`, ASCII 이름, UTF-8·LF)가 있다. 아래 입력란에 그 주의 특이사항·리스크를 저장하면 `week_notes`에 쓰고 미리보기를 갱신한다. 두 칸을 모두 비우면 행을 지운다.
 - **설정(`/settings`):** 프로젝트 표(보관 포함)와 색 견본(형식을 확인한 색만), `lb project add`와 같은 추가 폼(slug·이름·색, 색을 비우면 색 없음), 행 수정(이름·색·설명), 보관·보관 해제(`common`은 보관할 수 없다)가 있다. 설정 정보(설정 파일 경로, 실제로 연 DB 경로, 기본값, 카테고리)는 읽기 전용이다. 설정 파일 편집은 웹에서 하지 않는다.
-- **다크모드:** OS·브라우저 설정(`prefers-color-scheme`)을 따르고 토글은 없다. 색 값은 `static/css/app.css`의 `:root` 토큰 두 벌(밝은·어두운)에만 있고, 다른 스타일 파일은 토큰만 쓴다(`web/assets.py`의 `STYLESHEETS`가 `app.css`, `dashboard.css`, `logs.css`, `components.css`, `tasks.css`, `report.css`, `settings.css`, `responsive.css` 순서를 정하고 `base.html`과 오류 페이지가 그대로 링크한다. `components.css`는 타이머·버튼·알림처럼 여러 화면이 함께 쓰는 부품이다). 어두운 테마는 `screen`에만 적용되고 인쇄는 밝은 색이다. 테마가 바뀌면 차트를 다시 그린다.
+- **다크모드:** OS·브라우저 설정(`prefers-color-scheme`)을 따르고 토글은 없다. 색 값은 `static/css/app.css`의 `:root` 토큰 두 벌(밝은·어두운)에만 있고, 다른 스타일 파일은 토큰만 쓴다(`web/assets.py`의 `STYLESHEETS`가 `app.css`, `dashboard.css`, `logs.css`, `components.css`, `tasks.css`, `report.css`, `settings.css`, `responsive.css` 순서를 정하고 `base.html`과 오류 페이지가 그대로 링크한다. 그 뒤에 `/fonts.css`를 링크한다. `components.css`는 타이머·버튼·알림처럼 여러 화면이 함께 쓰는 부품이다). 어두운 테마는 `screen`에만 적용되고 인쇄는 밝은 색이다. 테마가 바뀌면 차트를 다시 그린다.
 - **버전 확인(409) 대상:** 기록 수정·삭제(Phase 5)에 더해 태스크 상태 변경·수정, 특이사항 저장, 프로젝트 수정·보관·보관 해제, 타이머 취소다. 화면이 들고 있는 대상의 버전(내용 해시)을 요청에 함께 보내고, 그사이 CLI 등으로 바뀌었으면 409로 거부하고 새로 고치라고 안내한다. 타이머 정지는 버전을 보지 않는다. 검사와 변경 사이의 경쟁 구간은 막지 않는다(후속 항목). JSON API는 버전을 보지 않는다.
 - 화면 라우트(HTMX 조각 포함, `POST /report/polish` 포함)는 브라우저용이고 계약이 아니다. 연동에는 아래 JSON API를 쓴다.
 
@@ -370,6 +374,15 @@ Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했
   - 버튼을 누르면 브라우저 확인 창이 `2026-W41 보고서 데이터(태스크 제목·특이사항·리스크 포함)를 외부 AI 서비스로 보냅니다. 커밋 내역과 작성자는 보내지 않습니다. 계속할까요?`를 보여 주고, `확인`해야 `POST /report/polish`(`week`, `provider`)를 보낸다. 요청하는 동안 버튼을 잠그고 `요약을 만드는 중입니다…`를 보여 준다.
   - 서버는 그 주의 보고서 데이터를 DB에서 만든 뒤 세션을 닫고 나서 외부에 요청한다(커밋 부록은 수집하지 않는다). 성공하면 미리보기 위의 결과 패널에 `요약 (자동 생성 · Claude claude-opus-5-5)`와 요약 문단, `요약 복사` 버튼을 보여 준다. 요약은 **저장하지 않는다**: 미리보기 Markdown·내려받기 파일·`lb report`에는 들어가지 않고, 주나 본문이 바뀌면 패널은 사라진다. 필요하면 `요약 복사`로 가져가 붙인다.
   - 잘못된 주차·제공자 이름, 키·패키지 없음은 400, 외부 서비스 실패(한도 초과·네트워크·모델 없음 등)는 502(`upstream`)로 화면 알림에 한국어 문구를 보여 준다. 교차 출처 요청은 다른 쓰기 요청처럼 403이다.
+
+### 화면 동작 (Phase 8)
+- **`GET /fonts.css`:** 설정 `[web]`의 글꼴을 CSS 변수(`--font-heading`, `--font-document`, `--font-body`)로 내는 스타일시트다. 응답은 `Content-Type: text/css; charset=utf-8`이고 `/static/`이 아니라서 `Cache-Control: no-store`가 붙는다. 값은 `"글꼴 이름", var(--font-sans)` 꼴이고 빈 값인 키는 줄을 내지 않아 `app.css`의 기본값(`var(--font-sans)`)이 남는다. 요청마다 현재 설정으로 만들기 때문에 설정 파일을 고친 뒤 서버를 다시 시작하지 않고 새로 고침만 하면 반영된다(3장). `base.html`과 오류 페이지가 `STYLESHEETS`의 모든 파일 뒤에 이 주소를 링크한다(`STYLESHEETS`에는 넣지 않는다). 글꼴을 인라인 스타일이 아닌 별도 스타일시트로 내므로 CSP(인라인 스타일 없음)와 맞는다.
+- **글꼴이 쓰이는 곳:** `heading_font`는 제목과 큰 숫자(머리 로고, 패널·보드·보고서 제목, 요약 카드 숫자), `document_font`는 보고서 미리보기와 문장 다듬기 결과 글, 설정 화면의 문서 글꼴 미리보기, `body_font`는 본문·표·입력칸과 대시보드 차트 글자(`static/js/dashboard.js`가 `--font-body`를 읽는다)다.
+- **설정 화면 글꼴 줄:** `/settings`의 설정 정보에 제목 글꼴·문서 글꼴·본문 글꼴 세 줄을 보여 준다. 각 줄은 설정 값(빈 값이면 `기본 글꼴`)과 그 글꼴로 그린 미리보기 문장(`가나다 ABC 123 · 8h 55m`)이다. 아래 안내 문장은 설치된 글꼴 이름으로 정하며 설치되지 않았으면 기본 글꼴로 보인다고 알린다. 글꼴 설정은 웹에서 저장하지 않는다.
+- **디자인 토큰:** 색 값은 `app.css`의 `:root` 두 벌(밝은·어두운)에만 있고 다른 CSS는 토큰만 쓴다. 색은 데이터(프로젝트·카테고리)와 상태(`--ok`, `--danger`)에만 쓰고, 강조색 `--accent`는 링크·포커스·주 버튼 전용이다. 모서리는 `--radius-xs`(4px, 입력칸)·`--radius-sm`(8px, 버튼)·`--radius-md`(12px, 카드·패널)·`--radius-full`(꼬리표), 입력칸 테두리는 배경과 3:1 이상 대비인 `--control-border`(옅은 `--rule`은 장식용), 그림자는 `--shadow-soft`·`--shadow-raised`, 글자 크기(`--text-*`)와 간격(`--space-*`)도 토큰이다.
+- **꼬리표(pill):** `templates/partials/marks.html`의 `pill` 매크로와 `.pill`(`.pill--ok`, `.pill--danger`)로 카테고리, 계획 주차(이번 주·다음 주·지난 주), `예상 초과`, `이월 후보`, 타이머의 `진행 중`, 프로젝트의 `보관`·`사용 중`을 같은 모양으로 보여 준다. `ok`와 `danger`는 상태에만 쓴다.
+- **프로젝트 색 점:** 같은 파일의 `project_mark` 매크로가 프로젝트 이름 앞에 색 점(SVG, `aria-hidden`)을 붙인다. CSP 때문에 `style` 속성 대신 SVG `fill` 속성으로 칠한다. 태스크 카드, 기록 표, 대시보드 최근 기록에 쓴다.
+- **프로젝트 색 규칙(`web/pages/views.py`의 `project_color`):** 프로젝트에 지정한 색(`#rrggbb`)이 있으면 그 색, 없거나 형식이 틀리면 프로젝트 ID로 고른 `CHART_PALETTE` 색이다. 대시보드 프로젝트 차트(`pages/summary.py`)도 같은 규칙이라 같은 프로젝트는 어느 화면·어느 주에서나 같은 색이다. 바뀐 점: 전에는 차트 색이 그 주에 나타난 순서로 정해졌다. 카테고리 색 규칙은 그대로다.
 
 ### 페이지
 1. **대시보드** (`/`) — Phase 5, 타이머 시작·취소는 Phase 6
@@ -466,11 +479,13 @@ Phase 5에서 구현했고, Phase 6에서 `GET /api/timer`와 `POST /api/timer/c
 - 통계: `{week, start, end, by, total_minutes, count, rows: [{key, label, minutes, count}]}`.
 - 보고서: `format=md`는 `{week, markdown}`, `format=json`은 보고서 데이터(7장의 `ReportData`를 그대로 직렬화한 구조)다. Phase 7부터 `commits`(커밋 부록, `[{project, repo, commits: [{date, hash, subject}]}]`, 없으면 `[]`)와 `summary`(문장 다듬기 요약, API는 만들지 않으므로 늘 `""`)가 들어 있고, `format=md`는 부록을 포함한다. 커밋 수집 경고는 응답에 없다.
 
-### 후속 항목 (Phase 6·7 범위 밖)
+### 후속 항목 (Phase 6·7·8 범위 밖)
 - **웹 전용 오류 문구:** core 문구의 CLI 안내가 웹에도 보인다(예: 타이머 시작 실패의 `'lb stop'으로 저장하거나`).
 - **브라우저 E2E 테스트:** 새 dev 의존성이 필요하다.
 - **버전 확인과 변경 사이의 경쟁 구간:** 기록·태스크·프로젝트·특이사항·타이머 취소 모두 해당한다.
-- **차트 팔레트:** 프로젝트·카테고리 구분과 어두운 바탕에서의 대비(마지막 회색이 어두운 바탕에서 약하다).
+- **차트 팔레트:** 프로젝트·카테고리 구분과 어두운 바탕에서의 대비(마지막 회색이 어두운 바탕에서 약하다). 프로젝트 색 점도 같은 팔레트를 써서 어두운 바탕에서 짙은 색 점의 대비가 낮다.
+- **글꼴 고르기:** 설치된 글꼴 목록에서 고르기와 웹에서 글꼴 설정 저장. 지금은 설정 파일에 이름을 적는다.
+- **수정 중인 태스크 카드의 프로젝트 색 점:** 수정 폼이 열린 카드에는 프로젝트가 글자만 나온다.
 - **타이머 정지의 버전 확인**
 - **태스크 화면 확장:** 끌어 놓기, 설명·마감일·외부 참조 수정, 중단 태스크 보기·복원
 - **웹에서 설정 파일 편집:** 지금은 읽기만 한다.

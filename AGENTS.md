@@ -66,13 +66,14 @@ src/logbook/
     errors.py    # 오류 → HTTP 상태·JSON 봉투·HTMX 알림 변환
     app.py       # FastAPI 앱 조립
     config_watch.py # 설정 파일 자동 반영(내용 해시로 변경을 감지하고 요청마다 설정 스냅숏을 돌려줌)
+    fonts.py     # 설정 [web]의 글꼴 → /fonts.css 내용(CSS 변수 --font-heading·--font-document·--font-body)
     reporting.py # 보고서 화면·내려받기 공용 처리(내려받기 파일 이름 등)
     server.py    # 루프백 소켓을 열고 uvicorn 실행 (`lb serve`가 호출)
     api/         # JSON API (/api/*): logs, tasks, stats, report, timer
-    pages/       # 화면 라우트 (대시보드, 기록, 타이머, 태스크·보고서·설정), tasks.py·task_views.py(칸반·계획 패널), report.py, report_polish.py(POST /report/polish 문장 다듬기), settings.py, panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText)
-    templates/   # Jinja2 + HTMX
+    pages/       # 화면 라우트 (대시보드, 기록, 타이머, 태스크·보고서·설정), tasks.py·task_views.py(칸반·계획 패널), report.py, report_polish.py(POST /report/polish 문장 다듬기), settings.py, panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText), fonts.py(GET /fonts.css)
+    templates/   # Jinja2 + HTMX. partials/marks.html에 공용 부품 매크로 pill(꼬리표)·project_mark(프로젝트 색 점)
     static/      # 최소한의 CSS와 JS(js/report.js 포함), vendor/에 htmx·Chart.js 로컬 파일 (CDN 없음)
-                 # css/: app.css(색 토큰 :root 두 벌은 여기에만), dashboard·logs·components·tasks·report·settings·responsive.css (순서는 web/assets.py의 STYLESHEETS가 정하고 base.html·오류 페이지가 그대로 링크)
+                 # css/: app.css(디자인 토큰: 색 :root 두 벌은 여기에만, 글꼴·글자 크기·간격·모서리·그림자), dashboard·logs·components·tasks·report·settings·responsive.css (순서는 web/assets.py의 STYLESHEETS가 정하고 base.html·오류 페이지가 그대로 링크)
 tests/
 docs/
 ```
