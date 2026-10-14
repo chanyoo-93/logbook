@@ -20,6 +20,10 @@ TOOL_FAILED = "명령이 실패했습니다: {label} (종료 코드 {code})."
 _NON_INTERACTIVE_ENV = {"GH_PROMPT_DISABLED": "1", "GIT_TERMINAL_PROMPT": "0"}
 
 
+class ToolNotFoundError(ExternalServiceError):
+    """실행 파일(git, gh)을 찾지 못했다. 설치 안내가 들어 있는 한 줄 문구."""
+
+
 def _first_stderr_line(stderr: bytes) -> str:
     text = stderr.decode("utf-8", errors="replace").strip()
     if not text:
@@ -42,7 +46,7 @@ def run_tool(
     shown = label or name
     executable = shutil.which(name)
     if executable is None:
-        raise ExternalServiceError(TOOL_NOT_FOUND.format(name=name, hint=missing_hint))
+        raise ToolNotFoundError(TOOL_NOT_FOUND.format(name=name, hint=missing_hint))
     try:
         result = subprocess.run(
             [executable, *args],

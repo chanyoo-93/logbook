@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from logbook.core import gitcollect
+from logbook.core import external, gitcollect
 from logbook.core.config import Config, GitConfig, GitRepo, ReportConfig
 from logbook.core.errors import ExternalServiceError
 from logbook.core.gitcollect import RepoCommits, collect_commits, report_commits, to_commit_groups
@@ -103,7 +103,7 @@ def test_collect_commits_parses_lines_and_passes_exact_arguments(tmp_path: Path)
         "--reverse",
         "--fixed-strings",
         "--regexp-ignore-case",
-        "--author=me@x.com",
+        "--author=<me@x.com>",
         "--since=2026-10-12T00:00:00+09:00",
         "--until=2026-10-19T00:00:00+09:00",
         "--format=%H%x1f%aI%x1f%s",
@@ -126,7 +126,7 @@ def test_collect_commits_uses_config_email_when_author_email_is_empty(tmp_path: 
         ["-C", path, "config", "user.email"],
         "git config",
     )
-    assert "--author=cfg@x.com" in run.calls[1][1]
+    assert "--author=<cfg@x.com>" in run.calls[1][1]
 
 
 @pytest.mark.parametrize("email", [ExternalServiceError("종료 코드 1"), "\n"])
@@ -138,6 +138,20 @@ def test_collect_commits_reports_unknown_email(tmp_path: Path, email: str | Exce
 
     assert result.error == gitcollect.EMAIL_UNKNOWN.format(path=git.repos[0].path)
     assert result.commits == ()
+    assert len(run.calls) == 1
+
+
+def test_collect_commits_reports_missing_git_instead_of_unknown_email(tmp_path: Path) -> None:
+    git = replace(repos(tmp_path, "a"), author_email="")
+    missing = external.ToolNotFoundError(
+        external.TOOL_NOT_FOUND.format(name="git", hint=gitcollect.GIT_MISSING_HINT)
+    )
+    run = FakeRun({}, email=missing)
+
+    (result,) = collect_commits(git, WEEK, tz=KST, run=run)
+
+    assert result.error == str(missing)
+    assert gitcollect.EMAIL_UNKNOWN.split("{")[0] not in result.error
     assert len(run.calls) == 1
 
 
@@ -257,45 +271,60 @@ def test_report_commits_returns_groups_and_warnings(tmp_path: Path) -> None:
     assert warnings == (gitcollect.REPO_WARNING.format(project="p-bad", message="실패 문구"),)
 
 
-def run_git(repo: Path, *args: str, env: dict[str, str] | None = None) -> None:
+@pytest.fixture
+def git_env(tmp_path: Path) -> dict[str, str]:
+    """사용자 전역·시스템 git 설정이 테스트에 섞이지 않게 하는 환경 변수."""
+    empty = tmp_path / "empty-gitconfig"
+    empty.write_text("", encoding="utf-8", newline="\n")
+    return {"GIT_CONFIG_GLOBAL": str(empty), "GIT_CONFIG_NOSYSTEM": "1"}
+
+
+def run_git(repo: Path, *args: str, env: dict[str, str]) -> None:
     subprocess.run(
         ["git", "-C", str(repo), *args],
         check=True,
         capture_output=True,
-        env={**os.environ, **(env or {})},
+        env={**os.environ, **env},
     )
 
 
-def commit(repo: Path, subject: str, when: str, email: str) -> None:
+def commit(repo: Path, subject: str, when: str, email: str, env: dict[str, str]) -> None:
     run_git(
         repo,
         "-c",
         f"user.email={email}",
         "-c",
         "user.name=me",
+        "-c",
+        "commit.gpgsign=false",
         "commit",
         "--allow-empty",
         "-m",
         subject,
-        env={"GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when},
+        env={**env, "GIT_AUTHOR_DATE": when, "GIT_COMMITTER_DATE": when},
     )
 
 
-def test_collect_commits_with_real_git(tmp_path: Path) -> None:
+def test_collect_commits_with_real_git(tmp_path: Path, git_env: dict[str, str]) -> None:
     if shutil.which("git") is None:
         pytest.skip("git이 없습니다.")
     repo = tmp_path / "repo"
     repo.mkdir()
-    run_git(repo, "init")
+    run_git(repo, "init", env=git_env)
     # 지난주를 먼저 만든다(git은 --since보다 오래된 커밋을 만나면 탐색을 멈춘다).
-    commit(repo, "지난주 작업", "2026-10-09T12:00:00+09:00", "me@example.com")
-    commit(repo, "이번 주 한글 제목", "2026-10-14T12:00:00+09:00", "me@example.com")
-    commit(repo, "남의 커밋", "2026-10-15T12:00:00+09:00", "other@example.com")
-    commit(repo, "끝 경계", "2026-10-19T00:00:00+09:00", "me@example.com")
+    commit(repo, "지난주 작업", "2026-10-09T12:00:00+09:00", "me@example.com", git_env)
+    commit(repo, "이번 주 한글 제목", "2026-10-14T12:00:00+09:00", "me@example.com", git_env)
+    commit(repo, "남의 커밋", "2026-10-15T12:00:00+09:00", "other@example.com", git_env)
+    commit(repo, "부분 일치 이메일", "2026-10-15T13:00:00+09:00", "some@example.com", git_env)
+    commit(repo, "대문자 이메일", "2026-10-16T12:00:00+09:00", "ME@Example.com", git_env)
+    commit(repo, "끝 경계", "2026-10-19T00:00:00+09:00", "me@example.com", git_env)
     git = GitConfig(author_email="me@example.com", repos=(GitRepo("proj", repo),))
 
     (result,) = collect_commits(git, WEEK, tz=KST)
 
     assert result.error == ""
-    assert [(c.date, c.subject) for c in result.commits] == [("2026-10-14", "이번 주 한글 제목")]
+    assert [(c.date, c.subject) for c in result.commits] == [
+        ("2026-10-14", "이번 주 한글 제목"),
+        ("2026-10-16", "대문자 이메일"),
+    ]
     assert len(result.commits[0].hash) == 7

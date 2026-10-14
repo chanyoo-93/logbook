@@ -95,8 +95,8 @@ def test_git_collect_reports_repo_errors_and_exits_1(
     assert result.exit_code == 1
     assert result.stdout == "admin (admin-web) 1건\n  2026-09-30 b2c3d4e 수정\n"
     assert (
-        result.stderr
-        == "주의: 저장소 폴더가 없습니다: x.\n오류: 저장소 1곳에서 커밋을 읽지 못했습니다.\n"
+        result.stderr == "주의: 커밋을 모으지 못했습니다: payment (저장소 폴더가 없습니다: x.)\n"
+        "오류: 저장소 1곳에서 커밋을 읽지 못했습니다.\n"
     )
 
 

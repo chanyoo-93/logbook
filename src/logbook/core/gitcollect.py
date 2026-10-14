@@ -7,7 +7,7 @@ from pathlib import Path
 
 from logbook.core.config import Config, GitConfig, GitRepo
 from logbook.core.errors import ExternalServiceError
-from logbook.core.external import RunTool, run_tool
+from logbook.core.external import RunTool, ToolNotFoundError, run_tool
 from logbook.core.report import CommitGroup, CommitLine
 from logbook.core.weeks import Week
 
@@ -32,7 +32,10 @@ class RepoCommits:
 
 
 def _author_email(git: GitConfig, repo: GitRepo, run: RunTool) -> str:
-    """설정의 이메일, 없으면 저장소의 git config user.email 첫 줄. 알 수 없으면 ''."""
+    """설정의 이메일, 없으면 저장소의 git config user.email 첫 줄. 알 수 없으면 ''.
+
+    git이 없으면 ToolNotFoundError를 그대로 올려 호출한 쪽이 그 문구를 쓰게 한다.
+    """
     if git.author_email:
         return git.author_email
     try:
@@ -42,6 +45,8 @@ def _author_email(git: GitConfig, repo: GitRepo, run: RunTool) -> str:
             missing_hint=GIT_MISSING_HINT,
             label="git config",
         )
+    except ToolNotFoundError:
+        raise
     except ExternalServiceError:
         return ""
     lines = output.strip().splitlines()
@@ -68,7 +73,10 @@ def _collect_one(
 ) -> RepoCommits:
     if not repo.path.is_dir():
         return RepoCommits(repo.project, repo.path, (), REPO_MISSING.format(path=repo.path))
-    email = _author_email(git, repo, run)
+    try:
+        email = _author_email(git, repo, run)
+    except ToolNotFoundError as error:
+        return RepoCommits(repo.project, repo.path, (), str(error))
     if not email:
         return RepoCommits(repo.project, repo.path, (), EMAIL_UNKNOWN.format(path=repo.path))
     args = [
@@ -82,7 +90,7 @@ def _collect_one(
         "--reverse",
         "--fixed-strings",
         "--regexp-ignore-case",
-        f"--author={email}",
+        f"--author=<{email}>",  # 꺾쇠로 감싸 some@x.com이 me@x.com에 섞이지 않게 한다.
         f"--since={since}",
         f"--until={until}",
         _LOG_FORMAT,

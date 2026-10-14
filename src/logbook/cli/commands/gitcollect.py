@@ -43,7 +43,9 @@ def git_collect(week: runtime.WeekOpt = None) -> None:
     failed = 0
     for result in results:
         if result.error:
-            console.print_warning(result.error)
+            console.print_warning(
+                gitcollect.REPO_WARNING.format(project=result.project, message=result.error)
+            )
             failed += 1
         else:
             _print_repo(result)
