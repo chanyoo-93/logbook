@@ -3,7 +3,7 @@
 import os
 import shutil
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from logbook.core.errors import ExternalServiceError
 
@@ -66,3 +66,7 @@ def run_tool(
         detail = _first_stderr_line(result.stderr)
         raise ExternalServiceError(f"{message} {detail}" if detail else message)
     return result.stdout.decode("utf-8", errors="replace")
+
+
+# run_tool과 같은 시그니처의 호출 가능 객체. 테스트가 가짜를 넘긴다.
+RunTool = Callable[..., str]

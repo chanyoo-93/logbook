@@ -58,6 +58,20 @@ class PlanGroup:
 
 
 @dataclass(frozen=True)
+class CommitLine:
+    date: str  # "2026-10-12" (보고서 시간대의 작성 날짜)
+    hash: str  # 앞 7자리
+    subject: str  # 한 줄
+
+
+@dataclass(frozen=True)
+class CommitGroup:
+    project: str  # 설정의 [[git.repos]].project
+    repo: str  # 저장소 폴더 이름(path.name)
+    commits: tuple[CommitLine, ...]
+
+
+@dataclass(frozen=True)
 class ReportData:
     title: str
     author: str
@@ -73,6 +87,8 @@ class ReportData:
     plan: tuple[PlanGroup, ...]
     notes: str = ""  # 3절 특이사항(정리된 텍스트, 없으면 '')
     risks: str = ""  # 3절 리스크
+    commits: tuple[CommitGroup, ...] = ()  # 부록 커밋 내역(없으면 부록 생략)
+    summary: str = ""  # LLM 요약 문단(없으면 '')
 
 
 NO_VALUE = "-"
