@@ -811,8 +811,9 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
   - `lb report --polish`: 키 없는 상태의 안내 문구만(실제 API 호출은 사용자 확인 항목)
 - [x] **화면 확인(메인 세션, Edge 헤드리스)**: `/report`에 가짜 제공자(확인 스크립트의 앱 래퍼에서 `available_providers`·`polish_report` 대역)로 버튼·결과 패널·경고 목록, 1280·375·320px × 밝은·어두운
 - [ ] **브라우저·실제 서비스 확인(사용자, Windows·macOS, 절차는 PR 댓글)**: 실제 키로 Claude·ChatGPT 다듬기 각 1회(비용 발생 안내), 자동완성 설치(PowerShell·zsh), gh 이슈 가져오기, git-collect
-- [ ] **전체 검증:** ruff, ruff format --check, mypy(core strict, 전체), pytest(커버리지 core·web 100%), GitHub Actions 두 OS
-- [ ] **PR:** develop 대상, `Closes #<이슈 번호>`
+  - 2026-10-14: 실제 키 다듬기를 뺀 전 항목을 사용자가 확인했다. 실제 키 다듬기는 키를 발급받은 뒤 사용자가 확인한다.
+- [x] **전체 검증:** ruff, ruff format --check, mypy(core strict, 전체), pytest(커버리지 core·web 100%), GitHub Actions 두 OS
+- [x] **PR:** develop 대상, `Closes #15` (#16)
 
 ---
 
