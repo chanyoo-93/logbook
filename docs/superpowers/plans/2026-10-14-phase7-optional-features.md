@@ -99,6 +99,7 @@ def run_tool(
     args: Sequence[str],
     *,
     missing_hint: str,
+    label: str | None = None,  # 문구에 쓸 이름(예: "git log", "gh issue list"). None이면 name
     timeout: float = DEFAULT_TIMEOUT_SECONDS,
 ) -> str:
     """name(git, gh)을 shutil.which로 찾아 목록 인자로 실행하고 stdout(UTF-8, 잘못된 바이트는 대체)을 돌려준다.
@@ -111,9 +112,11 @@ def run_tool(
 | 경우 | 문구 |
 |---|---|
 | 실행 파일 없음 | `명령을 찾을 수 없습니다: {name}. {missing_hint}` |
-| 시간 초과(`TimeoutExpired`) | `명령이 {초}초 안에 끝나지 않았습니다: {name} {args[0]}.` |
-| 실행 실패(`OSError`) | `명령을 실행하지 못했습니다: {name} ({strerror}).` |
-| 종료 코드 ≠ 0 | `명령이 실패했습니다: {name} {args[0]} (종료 코드 {code}). {stderr 첫 줄}` (stderr가 비면 마지막 문장 없음) |
+| 시간 초과(`TimeoutExpired`) | `명령이 {초}초 안에 끝나지 않았습니다: {label}.` |
+| 실행 실패(`OSError`) | `명령을 실행하지 못했습니다: {label} ({strerror}).` |
+| 종료 코드 ≠ 0 | `명령이 실패했습니다: {label} (종료 코드 {code}). {stderr 첫 줄}` (stderr가 비면 마지막 문장 없음) |
+
+- `{label}`은 `label or name`이다. git 호출은 `label="git log"`·`"git config"`, gh는 `"gh issue list"`를 넘긴다(git 인자는 `-C <경로>`로 시작해 `args[0]`을 문구에 쓸 수 없다).
 
 - `missing_hint` 예: git은 `git을 설치하세요: https://git-scm.com`, gh는 `GitHub CLI를 설치한 뒤 'gh auth login'을 실행하세요: https://cli.github.com`.
 - stderr 첫 줄은 앞뒤 공백을 지우고 200자에서 자른다(core 문구 규칙: 한 줄).
@@ -140,7 +143,8 @@ class LlmConfig:
 
 - `provider`가 `"", "anthropic", "openai"` 밖이면 기존 `_invalid` 문구(`설정할 수 있는 값: '', 'anthropic', 'openai'`)다.
 - 모델 이름은 비어 있지 않은 문자열(`non_empty=True`)이다. 존재 여부는 API가 판단한다.
-- `_default_document()`에 `"llm": asdict(defaults.llm)`을 더한다. 기본 설정 파일 끝에 `[llm]` 표가 생긴다. `Config.llm` 필드를 `web` 뒤에 둔다.
+- `_Table.to_llm()`을 만들고 `to_config()`에서 `llm=self.table("llm").to_llm()`으로 부른다. 최상위 키 검사는 `_keys(Config)`가 새 필드를 자동으로 허용한다.
+- `_default_document()`에 `"llm": asdict(defaults.llm)`을 더한다. `tests/core/test_config.py`의 `test_write_default_config_document`(문서 dict 전체 비교) 기대에 `"llm": {"provider": "", "anthropic_model": "claude-opus-5-5", "openai_model": "gpt-6.1-sol"}`를 더한다. 기본 설정 파일 끝에 `[llm]` 표가 생긴다. `Config.llm` 필드를 `web` 뒤에 둔다.
 
 ### 보고서 데이터 확장 (`core/report.py`)
 
@@ -209,7 +213,7 @@ class CommitGroup:
 **Files:**
 - Modify: `pyproject.toml`, `uv.lock`, `src/logbook/core/errors.py`, `src/logbook/core/config.py`, `src/logbook/web/errors.py`
 - Create: `src/logbook/core/external.py`, `tests/core/test_external.py`
-- Modify tests: `tests/core/test_config.py`, `tests/core/test_errors.py`, `tests/web/`의 오류 매핑 테스트(파일은 `classify` 테스트가 있는 곳)
+- Modify tests: `tests/core/test_config.py`, `tests/core/test_errors.py`, `tests/web/test_errors.py`(`classify` parametrize에 케이스 추가)
 
 **의존성:**
 ```
@@ -269,7 +273,7 @@ def report_commits(cfg: Config, week: Week, *, tz: tzinfo, run: RunTool = run_to
 
 **저장소 하나의 처리 순서**
 1. `path.is_dir()`가 아니면 `error = 저장소 폴더가 없습니다: {path}. 설정의 [[git.repos]] path를 확인하세요.`
-2. 이메일: `git.author_email`이 비면 `run("git", ["-C", path, "config", "user.email"])`의 첫 줄. 이 명령이 실패하거나(설정 없음은 종료 코드 1) 비면 `error = 작성자 이메일을 알 수 없습니다: {path}. 설정 [git].author_email을 지정하세요.`
+2. 이메일: `git.author_email`이 비면 `run("git", ["-C", path, "config", "user.email"], label="git config")`의 첫 줄. 이 명령이 실패하거나(설정 없음은 종료 코드 1) 비면 `error = 작성자 이메일을 알 수 없습니다: {path}. 설정 [git].author_email을 지정하세요.`
 3. 기록:
    ```
    git -C <path> -c i18n.logOutputEncoding=UTF-8 log --all --no-merges --reverse
@@ -293,7 +297,7 @@ def report_commits(cfg: Config, week: Week, *, tz: tzinfo, run: RunTool = run_to
 | `collect_commits` | 없는 폴더, run이 `ExternalServiceError` | 각 `error`, 다른 저장소는 계속 |
 | `collect_commits` | 칸이 모자란 줄, 주 밖 날짜 | 버림 |
 | `collect_commits` | KST(+09:00) tz, 2026-W42 | `--since=2026-10-12T00:00:00+09:00`, `--until=2026-10-19T00:00:00+09:00` |
-| `collect_commits` | **실제 git**: `tmp_path`에 `git init`, `-c user.email=me@example.com -c user.name=me commit`(날짜는 `GIT_AUTHOR_DATE`·`GIT_COMMITTER_DATE` 환경변수로 이번 주 안 하나, 지난주 하나), 다른 이메일 커밋 하나 | 이번 주 본인 커밋 1건, 한글 제목 그대로. git이 없으면 `pytest.skip` |
+| `collect_commits` | **실제 git**: `tmp_path`에 `git init`, `-c user.email=me@example.com -c user.name=me commit`(날짜는 `GIT_AUTHOR_DATE`·`GIT_COMMITTER_DATE`). **지난주 커밋을 먼저, 이번 주 커밋을 나중에** 만든다(git은 `--since`보다 오래된 커밋을 만나면 탐색을 멈춘다). 다음 주 월요일 00:00 커밋(끝 경계, git `--until`이 포함한다)과 다른 이메일 커밋도 하나씩 | 이번 주 본인 커밋 1건, 한글 제목 그대로(경계 커밋은 Python 필터가 버린다). git이 없으면 `pytest.skip` |
 | `to_commit_groups` | 커밋 0건 저장소, 오류 저장소 섞임 | 커밋 있는 저장소만 |
 | `report_commits` | include_commits false / 저장소 없음 / 정상 + 오류 하나 | `((), ())` / `((), ())` / (묶음, (오류 문구,)) |
 | 렌더링 | summary·commits 비어 있음 | 기존 기대 출력과 같다 |
@@ -329,12 +333,12 @@ def report_commits(cfg: Config, week: Week, *, tz: tzinfo, run: RunTool = run_to
 - `main.py`의 `COMMAND_MODULES`에서 `report` 다음에 둔다.
 
 **`lb report`**
-- `_build_markdown`을 `_build_data(week) -> tuple[ReportData, Week, tzinfo]`과 렌더링으로 나눈다(Task 7-8이 그 사이에 요약을 넣는다).
+- `_build_markdown`을 `_build_data(week) -> ReportBuild`(NamedTuple: `cfg`, `week`, `tz`, `data`)와 `_render(data: ReportData) -> str`(기존 사용자 템플릿 처리)로 나눈다. `report()`는 `_build_data` → `replace(data, commits=…)` → `_render` → `_deliver` 순서다. Task 7-8은 `_render` 앞에 요약 `replace`를 끼운다.
 - 세션을 닫은 뒤 `report_commits(cfg, week, tz=tz)`로 부록을 채우고(`dataclasses.replace`), 경고는 `console.print_warning` 각 한 줄(stderr). 보고서는 그대로 나온다.
 
 **웹**
 - `web/reporting.py`에 `report_with_commits(ctx, data, week, now) -> tuple[ReportData, tuple[str, ...]]`를 더한다. `report_data`는 그대로 둔다.
-- `/report` 화면·내려받기·`/api/report`가 모두 이 함수를 거친다(세션 밖에서 부른다. git 실행 동안 DB 세션을 잡지 않는다).
+- `report_page`, `_conflict_response`, `report_download`, `_save`의 응답(특이사항 저장 뒤 미리보기), `api/report.get_report` 다섯 곳이 모두 세션을 닫은 뒤 이 함수를 부른다(git 실행 동안 DB 세션을 잡지 않는다). `_load`는 지금처럼 data와 note만 돌려준다. `_week_error_response`(데이터 없음)와 `/report/polish`는 부르지 않는다.
 - 화면: 경고가 있으면 미리보기 위에 `<ul class="report__warnings" role="status">`로 한 줄씩. API는 경고를 응답에 넣지 않는다(JSON 데이터에는 commits만).
 - `ReportBodyView`에 `warnings: tuple[str, ...] = ()`.
 
@@ -350,6 +354,7 @@ def report_commits(cfg: Config, week: Week, *, tz: tzinfo, run: RunTool = run_to
 | `lb report` | 수집 경고 | stderr에 경고, stdout 보고서는 그대로 |
 | 웹 `/report` | 가짜 수집(커밋·경고) | 미리보기에 부록, 경고 목록 |
 | 웹 `/report/download`, `/api/report?format=json` | 가짜 수집 | 부록 포함 / `commits` 배열 |
+| 웹 | 특이사항 저장 응답, 409 응답 | 부록이 남아 있다 |
 | 웹 | 저장소 설정 없음 | 경고 목록 없음, 부록 없음 |
 
 - [ ] RED → GREEN → 커밋 `feat: lb git-collect와 보고서 커밋 부록(CLI·웹·API) 추가`
@@ -452,7 +457,6 @@ lb task import-gh OWNER/REPO [--label/-l 라벨 …] [--state open] [--limit 100
 **Files:**
 - Create: `src/logbook/cli/completion.py`, `tests/cli/test_completion.py`, `tests/core/test_db_readonly.py`
 - Modify: `src/logbook/core/db.py`, `src/logbook/cli/main.py`, `src/logbook/cli/runtime.py`, `src/logbook/cli/commands/task.py`, `src/logbook/cli/commands/project.py`, `src/logbook/cli/commands/timer.py`(`-t` 쓰는 곳이 runtime.TaskOpt면 수정 불필요)
-- Modify tests: `tests/test_cli_smoke.py`·`tests/cli/test_entry.py`의 help 기대(새 옵션 두 개)
 
 ```python
 # core/db.py
@@ -470,16 +474,18 @@ def complete_project(incomplete: str) -> list[tuple[str, str]]:
     """보관하지 않은 프로젝트: (slug, 이름). slug 순."""
 def complete_archived_project(incomplete: str) -> list[tuple[str, str]]:
     """보관한 프로젝트(lb project unarchive용)."""
+def complete_any_project(incomplete: str) -> list[tuple[str, str]]:
+    """보관 포함 모든 프로젝트(조회 옵션용, 예: lb task list -p)."""
 def complete_task_id(incomplete: str) -> list[tuple[str, str]]:
     """todo·doing 태스크: (ID 문자열, 제목). ID 순. '#'으로 시작하면 '#'을 붙인 값."""
 ```
-- 공통: `load_config()` → `open_readonly(cfg.db_path)` → `session_scope(engine)`에서 `services.list_projects(s, include_archived=True)`/`list_tasks(s, statuses=OPEN_STATUSES)`. 모든 예외(설정 오류 포함)를 잡아 `[]`. 엔진은 항상 dispose. 앞부분 거르기는 Typer가 한다(그래도 `incomplete`로 먼저 걸러 DB 결과를 줄인다).
+- 공통: `load_config()` → `open_readonly(cfg.db_path)` → `session_scope(engine)`에서 `services.list_projects(s, include_archived=True)`/`list_tasks(s, statuses=OPEN_STATUSES)`(`OPEN_STATUSES`는 `core.taskstatus`). 모든 예외(설정 오류 포함)를 잡아 `[]`. 엔진은 항상 dispose. 앞부분 거르기는 Typer가 한다(그래도 `incomplete`로 먼저 걸러 DB 결과를 줄인다).
 - 제목은 한 줄로(줄바꿈을 공백으로) 60자에서 자른다(셸 표시용).
 - 연결:
   - `runtime.ProjectOpt`: `autocompletion=completion.complete_project`
   - `runtime.TaskOpt`, `task.TaskIdArg`: `complete_task_id`
   - `lb project edit|archive SLUG`: `complete_project`, `lb project unarchive SLUG`: `complete_archived_project`
-  - `lb log list -p`처럼 따로 정의한 프로젝트 옵션이 있으면 같이 연결한다(`grep -rn '"--project"' src/logbook/cli`로 찾는다).
+  - `runtime.ProjectOpt`가 아닌 따로 정의한 프로젝트 옵션도 연결한다(`grep -rn '"--project"' src/logbook/cli`로 찾는다). 보관한 프로젝트도 받는 조회 옵션(예: `lb task list -p`, task.py 100행대)은 `complete_any_project`를 쓴다.
 - `main.py`: `add_completion=True`로 바꾸고 주석을 지운다. `--install-completion`, `--show-completion`은 Typer 기본 영어 help다(SPEC 8의 예외 범위: 프레임워크 기본 문구).
 - `runtime.py`가 `cli.completion`을 import해도 `--help`에서 SQLAlchemy가 로드되지 않아야 한다(기존 가드 테스트가 지킨다).
 
@@ -492,9 +498,10 @@ def complete_task_id(incomplete: str) -> list[tuple[str, str]]:
 | `open_readonly` | 경로에 한글·공백·`#` | 열린다 |
 | `complete_project` | 활성 2 + 보관 1, `incomplete="pa"` | 활성 중 `pa`로 시작하는 것만 |
 | `complete_archived_project` | 같은 DB | 보관 1 |
+| `complete_any_project` | 같은 DB | 3개 |
 | `complete_task_id` | todo·doing·done, `"#"` 시작 | 열린 것만, `#` 붙임, 긴 제목 자름 |
 | 공통 | DB 없음, 설정 TOML 오류 | `[]`, 예외 없음 |
-| 통합 | `CliRunner`, env `_LB_COMPLETE=complete_bash`, `COMP_WORDS="lb add 1h x -p "`, `COMP_CWORD=5` | 출력에 활성 slug |
+| 통합 | `CliRunner().invoke(app, [], prog_name="lb", env={"_LB_COMPLETE": "complete_bash", "COMP_WORDS": "lb add 1h x -p ", "COMP_CWORD": "5"})` | 출력에 활성 slug. `prog_name`을 빼면 변수 이름이 `_ROOT_COMPLETE`가 되어 실패한다. PowerShell 형식은 `COMP_WORDS`를 쓰지 않으므로 테스트는 bash 형식만 쓴다 |
 | 통합 | `lb --help` | `--install-completion`, `--show-completion`이 보인다 |
 | 가드 | `lb --help`, `lb task start --help` | SQLAlchemy 로드 안 함 |
 
@@ -561,8 +568,13 @@ def clean_summary(text: str) -> str:
 
 ```python
 # core/polish/sdk_errors.py
-def to_external_error(error: Exception, sdk: ModuleType, *, provider: str, model: str) -> ExternalServiceError | None:
-    """두 SDK 공통 예외 이름으로 판정한다. 해당하지 않으면 None(호출자가 다시 던진다)."""
+def to_external_error(
+    error: Exception, sdk: ModuleType, *, provider: str, model: str, timeout: float
+) -> ExternalServiceError | None:
+    """두 SDK 공통 예외 이름으로 판정한다. 해당하지 않으면 None(호출자가 다시 던진다).
+
+    timeout은 호출한 제공자 모듈(claude.py·chatgpt.py)의 TIMEOUT_SECONDS다. 이 모듈은 그 상수를 import하지 않는다.
+    """
 ```
 
 | SDK 예외(검사 순서) | 문구(ExternalServiceError) |
@@ -570,7 +582,7 @@ def to_external_error(error: Exception, sdk: ModuleType, *, provider: str, model
 | `AuthenticationError`, `PermissionDeniedError` | `{label} API 키가 올바르지 않거나 권한이 없습니다. 환경변수 {env}를 확인하세요.` |
 | `NotFoundError` | `{label} 모델을 쓸 수 없습니다: {model}. 설정 [llm].{provider}_model을 확인하세요.` |
 | `RateLimitError` | `{label} 요청 한도를 넘었습니다. 잠시 후 다시 시도하세요.` |
-| `APITimeoutError`(APIConnectionError보다 먼저) | `{label} 응답이 {TIMEOUT_SECONDS:.0f}초 안에 오지 않았습니다. 잠시 후 다시 시도하세요.` |
+| `APITimeoutError`(APIConnectionError보다 먼저) | `{label} 응답이 {timeout:.0f}초 안에 오지 않았습니다. 잠시 후 다시 시도하세요.` |
 | `APIConnectionError` | `{label} 서버에 연결하지 못했습니다. 인터넷 연결을 확인하세요.` |
 | `APIStatusError` | `{label} 요청이 실패했습니다 (HTTP {status_code}). 잠시 후 다시 시도하세요.` |
 
@@ -682,7 +694,8 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
 ```
 - `--provider`만 주고 `--polish`가 없으면 `InvalidInputError`: `--provider 옵션은 --polish와 함께 쓰세요.` DB·설정 없이 끝난다.
 - 모르는 제공자 이름도 DB 없이 끝난다(`choose_provider` 전에 `PROVIDERS`로 검사. 문구는 core 상수를 쓴다).
-- 순서: 옵션 검사 → 출력 경로 검사 → 보고서 데이터(Task 7-3의 `_build_data`) → 커밋 부록 → (`--polish`면) `choose_provider(cfg.llm, provider)` → 확인 → 요청 → `replace(data, summary=…)` → 렌더링 → 전달.
+- 순서: 옵션 검사 → 출력 경로 검사 → `_build_data` → 커밋 부록 → (`--polish`면) `choose_provider(build.cfg.llm, provider)` → 확인 → 요청 → `replace(data, summary=…)` → `_render` → `_deliver`.
+- 함수 안에서 `from logbook.core import polish`로 지연 import하고 `polish.choose_provider`·`polish.polish_report`를 속성으로 부른다(테스트 monkeypatch 대상 `logbook.core.polish.polish_report`).
 - 확인(`--yes`가 없을 때 `runtime.require_confirmation`):
   ```
   보낼 내용: 2026-W42 보고서 데이터(프로젝트 3개, 태스크 7건, 특이사항·리스크 포함). 커밋 내역과 작성자는 보내지 않습니다.
@@ -691,7 +704,7 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
   - 거절: `문장 다듬기를 취소했습니다. 보고서를 만들지 않았습니다.` / 입력 없음: `확인 입력이 없습니다. 보내려면 --yes를 붙이세요.` (종료 1. 기존 `require_confirmation` 동작)
 - 요청 전에 stderr에 `{info_mark} Claude에 요약을 요청하는 중입니다…`(`console.print_notice`). 요청 중 Ctrl+C는 기존 오류 경계 처리에 맡긴다.
 - 실패(`ExternalServiceError`)면 보고서를 만들지 않고 종료 1(사용자가 요약을 원했으므로 요약 없는 보고서로 조용히 대신하지 않는다). 문구 끝에 덧붙이지 않는다. README에 "요약 없이 받으려면 --polish 없이 다시 실행" 안내.
-- `--out`이 이미 있는 파일이면 덮어쓰기 확인은 요청 **뒤**(기존 `write_text_file`)가 아니라 요청 **전**에 한다: 요약에 비용이 드니 사용자가 거절할 수 있는 확인을 먼저 다 받는다. `runtime.prepare_output_path` 다음에 파일이 있고 `--yes`가 없으면 기존 덮어쓰기 질문을 먼저 하고, `write_text_file(..., yes=True)`로 쓴다.
+- `--out`이 이미 있는 파일이면 덮어쓰기 확인은 요청 **뒤**(기존 `write_text_file`)가 아니라 요청 **전**에 한다: 요약에 비용이 드니 사용자가 거절할 수 있는 확인을 먼저 다 받는다. `runtime.prepare_output_path` 다음에 파일이 있고 `--yes`가 없으면 기존 덮어쓰기 질문을 먼저 하고, `_deliver(..., overwrite_confirmed=True)`로 넘겨 `write_text_file(..., yes=True)`로 쓴다. `_deliver`에 키워드 인자 `overwrite_confirmed: bool = False`를 더한다.
 
 **테스트 케이스**(`logbook.core.polish.polish_report`를 monkeypatch, 실제 SDK 호출 없음)
 
@@ -719,7 +732,7 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
 - Modify: `src/logbook/web/app.py`, `src/logbook/web/pages/report.py`, `src/logbook/web/templates/partials/report_body.html`, `src/logbook/web/static/js/report.js`, `src/logbook/web/static/css/report.css`, `tests/web/test_static_*.py`(JS 문구 테스트가 있으면)
 
 **화면**
-- `ReportBodyView`에 `polish: tuple[PolishButton, ...]`(`PolishButton(provider, label)`). `available_providers()`가 비면 빈 튜플이고 버튼 영역이 나오지 않는다(SPEC: 키가 없으면 기능을 숨긴다). 설정 `[llm].provider`가 있어도 웹은 가능한 제공자 버튼을 모두 보여 준다(결정 S2-추가).
+- `ReportBodyView`에 `polish: tuple[PolishButton, ...] = ()`(`PolishButton(provider, label)`. 기본값 필수: `_week_error_response`가 직접 만든다). 페이지는 `from logbook.core import polish`로 가져와 `polish.available_providers()`를 속성으로 부른다(테스트 monkeypatch 대상 `logbook.core.polish.available_providers`). `available_providers()`가 비면 빈 튜플이고 버튼 영역이 나오지 않는다(SPEC: 키가 없으면 기능을 숨긴다). 설정 `[llm].provider`가 있어도 웹은 가능한 제공자 버튼을 모두 보여 준다(결정 S2-추가).
 - `report_body.html`: 미리보기 오류가 없을 때 `report__actions` 안에
   ```html
   <form class="report__polish-form" hx-post="/report/polish" hx-target="#report-polish" hx-swap="outerHTML"
@@ -737,7 +750,7 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
 
 **`POST /report/polish`** (`web/pages/report_polish.py`)
 - 폼: `week`, `provider`. 주차 오류·제공자 오류는 `InvalidInputError` → 기존 공통 처리(400, 알림 영역).
-- `choose_provider(ctx.cfg.llm, provider)` → 세션 안에서 `report_data` → 세션 밖에서 `polish_report(data, ctx.cfg.llm, provider)` → `report_polish.html`.
+- `choose_provider(ctx.cfg.llm, provider)` → 세션 안에서 `report_data` → 세션 밖에서 `polish_report(data, ctx.cfg.llm, provider)` → `report_polish.html`. 이 모듈은 `from logbook.core.polish import choose_provider, polish_report`로 모듈 수준 import한다(테스트 monkeypatch 대상 `logbook.web.pages.report_polish.polish_report`).
 - 커밋 부록은 보내지 않으므로 수집하지 않는다(`report_with_commits`를 부르지 않는다).
 - `ExternalServiceError`는 공통 처리(502, 알림 영역에 문구). 결과 자리는 그대로.
 - 라우트는 동기 함수(`def`)로 둔다. 외부 요청 동안 이벤트 루프를 막지 않도록 FastAPI가 스레드풀에서 실행한다.
@@ -794,7 +807,7 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
   - `lb git-collect`: 임시 git 저장소 두 개(하나는 없는 경로)로 출력과 종료 코드
   - `lb report`: 부록, 경고
   - `lb task import-gh`: 실제 gh로 이 저장소(`chanyoo-93/logbook`)의 `--state all --limit 5 --dry-run`(읽기 전용, 사용자 PC에 gh 로그인이 되어 있을 때만). 실제 추가는 임시 DB에서만
-  - 자동완성: `_LB_COMPLETE=complete_powershell` 환경으로 후보 출력 확인(설치는 하지 않음)
+  - 자동완성: `_LB_COMPLETE=complete_bash`, `COMP_WORDS`, `COMP_CWORD` 환경으로 실제 `lb`의 후보 출력 확인(설치는 하지 않음. PowerShell 형식은 COMP_WORDS를 쓰지 않는다)
   - `lb report --polish`: 키 없는 상태의 안내 문구만(실제 API 호출은 사용자 확인 항목)
 - [ ] **화면 확인(메인 세션, Edge 헤드리스)**: `/report`에 가짜 제공자(확인 스크립트의 앱 래퍼에서 `available_providers`·`polish_report` 대역)로 버튼·결과 패널·경고 목록, 1280·375·320px × 밝은·어두운
 - [ ] **브라우저·실제 서비스 확인(사용자, Windows·macOS, 절차는 PR 댓글)**: 실제 키로 Claude·ChatGPT 다듬기 각 1회(비용 발생 안내), 자동완성 설치(PowerShell·zsh), gh 이슈 가져오기, git-collect
@@ -836,6 +849,20 @@ lb report [--week] [--out] [--copy] [--yes] [--polish] [--provider anthropic|ope
   - **OpenAI 기본 모델:** `gpt-6.1-sol`(사용자: `gpt-6-astra`는 너무 크다)
 - **S3 GitHub:** gh CLI(`gh issue list --json`), 새 의존성 없음. 중복은 `external_ref`(owner/repo#번호)로 건너뛴다.
 - **S4 자동완성:** `lb --install-completion` + `-p` slug·태스크 ID 완성. 읽기 전용, 옛 버전 DB면 후보 없음.
+
+---
+
+## 계획 검토 (2026-10-14)
+
+사실 확인 에이전트 1명(Sonnet)이 코드·Typer·git·SQLite를 실험으로 확인했다. 반영한 것:
+- `run_tool` 문구는 `label`(예: `git log`)을 쓴다. `args[0]`은 `-C`라 쓸 수 없다.
+- 타임아웃 문구 값은 제공자 모듈이 `to_external_error(..., timeout=)`로 넘긴다.
+- CLI 보고서는 `_build_data`(cfg 포함)와 `_render`로 나눈다. `_deliver`에 `overwrite_confirmed`.
+- 웹 부록은 특이사항 저장·409 응답 경로까지 다섯 곳에서 채운다.
+- git 실제 테스트는 지난주 커밋을 먼저 만든다(`--since` 탐색 중단). `--until`은 경계를 포함하므로 Python 필터가 필요하다.
+- 자동완성 테스트는 `prog_name="lb"`와 bash 형식만 쓴다. 조회용 `-p`는 보관 포함 후보(`complete_any_project`).
+- `_Table.to_llm()`, 기본 설정 문서 테스트 기대 수정, `ReportBodyView.polish` 기본값, monkeypatch 대상에 맞춘 import 방식.
+- SDK(anthropic·openai) 세부는 미설치라 확인하지 못했다. Task 7-1에서 설치한 뒤 7-6·7-7 구현자가 설치본으로 확인한다.
 
 ---
 
