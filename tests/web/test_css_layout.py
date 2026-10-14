@@ -214,6 +214,13 @@ def test_flash_notice_uses_medium_radius() -> None:
     assert "border-radius: var(--radius-md)" in declarations
 
 
+def test_table_buttons_draw_the_focus_ring_inside_so_the_scroll_box_does_not_clip_it() -> None:
+    # .table-wrap(overflow-x: auto)이 마지막 행 버튼의 바깥 윤곽선을 잘랐다(설정 화면 프로젝트 표).
+    declarations = _declarations(_read("dashboard.css"), ".grid .btn:focus-visible")
+
+    assert "outline-offset: -2px" in declarations
+
+
 def test_panel_clips_overflow_so_corners_stay_round() -> None:
     assert "overflow: clip" in _declarations(_read("dashboard.css"), ".panel")
 

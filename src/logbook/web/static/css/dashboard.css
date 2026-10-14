@@ -190,6 +190,11 @@
   text-align: right;
 }
 
+/* 표 스크롤 상자(.table-wrap)가 마지막 행 버튼의 바깥 윤곽선을 자르지 않게 안쪽에 그린다. */
+.grid .btn:focus-visible {
+  outline-offset: -2px;
+}
+
 .grid .nowrap {
   white-space: nowrap;
 }
