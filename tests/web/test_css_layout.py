@@ -116,6 +116,14 @@ def test_board_card_lists_keep_a_min_height_to_receive_drops() -> None:
     assert any(d.startswith("min-height: ") for d in declarations)
 
 
+def test_board_card_lists_fill_the_column_to_receive_drops_below_cards() -> None:
+    # 짧은 열의 카드 아래 빈 곳에 놓아도 그 열로 들어가게 목록이 열 끝까지 늘어난다.
+    css = _read("tasks.css")
+
+    assert {"display: flex", "flex-direction: column"} <= _declarations(css, ".board__col")
+    assert "flex: 1 0 auto" in _declarations(css, ".board__cards")
+
+
 HEAVY_TOP_RULE = "border-top: 2px solid var(--ink)"
 
 

@@ -295,6 +295,15 @@ def test_lists_carry_status_even_when_empty(client: TestClient) -> None:
     assert [e.text for e in by_class(html, "empty")][:4] == ["없습니다."] * 4
 
 
+def test_empty_notice_sits_right_under_the_column_head(client: TestClient) -> None:
+    # 목록이 열 끝까지 늘어나 놓을 자리가 되므로, 빈 안내는 목록 앞(열 머리 바로 아래)에 둔다.
+    html = client.get("/tasks").text
+
+    for key in ("todo", "doing", "done", "dropped"):
+        column = html[html.index(f'id="task-col-{key}"') :]
+        assert column.index('class="empty"') < column.index('class="board__cards"')
+
+
 def test_column_counts_match_cards(client: TestClient, web_engine: Engine) -> None:
     _seed_board(web_engine)
 

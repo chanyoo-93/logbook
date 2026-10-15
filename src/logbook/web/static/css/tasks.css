@@ -134,6 +134,8 @@
 }
 
 .board__col {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
@@ -191,6 +193,7 @@
 
 .board__cards {
   display: flex;
+  flex: 1 0 auto; /* 열 끝까지 늘려 짧은 열의 카드 아래 빈 곳에도 놓을 수 있게 한다 */
   min-height: 3rem; /* 카드가 없는 열에도 놓을 자리를 둔다 */
   flex-direction: column;
   gap: var(--space-2);
