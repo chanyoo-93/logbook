@@ -13,7 +13,8 @@ import logbook.web
 
 CSS_ROOT = Path(logbook.web.__file__).parent / "static" / "css"
 NARROW_QUERY = "@media (max-width: 719px)"
-MIDDLE_QUERY = "@media (min-width: 720px) and (max-width: 1099px)"
+BOARD_NARROW_QUERY = "@media (max-width: 719.98px)"
+MIDDLE_QUERY = "@media (min-width: 720px) and (max-width: 1099.98px)"
 
 _COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 _RULE = re.compile(r"([^{}]+)\{([^{}]*)\}")
@@ -83,7 +84,7 @@ def test_dashboard_charts_become_a_single_shrinkable_column_below_720px() -> Non
 
 
 def test_task_board_stacks_into_one_column_below_720px() -> None:
-    narrow = _media_block(_read("tasks.css"), NARROW_QUERY)
+    narrow = _media_block(_read("tasks.css"), BOARD_NARROW_QUERY)
 
     assert "grid-template-columns: 1fr" in _declarations(narrow, ".board__columns")
 
@@ -363,6 +364,7 @@ def test_tracking_tokens_are_in_root() -> None:
         ("todo", "--tag-bg", "--ink-muted"),
         ("doing", "--accent-soft", "--accent-hover"),
         ("done", "--ok-soft", "--ok"),
+        ("dropped", "--danger-soft", "--danger"),
     ],
 )
 def test_board_column_head_uses_state_color(column: str, background: str, ink: str) -> None:

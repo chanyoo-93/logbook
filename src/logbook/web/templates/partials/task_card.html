@@ -1,5 +1,5 @@
 {% from "partials/marks.html" import category_pill, pill, project_mark %}
-        <li id="task-{{ card.id }}" class="task-card{% if card.over %} task-card--over{% endif %}" data-task-id="{{ card.id }}" data-version="{{ card.version }}">
+        <li id="task-{{ card.id }}" class="task-card" data-task-id="{{ card.id }}" data-version="{{ card.version }}">
           <a class="task-card__link" href="/tasks/{{ card.id }}/edit{% if board.project %}?project={{ board.project|urlencode }}{% endif %}">
           <p class="task-card__title">
             <span class="task-card__id">#{{ card.id }}</span>

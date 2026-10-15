@@ -123,7 +123,7 @@ def test_card_shows_actual_and_estimate_and_flags_overrun(
     html = client.get("/tasks").text
 
     assert _figures(html, over) == "실적 5h / 예상 4h"
-    assert "task-card--over" in str(by_id(html, f"task-{over}").attrs["class"]).split()
+    assert len(by_class(html, "progress--over")) == 1
     assert [e.text for e in by_class(html, "task-card__over")] == ["예상 초과"]
     assert str(by_class(html, "task-card__over")[0].attrs["class"]).split() == [
         "pill",
@@ -131,7 +131,6 @@ def test_card_shows_actual_and_estimate_and_flags_overrun(
         "task-card__over",
     ]
     assert _figures(html, within) == "실적 1h / 예상 4h"
-    assert "task-card--over" not in str(by_id(html, f"task-{within}").attrs["class"]).split()
 
 
 def test_card_without_estimate_shows_actual_only(client: TestClient, web_engine: Engine) -> None:

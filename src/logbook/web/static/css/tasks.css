@@ -327,14 +327,14 @@
 }
 
 /* 중간 화면: 칸반을 2×2로 놓는다 */
-@media (min-width: 720px) and (max-width: 1099px) {
+@media (min-width: 720px) and (max-width: 1099.98px) {
   .board__columns {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 /* 좁은 화면: 칸반을 한 열로 쌓는다 */
-@media (max-width: 719px) {
+@media (max-width: 719.98px) {
   .board__columns {
     grid-template-columns: 1fr;
   }
