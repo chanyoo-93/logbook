@@ -396,6 +396,7 @@ def _upgrade_to_4(conn: Connection) -> None:
     - 1280px 회귀(열 밖에 놓기, 머리 바로 아래, 빈 열, 같은 열, 409)가 통과했다.
     - 누르기만 하면 수정 화면으로 간다. 높이는 누르는 동안만 고정된다.
   - 전체 pytest 3089 passed, 2 skipped(491d5ef).
+  - CI 통과(b6b0584 기준): Windows 3089 passed·2 skipped, macOS 3086 passed·5 skipped. PR 댓글 확인 절차(3번)와 PR 본문을 고쳤다.
 - [x] **최종 리뷰**(final-reviewer, Sonnet high): ready. critical·major는 없고 minor는 5건이다.
   - M1: SPEC의 열 이름 → 7602800
   - M3: 미디어 쿼리 경계를 소수 뷰포트까지 덮음(719.98px·1099.98px) → 63a83e6
