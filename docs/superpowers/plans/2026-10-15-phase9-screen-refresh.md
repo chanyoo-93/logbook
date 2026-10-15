@@ -3,10 +3,10 @@
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Phase 8 디자인 시스템 위에서 태스크 보드와 대시보드의 화면 구조를 바꾼다(ROADMAP Phase 9).
-- 중단 시각 기록(스키마 4): "이번 주 중단" 열이 이번 주에 중단한 태스크를 정확히 고르게 한다.
+- 중단 시각 기록(스키마 4): "중단" 열이 이번 주에 중단한 태스크를 정확히 고르게 한다.
 - 칸반 고도화: 상태 색을 옅게 깐 열 머리와 건수, 흰 카드, 실적/예상 진행 막대
 - 태스크 등록·수정을 별도 화면으로 옮긴다. 카드를 누르면 수정 화면으로 간다.
-- 카드의 버튼을 모두 없애고, 카드를 열 사이로 끌어 놓아 상태를 바꾼다(SortableJS, 로컬 포함). 보드에 "이번 주 중단" 열을 더한다.
+- 카드의 버튼을 모두 없애고, 카드를 열 사이로 끌어 놓아 상태를 바꾼다(SortableJS, 로컬 포함). 보드에 "중단" 열(이번 주에 중단한 것)을 더한다.
 - 대시보드 위계: 오늘 공수의 하루 목표 대비 진행 막대, 진행 중 타이머를 화면에 하나뿐인 강조 띠로
 
 **Architecture:**
@@ -88,7 +88,7 @@
 | `--band-ink` | `#f6f5f4` | `#191918` | 띠 글자 |
 | `--band-muted` | 띠 위 대비 4.5 이상인 회색 | 같은 조건 | 띠 보조 글자 |
 
-- 열 머리: 할 일 `--tag-bg`(중립), 진행 중 `--accent-soft`, 이번 주 완료 `--ok-soft`, 이번 주 중단 `--danger-soft`. 머리 글자는 각 상태 색(`--ink-muted`, `--accent-hover`, `--ok`, `--danger`)이고, 대비는 `test_theme.py`의 쌍으로 확인한다.
+- 열 머리: 할 일 `--tag-bg`(중립), 진행 중 `--accent-soft`, 완료 `--ok-soft`, 중단 `--danger-soft`. 머리 글자는 각 상태 색(`--ink-muted`, `--accent-hover`, `--ok`, `--danger`)이고, 대비는 `test_theme.py`의 쌍으로 확인한다.
 - 정확한 색 값은 구현자가 대비 4.5 이상이 되도록 고르고 테스트 쌍에 더한다(위 값은 출발점).
 - 색 값은 Phase 8 규칙대로 `app.css`의 `:root` 두 블록에만 둔다.
 
@@ -260,12 +260,12 @@ def _upgrade_to_4(conn: Connection) -> None:
 
 ---
 
-## Task 9-4: 끌어 놓기로 상태 변경과 이번 주 중단 열
+## Task 9-4: 끌어 놓기로 상태 변경과 중단 열
 
 **Files:** `pages/tasks.py`(4열), `task_views.py`(열·카드 데이터 속성, 상태 버튼 정의 삭제, `task_version`에 `dropped_at`), `web/api/serialize.py`(`task_json`에 `dropped_at`), `task_board.html`, `task_card.html`, `tasks.html`(`{% block scripts %}` 추가), 새 `static/js/board.js`, `tasks.css`(4열·2×2·1열, 끄는 중 모양), tests(`test_tasks_status.py`, `test_tasks_page.py`(15행 `DROP_CONFIRM` import, 270~295행 버튼 검사, 51행 고정 데이터의 중단 태스크가 이제 중단 열에 보임), `test_api_tasks.py`(66행 필드 목록), `test_static.py`, `test_css_layout.py`, 새 태스크 화면 스크립트 목록 테스트)
 
 - **vendor(메인 세션, 이 Task 전에):** 레지스트리에서 최신 버전을 확인하고 tarball을 받아 `dist.integrity`(sha512)를 확인한 뒤 `package/Sortable.min.js`·`package/LICENSE`를 꺼낸다(새 임시 폴더, `tarfile`의 `filter="data"`). README 표에 같은 행 형식(백틱 파일명·sha256)으로 행을 더하고, "교체할 때" 절에 `tasks.html`을 더한다. `test_static.py`의 `VENDOR_FILES`·서빙 목록에 두 파일을 더한다. 커밋 `chore: SortableJS 1.15.7 로컬 포함`.
-- 보드: 4열 "할 일·진행 중·이번 주 완료·이번 주 중단". 중단 열은 Task 9-1의 `dropped_tasks_in_week`를 쓴다. 빈 열도 `ul`을 그린다(놓을 자리). 빈 안내는 목록 밖 `p.empty`.
+- 보드: 4열 "할 일·진행 중·완료·중단"(완료·중단 열은 이번 주에 바뀐 것만, 열 제목은 2026-10-15 사용자 요청). 중단 열은 Task 9-1의 `dropped_tasks_in_week`를 쓴다. 빈 열도 `ul`을 그린다(놓을 자리). 빈 안내는 목록 밖 `p.empty`.
 - 카드 버튼(시작·완료·할 일로·중단·다시 열기)과 그 정의(`_ACTIONS`, `DROP_CONFIRM` 등)를 지운다. JSON API의 상태 변경은 그대로다.
 - `task_version`에 `dropped_at`을 넣는다(`done_at`처럼 "중단 → 할 일 → 중단" 사이의 변경도 충돌로 잡는다). `/api/tasks`의 태스크 JSON에 `dropped_at`(UTC ISO, 없으면 `null`)을 `done_at` 다음에 더한다.
 - 중단 열로 끌 때 확인 창이 없다(D5). 열 안 순서는 바꾸지 않는다(D6, `sort: false`).
@@ -286,7 +286,7 @@ def _upgrade_to_4(conn: Connection) -> None:
 
 - 메인 세션 화면 확인: Edge 헤드리스에서 board.js의 이동 함수를 직접 불러(끌기 대신) 상태가 바뀌고 보드가 다시 그려지는지, 409를 일부러 일으켜 카드가 제자리로 돌아오는지, 끄는 중 모양, CSP 위반 로그가 없는지 본다.
 
-- [ ] RED → GREEN → 커밋 `feat: 카드를 끌어 놓아 상태를 바꾸고 이번 주 중단 열 추가(SortableJS)`
+- [ ] RED → GREEN → 커밋 `feat: 카드를 끌어 놓아 상태를 바꾸고 중단 열 추가(SortableJS)`
 - [ ] 메인 세션: 전후 스크린샷·끌어 놓기 확인·비교 페이지 → 사용자 승인
 
 ---
@@ -320,7 +320,7 @@ def _upgrade_to_4(conn: Connection) -> None:
 - [ ] **SPEC.md**
   - 2장: `tasks.dropped_at`, `schema_version` 4(버전 4: tasks.dropped_at 추가)
   - 5장 백업 형식 4(`tasks.dropped_at`, 형식 1~3 가져오기 규칙)
-  - 6장: 태스크 화면(4열, 끌어 놓기, 이번 주 중단 열, 등록·수정 화면과 주소, 상태 선택, 키보드 경로, 실패 복원), 대시보드(진행 막대, 강조 띠), 의존성(SortableJS), JSON API의 `dropped_at`
+  - 6장: 태스크 화면(4열, 끌어 놓기, 중단 열(이번 주), 등록·수정 화면과 주소, 상태 선택, 키보드 경로, 실패 복원), 대시보드(진행 막대, 강조 띠), 의존성(SortableJS), JSON API의 `dropped_at`
   - 후속 항목: 태스크 화면 확장(끌어 놓기·설명·마감일·외부 참조 수정·중단 태스크 보기)을 정리한다
 - [ ] **README.md**: 태스크 화면 사용법(끌어 놓기, 새 태스크, 수정 화면), 키보드로 상태 바꾸는 방법, 업그레이드(스키마 4)
 - [ ] **CLAUDE.md, AGENTS.md**: `static/js/board.js`, vendor 목록(SortableJS), 새 템플릿
@@ -352,6 +352,7 @@ def _upgrade_to_4(conn: Connection) -> None:
 - 이미 정해진 방향(Phase 8 결정 게이트): 등록·수정 별도 화면, 카드 버튼 모두 제거와 SortableJS 로컬 포함 끌어 놓기, 보드에 중단 열.
 - 계획서 검토 중 사용자가 좌측 내비게이션(위쪽 탭 메뉴를 왼쪽 사이드바로)을 요청했다. 결정 게이트 S1(좁은 화면은 위쪽 메뉴로)만 정한 뒤 "일단 이 요구사항은 다음 페이즈로 넘길게. 내비게이션 메뉴 바는 고려하지 않고, 우선 지금 상태에서 phase 9 진행해줘"라고 했다. 좌측 내비게이션은 ROADMAP Phase 10에 적었고, Phase 9는 지금의 위쪽 메뉴 기준으로 한다(D9의 열 기준도 그대로).
 - **승인:** 위 지시로 이 계획서(검토 반영본 da92b1d)를 승인했다(2026-10-15).
+- Task 9-2 확인 때 사용자가 "`이번 주 완료`라는 문구를 그냥 `완료`로 고쳐줘"라고 했다. 완료 열 제목을 "완료"로 줄이고(열 내용은 그대로 이번 주에 완료한 것), Task 9-4의 중단 열 제목도 같은 규칙으로 "중단"으로 한다(메인 세션이 밝힌 기본값).
 
 ## 계획 검토 (2026-10-15)
 
