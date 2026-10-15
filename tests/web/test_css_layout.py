@@ -244,6 +244,14 @@ def test_table_buttons_draw_the_focus_ring_inside_so_the_scroll_box_does_not_cli
     assert "outline-offset: -2px" in declarations
 
 
+def test_table_color_inputs_draw_the_focus_ring_inside_too() -> None:
+    # 카테고리 색 표 마지막 행의 색 고르기 칸 윤곽선이 .table-wrap에 0.9px 잘렸다
+    # (Task 8-9 포커스 측정).
+    declarations = _declarations(_read("dashboard.css"), '.grid input[type="color"]:focus-visible')
+
+    assert "outline-offset: -2px" in declarations
+
+
 def test_panel_clips_overflow_so_corners_stay_round() -> None:
     assert "overflow: clip" in _declarations(_read("dashboard.css"), ".panel")
 

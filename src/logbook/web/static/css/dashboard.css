@@ -198,6 +198,11 @@
   outline-offset: -2px;
 }
 
+/* 표 안 색 고르기 칸(카테고리 색 표)도 같은 이유로 안쪽에 그린다. */
+.grid input[type="color"]:focus-visible {
+  outline-offset: -2px;
+}
+
 .grid .nowrap {
   white-space: nowrap;
 }
