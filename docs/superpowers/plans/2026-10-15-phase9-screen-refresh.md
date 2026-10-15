@@ -299,8 +299,22 @@ def _upgrade_to_4(conn: Connection) -> None:
   - 레지스트리 최신이 1.15.7(2026-02-11)이고 tarball의 sha512가 계획서 값과 같았다.
   - eval·new Function·style 요소 주입이 없다.
   - `LICENSE-sortablejs.txt`는 원본이 CRLF라 줄 끝만 LF로 바꿨다(README에 적음).
-- [ ] RED → GREEN → 커밋 `feat: 카드를 끌어 놓아 상태를 바꾸고 중단 열 추가(SortableJS)`
-- [ ] 메인 세션: 전후 스크린샷·끌어 놓기 확인·비교 페이지 → 사용자 승인
+- [x] RED → GREEN → 커밋 `feat: 카드를 끌어 놓아 상태를 바꾸고 중단 열 추가(SortableJS)` (88f1843)
+  - 구현이 정한 것: 프로젝트 필터 값은 `#filter-project`에서 읽는다. 빈 목록에는 `aria-labelledby`를 두지 않는다(열 `section`이 이름을 가진다).
+  - 테스트 고정 데이터: 중단 태스크는 `set_task_status`가 실제 지금을 기록해 화면 시계와 어긋난다. 그래서 `dropped_at`을 이번 주로 고정하고 지난주 중단 태스크를 더했다.
+  - 다른 화면(새 태스크·대시보드·보고서)이 SortableJS를 싣지 않는지 테스트한다.
+  - 검토 minor R1(실제 브라우저의 복원과 잠금 해제)은 아래 메인 세션 확인으로 닫았다.
+  - 메인 세션 보완(6f21b5b): 빈 열 안내가 최소 높이 아래로 밀려 떠 보였다. 안내를 열 머리 바로 아래로 옮겼다. 짧은 열은 카드 아래 빈 곳에 놓아도 들어가지 않았다. 목록이 열 끝까지 늘어나게 했다.
+- [x] 메인 세션: 전후 스크린샷·끌어 놓기 확인·비교 페이지 → 사용자 승인(2026-10-15)
+  - 전체 pytest 3074 passed, 2 skipped. core·web 커버리지 100%.
+  - Edge 헤드리스에서 `Sortable.get(목록).options.onEnd`를 직접 불렀다(`p9_drag.py`).
+    - 성공: 보드를 다시 그리고 결과 줄이 보인다.
+    - 빈 중단 열에 놓기: 성공.
+    - 409: 문구가 남고 카드는 제자리로 돌아간다. 잠금이 풀려 다음 끌기도 성공한다.
+    - Promise 거부: 카드가 제자리로 돌아가고 잠금이 풀린다.
+    - 같은 열에 놓기: 요청이 없다.
+    - CSP 위반과 스크립트 오류는 0건이다.
+  - compare-9-4.html: 1280·375·320px, 중간 폭(실제 뷰포트 720·1000·1099·1100·696px), 끌어 놓기 상태. 가로 넘침은 없다.
 
 ---
 
@@ -308,17 +322,18 @@ def _upgrade_to_4(conn: Connection) -> None:
 
 **Files:** `pages/summary.py`(오늘 공수·목표 대비), `templates/partials/summary.html`, `templates/partials/timer.html`, `app.css`(띠 토큰), `dashboard.css`·`components.css`(진행 막대, 띠), tests(`test_dashboard.py`, `test_timer_panel.py`, `test_theme.py`, `test_css_layout.py`)
 
-- 진행 막대(D7): "이번 주 공수" 칸에 `오늘 2h 30m / 목표 8h` 글자와 9-2와 같은 SVG 막대를 둔다. 목표를 넘으면 꽉 찬 막대와 "목표 달성" 꼬리표(ok).
+- 진행 막대(D7): "이번 주 공수" 칸에 `오늘 2h 30m / 목표 8h` 글자와 9-2와 같은 SVG 막대를 둔다. 목표에 닿거나 넘으면(오늘 ≥ 목표) 꽉 찬 막대와 "목표 달성" 꼬리표(ok).
+  - 목표는 설정 `daily_target_minutes`다(1 이상이라 0으로 나누는 경우가 없다). 비율은 9-2의 `progress_percent`와 같은 규칙이다(0~100 정수).
   - 오늘 공수는 `build_summary`에서 `services.day_total_minutes(s, now.date())`로 구하고 `SummaryView`에 필드를 더한다. 빠른 기록 뒤 요약 갱신(OOB)도 같은 함수를 지나므로 같은 값이다(결과 줄의 "오늘 누적"과 같다).
-  - 마크업: `dl.stats` 바로 안에 `div`를 넣지 않는다(정의 목록 구조가 깨진다). "이번 주 공수"의 `div.stat` 안 `dd`에 넣거나 `dl` 바로 아래에 둔다.
+  - 마크업: 지금 `dl.stats`의 직계는 `dt`·`dd` 묶음인 `div.stat`뿐이다(HTML이 허용하는 묶음). 막대용 `div`를 `dl`에 직접 넣지 않는다(정의 목록 구조가 깨진다). "이번 주 공수"의 `div.stat` 안 `dd`(두 번째 `dd`도 된다)에 넣거나 `dl` 바로 아래에 둔다.
   - 기록이 없는 날에도 0%로 보이게 차트용 `has_logs` 블록 밖에 둔다.
 - 강조 띠(D8): `.timer--running`(진행 중일 때 붙는 class)이 `--band-bg` 바탕, `--band-ink` 글자. 띠 안 버튼은 띠 색에 맞춘 변형(`.timer--running .btn`: 투명 바탕, `--band-ink` 글자, 대비 3:1 이상 테두리). "진행 중" 꼬리표와 점은 띠 위에서도 읽히게 한다.
 - 타이머가 없을 때(시작 폼)는 지금 모양 그대로다.
 
 | 대상 | 케이스 | 기대 |
 |---|---|---|
-| 요약 뷰 | 오늘 0(기록 없음) / 절반 / 목표 초과 | 0%와 막대 / 50% / 100%와 달성 꼬리표 |
-| 템플릿 | 막대 SVG, 글자, `dl` 구조 | `style=` 없음, `dl` 직계에 `div` 없음 |
+| 요약 뷰 | 오늘 0(기록 없음) / 절반 / 목표와 같음 / 목표 초과 | 0%와 막대 / 50% / 100%와 달성 꼬리표 / 100%와 달성 꼬리표 |
+| 템플릿 | 막대 SVG, 글자, `dl` 구조 | `style=` 없음, `dl` 직계 자식은 모두 `dt`·`dd`만 품은 `div.stat` |
 | 갱신 | 빠른 기록 뒤 요약 OOB | 오늘 공수가 늘어난 값 |
 | 토큰·대비 | `--band-*` 두 테마, 글자/바탕 4.5 이상, 띠 위 버튼 테두리 3:1 이상 | |
 | 타이머 | 진행 중 띠 클래스, 버튼 변형 | |
