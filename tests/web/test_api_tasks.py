@@ -64,6 +64,7 @@ def test_list_defaults_to_open_tasks_in_plan_order(client: TestClient, web_engin
         "created_at",
         "updated_at",
         "done_at",
+        "dropped_at",
         "actual_minutes",
     }
 
@@ -299,3 +300,16 @@ def test_patch_text_fields_and_clearing(client: TestClient, web_engine: Engine) 
         None,
         None,
     ]
+
+
+def test_task_json_has_dropped_at_only_when_dropped(client: TestClient, web_engine: Engine) -> None:
+    task_id = add_task(web_engine, title="t")
+
+    before = client.get("/api/tasks?status=all").json()["data"][0]
+    dropped = client.patch(f"/api/tasks/{task_id}", json={"status": "dropped"}).json()["data"]
+    reopened = client.patch(f"/api/tasks/{task_id}", json={"status": "todo"}).json()["data"]
+
+    assert before["dropped_at"] is None
+    assert dropped["dropped_at"] is not None
+    assert reopened["dropped_at"] is None
+    assert list(dropped).index("dropped_at") == list(dropped).index("done_at") + 1

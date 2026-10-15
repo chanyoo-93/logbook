@@ -1,6 +1,5 @@
 """태스크 화면 GET /tasks 테스트 (W40 = 09-28 ~ 10-04, 오늘 = 2026-10-01 목요일 09:30 +09:00)."""
 
-import json
 import re
 from datetime import UTC, date, datetime
 from html import unescape
@@ -12,7 +11,7 @@ from logbook.core import db, services
 from logbook.core.errors import NotFoundError
 from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import Week, parse_week
-from logbook.web.pages.task_views import DROP_CONFIRM, STATUS_LABELS, task_version
+from logbook.web.pages.task_views import STATUS_LABELS, task_version
 from tests.web.helpers import (
     add_log,
     add_project,
@@ -29,6 +28,8 @@ from tests.web.helpers import (
 HTMX = {"HX-Request": "true"}
 THIS_WEEK_DONE = datetime(2026, 9, 30, 3, 0, tzinfo=UTC)  # 로컬 09-30 12:00, W40
 LAST_WEEK_DONE = datetime(2026, 9, 24, 3, 0, tzinfo=UTC)  # 로컬 09-24 12:00, W39
+THIS_WEEK_DROPPED = datetime(2026, 9, 30, 5, 0, tzinfo=UTC)  # 로컬 09-30 14:00, W40
+LAST_WEEK_DROPPED = datetime(2026, 9, 24, 5, 0, tzinfo=UTC)  # 로컬 09-24 14:00, W39
 
 
 def _week(text: str) -> Week:
@@ -48,7 +49,12 @@ def _seed_board(engine: Engine) -> dict[str, int]:
         "done_old": add_task(
             engine, title="지난주 끝", status=TaskStatus.DONE, done_at=LAST_WEEK_DONE
         ),
-        "dropped": add_task(engine, title="중단한 일", status=TaskStatus.DROPPED),
+        "dropped": add_task(
+            engine, title="중단한 일", status=TaskStatus.DROPPED, dropped_at=THIS_WEEK_DROPPED
+        ),
+        "dropped_old": add_task(
+            engine, title="지난주 중단", status=TaskStatus.DROPPED, dropped_at=LAST_WEEK_DROPPED
+        ),
         "archived": add_task(engine, title="보관 프로젝트의 일", project="old"),
     }
     with db.session_scope(engine) as s:
@@ -82,9 +88,9 @@ def test_page_has_menu_columns_and_filter(client: TestClient) -> None:
     assert [e for e in parse_html(html) if e.attrs.get("id") == "task-form"] == []
     assert by_id(html, "task-filters").tag == "form"
     assert by_id(html, "task-board").tag == "section"
-    assert list(board_columns(html)) == ["todo", "doing", "done"]
+    assert list(board_columns(html)) == ["todo", "doing", "done", "dropped"]
     headings = [e.text for e in all_by_tag(html, "h3")]
-    assert headings == ["할 일", "진행 중", "완료"]
+    assert headings == ["할 일", "진행 중", "완료", "중단"]
     assert inline_code_violations(html) == []
 
 
@@ -99,8 +105,9 @@ def test_columns_hold_open_tasks_and_this_weeks_done(
         "todo": [ids["todo_a"], ids["todo_b"]],  # 계획 주차가 있는 것이 먼저
         "doing": [ids["doing"]],
         "done": [ids["done_now"]],
+        "dropped": [ids["dropped"]],
     }
-    for hidden in ("done_old", "dropped", "archived"):
+    for hidden in ("done_old", "dropped_old", "archived"):
         assert f'id="task-{ids[hidden]}"' not in html
 
 
@@ -185,7 +192,12 @@ def test_filter_shows_one_project_only(client: TestClient, web_engine: Engine) -
 
     html = client.get("/tasks?project=payment").text
 
-    assert board_columns(html) == {"todo": [ids["todo_a"]], "doing": [], "done": []}
+    assert board_columns(html) == {
+        "todo": [ids["todo_a"]],
+        "doing": [],
+        "done": [],
+        "dropped": [],
+    }
     projects = select_options(html, "project")
     assert [value for value, _, selected in projects if selected] == ["payment"]
 
@@ -259,58 +271,45 @@ def test_archived_project_is_selectable_and_shows_its_tasks(
     assert labels["old"].endswith("(보관)")
 
 
-def test_status_buttons_by_state(client: TestClient, web_engine: Engine) -> None:
-    add_project(web_engine, "payment", "결제 서버")
-    todo = add_task(web_engine, title="할 일", project="payment")
+def test_cards_have_no_buttons_and_carry_drag_data(client: TestClient, web_engine: Engine) -> None:
+    todo = add_task(web_engine, title="할 일")
     doing = add_task(web_engine, title="진행", status=TaskStatus.DOING)
-    done = add_task(web_engine, title="완료", status=TaskStatus.DONE, done_at=THIS_WEEK_DONE)
-
-    html = client.get("/tasks").text
-
-    def buttons(task_id: int) -> list[tuple[str, str, str | None]]:
-        card = f"task-{task_id}"
-        elements = parse_html(html)
-        start = next(i for i, e in enumerate(elements) if e.attrs.get("id") == card)
-        result = []
-        for element in elements[start + 1 :]:
-            if element.tag == "li":
-                break
-            if element.tag == "button" and "hx-post" in element.attrs:
-                vals = json.loads(str(element.attrs["hx-vals"]))
-                result.append((element.text, vals["status"], element.attrs.get("hx-confirm")))
-        return result
-
-    drop_confirm = DROP_CONFIRM.format(id=todo, project="payment", title="할 일")
-    assert buttons(todo) == [
-        ("시작", "doing", None),
-        ("완료", "done", None),
-        ("중단", "dropped", drop_confirm),
-    ]
-    assert [b[:2] for b in buttons(doing)] == [
-        ("완료", "done"),
-        ("할 일로", "todo"),
-        ("중단", "dropped"),
-    ]
-    assert buttons(doing)[2][2] is not None
-    assert buttons(done) == [("다시 열기", "doing", None)]
-
-
-def test_status_button_attributes_and_version(client: TestClient, web_engine: Engine) -> None:
-    task_id = add_task(web_engine, title="할 일")
     with db.session_scope(web_engine) as s:
-        version = task_version(services.get_task(s, task_id))
+        version = task_version(services.get_task(s, todo))
 
     html = client.get("/tasks").text
 
-    button = next(
-        e for e in parse_html(html) if e.attrs.get("hx-post") == f"/tasks/{task_id}/status"
-    )
-    assert json.loads(str(button.attrs["hx-vals"])) == {"status": "doing", "version": version}
-    assert button.attrs["hx-include"] == "#task-filters"
-    assert button.attrs["hx-target"] == "#task-board"
-    assert button.attrs["hx-swap"] == "outerHTML"
-    assert button.attrs["hx-sync"] == "this:drop"
-    assert button.attrs["hx-disabled-elt"] == "this"
+    cards = by_id(html, f"task-{todo}")
+    assert cards.attrs["data-task-id"] == str(todo)
+    assert cards.attrs["data-version"] == version
+    assert by_id(html, f"task-{doing}").attrs["data-task-id"] == str(doing)
+    assert [e for e in parse_html(html) if e.tag == "button" and "hx-post" in e.attrs] == []
+    assert by_class(html, "task-card__actions") == []
+
+
+def test_lists_carry_status_even_when_empty(client: TestClient) -> None:
+    html = client.get("/tasks").text
+
+    lists = [e for e in all_by_tag(html, "ul") if "board__cards" in str(e.attrs.get("class"))]
+    assert [e.attrs["data-status"] for e in lists] == ["todo", "doing", "done", "dropped"]
+    assert [e.text for e in by_class(html, "empty")][:4] == ["없습니다."] * 4
+
+
+def test_column_counts_match_cards(client: TestClient, web_engine: Engine) -> None:
+    _seed_board(web_engine)
+
+    html = client.get("/tasks").text
+
+    assert [e.text for e in by_class(html, "board__count")] == ["2", "1", "1", "1"]
+
+
+def test_dropped_column_shows_only_this_weeks_drops(client: TestClient, web_engine: Engine) -> None:
+    ids = _seed_board(web_engine)
+
+    html = client.get("/tasks").text
+
+    assert board_columns(html)["dropped"] == [ids["dropped"]]
+    assert f'id="task-{ids["dropped_old"]}"' not in html
 
 
 def test_status_labels_are_korean() -> None:

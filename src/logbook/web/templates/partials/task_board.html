@@ -14,13 +14,12 @@
         <h3 id="task-heading-{{ column.key }}" class="board__col-title">{{ column.title }}</h3>
         <span class="board__count">{{ column.cards|length }}</span>
       </div>
-{% if column.cards %}
-      <ul class="board__cards">
+      <ul class="board__cards" data-status="{{ column.key }}">
 {% for card in column.cards %}
 {% include "partials/task_card.html" %}
 {% endfor %}
       </ul>
-{% else %}
+{% if not column.cards %}
       <p class="empty">없습니다.</p>
 {% endif %}
     </section>

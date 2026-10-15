@@ -29,7 +29,6 @@ from logbook.web.pages.forms import FormText, QueryText
 from logbook.web.pages.panels import NO_CHANGE, RESULT_MARK
 from logbook.web.pages.task_views import (
     CARRY_CONFIRM,
-    DROP_CONFIRM,
     STATUS_LABELS,
     TaskFormValues,
     board_url,
@@ -57,7 +56,6 @@ __all__ = [
     "CARRY_EMPTY",
     "CARRY_NONE",
     "CARRY_SKIPPED",
-    "DROP_CONFIRM",
     "STATUS_CHANGED",
     "TASK_ADDED",
     "TASK_UPDATED",

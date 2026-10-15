@@ -40,10 +40,6 @@ STATUS_LABELS: Mapping[TaskStatus, str] = MappingProxyType(
         TaskStatus.DROPPED: "중단",
     }
 )
-DROP_CONFIRM = (
-    "중단할 태스크: #{id} {project} · {title}\n"
-    "중단할까요? 중단한 태스크는 이 화면에 보이지 않습니다."
-)
 CARRY_CONFIRM = "이번 주의 할 일·진행 태스크를 다음 주로 옮길까요?\n{this} → {next}, {count}건"
 STATUS_CHOICES = (
     Choice(TaskStatus.TODO.value, "할 일"),
@@ -51,34 +47,10 @@ STATUS_CHOICES = (
     Choice(TaskStatus.DONE.value, "완료"),
     Choice(TaskStatus.DROPPED.value, "중단"),
 )
-COLUMN_TITLES = (("todo", "할 일"), ("doing", "진행 중"), ("done", "완료"))
+COLUMN_TITLES = (("todo", "할 일"), ("doing", "진행 중"), ("done", "완료"), ("dropped", "중단"))
 THIS_WEEK_TAG = "이번 주"
 NEXT_WEEK_TAG = "다음 주"
 LAST_WEEK_TAG = "지난 주"
-# 상태 -> (버튼 글, 바꿀 상태, 확인 창이 필요한가)
-_ACTIONS: Mapping[TaskStatus, tuple[tuple[str, TaskStatus, bool], ...]] = MappingProxyType(
-    {
-        TaskStatus.TODO: (
-            ("시작", TaskStatus.DOING, False),
-            ("완료", TaskStatus.DONE, False),
-            ("중단", TaskStatus.DROPPED, True),
-        ),
-        TaskStatus.DOING: (
-            ("완료", TaskStatus.DONE, False),
-            ("할 일로", TaskStatus.TODO, False),
-            ("중단", TaskStatus.DROPPED, True),
-        ),
-        TaskStatus.DONE: (("다시 열기", TaskStatus.DOING, False),),
-        TaskStatus.DROPPED: (),
-    }
-)
-
-
-@dataclass(frozen=True)
-class StatusAction:
-    status: str  # 'doing'
-    label: str  # '시작'
-    confirm: str  # 확인 창 문구, 없으면 ''
 
 
 @dataclass(frozen=True)
@@ -95,13 +67,12 @@ class TaskCardView:
     over: bool  # 실적이 예상보다 많음
     percent: int  # 진행 막대 채움 0~100(예상이 없으면 0, 막대도 그리지 않는다)
     version: str
-    actions: tuple[StatusAction, ...]
 
 
 @dataclass(frozen=True)
 class TaskColumnView:
-    key: str  # 'todo' | 'doing' | 'done'
-    title: str  # '할 일' | '진행 중' | '완료'(이번 주에 완료한 것)
+    key: str  # 'todo' | 'doing' | 'done' | 'dropped'(data-status와 같다)
+    title: str  # '할 일' | '진행 중' | '완료' | '중단'(완료·중단은 이번 주에 바뀐 것)
     cards: tuple[TaskCardView, ...]
 
 
@@ -188,6 +159,7 @@ def task_version(task: Task) -> str:
         task.external_ref,
         task.created_at.isoformat(),
         None if task.done_at is None else task.done_at.isoformat(),
+        None if task.dropped_at is None else task.dropped_at.isoformat(),
     )
 
 
@@ -203,21 +175,6 @@ def edit_url(task_id: int, project: str) -> str:
     """수정 화면 주소. 필터 프로젝트가 있으면 싣는다."""
     base = f"/tasks/{task_id}/edit"
     return f"{base}?{urlencode({'project': project})}" if project else base
-
-
-def _actions(task: Task) -> tuple[StatusAction, ...]:
-    return tuple(
-        StatusAction(
-            status=status.value,
-            label=label,
-            confirm=(
-                DROP_CONFIRM.format(id=task.id, project=task.project.slug, title=task.title)
-                if needs_confirm
-                else ""
-            ),
-        )
-        for label, status, needs_confirm in _ACTIONS[task.status]
-    )
 
 
 def _week_tag(label: str | None, this_week: Week) -> str:
@@ -253,7 +210,6 @@ def task_card(task: Task, actual_minutes: int, this_week: Week) -> TaskCardView:
         over=estimate is not None and actual_minutes > estimate,
         percent=0 if estimate is None else progress_percent(actual_minutes, estimate),
         version=task_version(task),
-        actions=_actions(task),
     )
 
 
@@ -269,7 +225,7 @@ def task_board(
 ) -> TaskBoardView:
     """칸반 보드. project가 ''면 전체, 없는 프로젝트는 NotFoundError다.
 
-    할 일·진행 중은 열린 태스크, 완료 열은 이번 주에 완료한 태스크다. 중단한 태스크는 없다.
+    할 일·진행 중은 열린 태스크, 완료·중단 열은 이번 주에 완료·중단한 태스크다.
     """
     now = ctx.now()
     this_week = week_of(now.date(), ctx.cfg.week_start)
@@ -278,12 +234,16 @@ def task_board(
         s, project_slug=slug, statuses=(TaskStatus.TODO, TaskStatus.DOING)
     )
     done_tasks = services.done_tasks_in_week(s, this_week, tz=now.tzinfo or UTC, project_slug=slug)
-    shown = [*open_tasks, *done_tasks]
+    dropped_tasks = services.dropped_tasks_in_week(
+        s, this_week, tz=now.tzinfo or UTC, project_slug=slug
+    )
+    shown = [*open_tasks, *done_tasks, *dropped_tasks]
     actual = services.actual_minutes_by_task(s, [task.id for task in shown])
     by_key = {
         "todo": [t for t in open_tasks if t.status == TaskStatus.TODO],
         "doing": [t for t in open_tasks if t.status == TaskStatus.DOING],
         "done": done_tasks,
+        "dropped": dropped_tasks,
     }
     columns = tuple(
         _column(key, title, by_key[key], actual, this_week) for key, title in COLUMN_TITLES

@@ -56,6 +56,7 @@ def task_json(task: Task, actual_minutes: int) -> dict[str, object]:
         "created_at": iso_utc(task.created_at),
         "updated_at": iso_utc(task.updated_at),
         "done_at": iso_utc(task.done_at),
+        "dropped_at": iso_utc(task.dropped_at),
         "actual_minutes": actual_minutes,
     }
 

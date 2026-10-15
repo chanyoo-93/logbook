@@ -13,6 +13,7 @@ import logbook.web
 
 CSS_ROOT = Path(logbook.web.__file__).parent / "static" / "css"
 NARROW_QUERY = "@media (max-width: 719px)"
+MIDDLE_QUERY = "@media (min-width: 720px) and (max-width: 1099px)"
 
 _COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 _RULE = re.compile(r"([^{}]+)\{([^{}]*)\}")
@@ -85,6 +86,34 @@ def test_task_board_stacks_into_one_column_below_720px() -> None:
     narrow = _media_block(_read("tasks.css"), NARROW_QUERY)
 
     assert "grid-template-columns: 1fr" in _declarations(narrow, ".board__columns")
+
+
+def test_task_board_has_four_columns_by_default() -> None:
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in _declarations(
+        _read("tasks.css"), ".board__columns"
+    )
+
+
+def test_task_board_is_two_by_two_between_720_and_1099px() -> None:
+    middle = _media_block(_read("tasks.css"), MIDDLE_QUERY)
+
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in _declarations(
+        middle, ".board__columns"
+    )
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [".board__col-head--dropped", ".task-card--ghost", ".task-card--chosen"],
+)
+def test_board_drag_and_dropped_rules_exist(selector: str) -> None:
+    assert _declarations(_read("tasks.css"), selector)
+
+
+def test_board_card_lists_keep_a_min_height_to_receive_drops() -> None:
+    declarations = _declarations(_read("tasks.css"), ".board__cards")
+
+    assert any(d.startswith("min-height: ") for d in declarations)
 
 
 HEAVY_TOP_RULE = "border-top: 2px solid var(--ink)"

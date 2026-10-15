@@ -128,7 +128,7 @@
 
 .board__columns {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
   margin-top: var(--space-3);
 }
@@ -161,6 +161,11 @@
   color: var(--ok);
 }
 
+.board__col-head--dropped {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .board__dot {
   flex: none;
   width: 0.5rem;
@@ -186,6 +191,7 @@
 
 .board__cards {
   display: flex;
+  min-height: 3rem; /* 카드가 없는 열에도 놓을 자리를 둔다 */
   flex-direction: column;
   gap: var(--space-2);
   margin: 0;
@@ -268,11 +274,13 @@
   font-weight: 600;
 }
 
-.task-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  padding: 0 var(--space-3) var(--space-2);
+/* 끌어 놓기(SortableJS): 놓을 자리와 끄는 중인 카드 */
+.task-card--ghost {
+  opacity: 0.4;
+}
+
+.task-card--chosen {
+  box-shadow: var(--shadow-raised);
 }
 
 .plan {
@@ -315,10 +323,16 @@
   margin-top: var(--space-3);
 }
 
+/* 중간 화면: 칸반을 2×2로 놓는다 */
+@media (min-width: 720px) and (max-width: 1099px) {
+  .board__columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* 좁은 화면: 칸반을 한 열로 쌓는다 */
 @media (max-width: 719px) {
   .board__columns {
     grid-template-columns: 1fr;
   }
 }
-

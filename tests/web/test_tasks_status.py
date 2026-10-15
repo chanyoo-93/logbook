@@ -1,6 +1,6 @@
 """태스크 상태 변경 POST /tasks/{id}/status 테스트 (오늘 = 2026-10-01 목요일 09:30 +09:00)."""
 
-from datetime import datetime
+from datetime import UTC, datetime
 from html import unescape
 
 from fastapi.testclient import TestClient
@@ -56,7 +56,7 @@ def test_todo_to_doing_moves_card_and_reports(client: TestClient, web_engine: En
     board = by_id(html, "task-board")
     assert board.tag == "section"
     assert "hx-swap-oob" not in board.attrs
-    assert board_columns(html) == {"todo": [], "doing": [task_id], "done": []}
+    assert board_columns(html) == {"todo": [], "doing": [task_id], "done": [], "dropped": []}
     assert _result(html) == f"✔ #{task_id} 할 일 → 진행: common · 결제 재시도"
     assert _stored(web_engine, task_id) == (TaskStatus.DOING, False)
 
@@ -98,14 +98,22 @@ def test_reopen_clears_done_at(client: TestClient, web_engine: Engine) -> None:
     assert _stored(web_engine, task_id) == (TaskStatus.DOING, False)
 
 
-def test_drop_removes_card_from_board(client: TestClient, web_engine: Engine) -> None:
+def test_drop_moves_card_to_dropped_column(
+    client: TestClient, web_engine: Engine, clock: Clock
+) -> None:
+    clock.now = datetime.now().astimezone()  # 중단 시각은 실제 지금이라 화면의 지금도 맞춘다
     task_id = add_task(web_engine, title="접는 일")
 
     response = _post(client, web_engine, task_id, "dropped")
 
     assert response.status_code == 200
     assert _result(response.text) == f"✔ #{task_id} 할 일 → 중단: common · 접는 일"
-    assert board_columns(response.text) == {"todo": [], "doing": [], "done": []}
+    assert board_columns(response.text) == {
+        "todo": [],
+        "doing": [],
+        "done": [],
+        "dropped": [task_id],
+    }
     assert _stored(web_engine, task_id)[0] == TaskStatus.DROPPED
 
 
@@ -116,7 +124,7 @@ def test_board_response_keeps_the_filter(client: TestClient, web_engine: Engine)
 
     response = _post(client, web_engine, mine, "doing", project="payment")
 
-    assert board_columns(response.text) == {"todo": [], "doing": [mine], "done": []}
+    assert board_columns(response.text) == {"todo": [], "doing": [mine], "done": [], "dropped": []}
     assert f'id="task-{other}"' not in response.text
 
 
@@ -212,3 +220,24 @@ def test_status_message_is_escaped(client: TestClient, web_engine: Engine) -> No
 
     assert "<i>기울임</i>" not in response.text
     assert [e for e in parse_html(response.text) if e.tag == "i"] == []
+
+
+def test_dragging_dropped_card_back_to_todo(client: TestClient, web_engine: Engine) -> None:
+    task_id = add_task(web_engine, title="되살림")
+    _post(client, web_engine, task_id, "dropped")
+
+    response = _post(client, web_engine, task_id, "todo")
+
+    assert response.status_code == 200
+    assert _result(response.text) == f"✔ #{task_id} 중단 → 할 일: common · 되살림"
+    assert board_columns(response.text)["todo"] == [task_id]
+    assert _stored(web_engine, task_id)[0] == TaskStatus.TODO
+
+
+def test_version_changes_when_dropped_at_changes(web_engine: Engine) -> None:
+    task_id = add_task(web_engine, title="중단 시각", status=TaskStatus.DROPPED)
+    before = _version(web_engine, task_id)
+    with db.session_scope(web_engine) as s:
+        services.get_task(s, task_id).dropped_at = datetime(2026, 9, 1, tzinfo=UTC)
+
+    assert _version(web_engine, task_id) != before

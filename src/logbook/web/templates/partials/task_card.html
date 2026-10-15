@@ -1,5 +1,5 @@
 {% from "partials/marks.html" import category_pill, pill, project_mark %}
-        <li id="task-{{ card.id }}" class="task-card{% if card.over %} task-card--over{% endif %}">
+        <li id="task-{{ card.id }}" class="task-card{% if card.over %} task-card--over{% endif %}" data-task-id="{{ card.id }}" data-version="{{ card.version }}">
           <a class="task-card__link" href="/tasks/{{ card.id }}/edit{% if board.project %}?project={{ board.project|urlencode }}{% endif %}">
           <p class="task-card__title">
             <span class="task-card__id">#{{ card.id }}</span>
@@ -27,9 +27,4 @@
           <svg class="progress{% if card.over %} progress--over{% endif %}" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="progress__track" width="100" height="4"/><rect class="progress__fill" width="{{ card.percent }}" height="4"/></svg>
 {% endif %}
           </a>
-          <div class="task-card__actions">
-{% for action in card.actions %}
-            <button type="button" class="btn btn--small{% if action.status == 'dropped' %} btn--danger{% endif %}" hx-post="/tasks/{{ card.id }}/status" hx-vals='{{ {"status": action.status, "version": card.version}|tojson }}' hx-include="#task-filters" hx-target="#task-board" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this"{% if action.confirm %} hx-confirm="{{ action.confirm }}"{% endif %}>{{ action.label }}</button>
-{% endfor %}
-          </div>
         </li>

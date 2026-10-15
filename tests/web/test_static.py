@@ -217,8 +217,68 @@ def test_static_text_files_are_utf8_without_carriage_returns() -> None:
         STATIC_ROOT / "js" / "app.js",
         STATIC_ROOT / "js" / "dashboard.js",
         STATIC_ROOT / "js" / "report.js",
+        STATIC_ROOT / "js" / "board.js",
         STATIC_ROOT / "favicon.svg",
     ):
         data = path.read_bytes()
         data.decode("utf-8")
         assert b"\r" not in data
+
+
+BOARD_JS = STATIC_ROOT / "js" / "board.js"
+
+
+def test_tasks_page_loads_sortable_and_board_scripts_in_order(client: TestClient) -> None:
+    scripts = all_by_tag(client.get("/tasks").text, "script")
+
+    assert [s.attrs["src"] for s in scripts] == [
+        "/static/vendor/htmx-2.0.11.min.js",
+        "/static/js/app.js",
+        "/static/vendor/sortable-1.15.7.min.js",
+        "/static/js/board.js",
+    ]
+    assert all("defer" in s.attrs for s in scripts)
+
+
+@pytest.mark.parametrize("path", ["/tasks/new", "/", "/report"])
+def test_other_pages_do_not_load_sortable(client: TestClient, path: str) -> None:
+    html = client.get(path).text
+
+    sources = [str(s.attrs.get("src")) for s in all_by_tag(html, "script")]
+    assert "/static/js/board.js" not in sources
+    assert not any("sortable" in source for source in sources)
+
+
+def test_board_js_is_served_as_javascript(client: TestClient) -> None:
+    response = client.get("/static/js/board.js")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == JS
+
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "new Sortable",
+        "Sortable.get",
+        "htmx.ajax",
+        "sort: false",
+        'group: "tasks"',
+        "isConnected",
+        "oldIndex",
+        "htmx:afterSettle",
+        "/status",
+    ],
+)
+def test_board_js_contains(needle: str) -> None:
+    assert needle in BOARD_JS.read_text(encoding="utf-8")
+
+
+def test_board_js_never_reloads_the_board_with_get() -> None:
+    text = BOARD_JS.read_text(encoding="utf-8")
+
+    assert 'htmx.ajax("GET"' not in text
+    assert "htmx.ajax('GET'" not in text
+    assert "eval(" not in text
+    assert "new Function" not in text
+    assert ".innerHTML" not in text
