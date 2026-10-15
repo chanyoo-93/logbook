@@ -294,13 +294,15 @@ def test_lists_carry_status_even_when_empty(client: TestClient) -> None:
     assert [e.text for e in by_class(html, "empty")][:4] == ["없습니다."] * 4
 
 
-def test_empty_notice_sits_right_under_the_column_head(client: TestClient) -> None:
-    # 목록이 열 끝까지 늘어나 놓을 자리가 되므로, 빈 안내는 목록 앞(열 머리 바로 아래)에 둔다.
+def test_empty_notice_is_the_first_item_inside_the_list(client: TestClient) -> None:
+    # 빈 안내도 놓을 자리(목록) 안에 있어야 "없습니다." 위에 놓아도 그 열로 들어간다(2026-10-15 QA).
     html = client.get("/tasks").text
 
     for key in ("todo", "doing", "done", "dropped"):
         column = html[html.index(f'id="task-col-{key}"') :]
-        assert column.index('class="empty"') < column.index('class="board__cards"')
+        start = column.index('class="board__cards"')
+        notice = column.index('<li class="empty board__empty">')
+        assert start < notice < column.index("</ul>")
 
 
 def test_column_counts_match_cards(client: TestClient, web_engine: Engine) -> None:

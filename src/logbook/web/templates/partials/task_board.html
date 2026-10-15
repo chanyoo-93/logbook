@@ -14,10 +14,11 @@
         <h3 id="task-heading-{{ column.key }}" class="board__col-title">{{ column.title }}</h3>
         <span class="board__count">{{ column.cards|length }}</span>
       </div>
-{% if not column.cards %}
-      <p class="empty">없습니다.</p>
-{% endif %}
       <ul class="board__cards" data-status="{{ column.key }}">
+{% if not column.cards %}
+        {# 안내도 목록 안에 둬야 "없습니다." 위에 놓아도 이 열로 들어간다(끌 수 있는 것은 .task-card뿐) #}
+        <li class="empty board__empty">없습니다.</li>
+{% endif %}
 {% for card in column.cards %}
 {% include "partials/task_card.html" %}
 {% endfor %}

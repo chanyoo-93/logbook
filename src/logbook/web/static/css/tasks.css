@@ -277,6 +277,11 @@
   font-weight: 600;
 }
 
+/* 빈 열 안내: 끄는 카드가 목록에 들어오면 감춘다 */
+.board__empty:not(:only-child) {
+  display: none;
+}
+
 /* 끌어 놓기(SortableJS): 놓을 자리와 끄는 중인 카드 */
 .task-card--ghost {
   opacity: 0.4;
