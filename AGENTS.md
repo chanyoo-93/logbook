@@ -37,7 +37,7 @@ src/logbook/
     models.py    # SQLAlchemy 모델
     taskstatus.py# 태스크 상태와 상태 목록 파서 (SQLAlchemy 없음)
     db.py        # 엔진/세션, 스키마 생성 및 마이그레이션, DB 진입점(open_database·initialize_database), 자동완성용 읽기 전용 open_readonly
-    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer, report, week_notes, backup, backup_import, github_import)
+    services/    # 유스케이스 함수 (projects, worklogs, tasks, stats, timer, report, week_notes, category_colors, backup, backup_import, github_import)
     duration.py  # "1h30m", "1.5h", "90m" 파싱/포맷
     weeks.py     # ISO 주차 계산 (YYYY-Www)와 시각·날짜 표기(clock_label, total_label, full_day)
     ids.py       # ID 파싱·검증 (parse_id, check_id, MAX_ID)
@@ -67,11 +67,12 @@ src/logbook/
     app.py       # FastAPI 앱 조립
     config_watch.py # 설정 파일 자동 반영(내용 해시로 변경을 감지하고 요청마다 설정 스냅숏을 돌려줌)
     fonts.py     # 설정 [web]의 글꼴 → /fonts.css 내용(CSS 변수 --font-heading·--font-document·--font-body)
+    colors.py    # 카테고리 색 → /colors.css 내용(카테고리 꼬리표 색 CSS 생성, 순수 함수)
     reporting.py # 보고서 화면·내려받기 공용 처리(내려받기 파일 이름 등)
     server.py    # 루프백 소켓을 열고 uvicorn 실행 (`lb serve`가 호출)
     api/         # JSON API (/api/*): logs, tasks, stats, report, timer
-    pages/       # 화면 라우트 (대시보드, 기록, 타이머, 태스크·보고서·설정), tasks.py·task_views.py(칸반·계획 패널), report.py, report_polish.py(POST /report/polish 문장 다듬기), settings.py, panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText), fonts.py(GET /fonts.css)
-    templates/   # Jinja2 + HTMX. partials/marks.html에 공용 부품 매크로 pill(꼬리표)·project_mark(프로젝트 색 점)
+    pages/       # 화면 라우트 (대시보드, 기록, 타이머, 태스크·보고서·설정), tasks.py·task_views.py(칸반·계획 패널), report.py, report_polish.py(POST /report/polish 문장 다듬기), settings.py, panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText), fonts.py(GET /fonts.css), colors.py(GET /colors.css)
+    templates/   # Jinja2 + HTMX. partials/marks.html에 공용 부품 매크로 pill(꼬리표)·project_mark(프로젝트 색 점)·category_pill(카테고리 꼬리표)
     static/      # 최소한의 CSS와 JS(js/report.js 포함), vendor/에 htmx·Chart.js 로컬 파일 (CDN 없음)
                  # css/: app.css(디자인 토큰: 색 :root 두 벌은 여기에만, 글꼴·글자 크기·간격·모서리·그림자), dashboard·logs·components·tasks·report·settings·responsive.css (순서는 web/assets.py의 STYLESHEETS가 정하고 base.html·오류 페이지가 그대로 링크)
 tests/
