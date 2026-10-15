@@ -21,7 +21,12 @@ from logbook.web.errors import CATEGORY_CHANGED, PROJECT_CHANGED, ConflictError
 from logbook.web.pages.forms import FormText
 from logbook.web.pages.panels import NO_CHANGE, RESULT_MARK
 from logbook.web.pages.templating import render, render_error
-from logbook.web.pages.views import category_color_map, content_version
+from logbook.web.pages.views import (
+    CHART_PALETTE,
+    category_color_map,
+    content_version,
+    project_color,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -59,6 +64,8 @@ FONT_NOTE = (
     "설치되지 않은 글꼴이면 기본 글꼴로 보입니다."
 )
 DEFAULT_FONT_LABEL = "기본 글꼴"
+AUTO_LABEL = "자동"
+AUTO_ON = "1"  # 자동 체크가 켜졌을 때 폼이 보내는 값(꺼지면 키가 오지 않는다)
 
 
 def project_version(project: Project) -> str:
@@ -78,8 +85,8 @@ def project_version(project: Project) -> str:
 class ProjectRowView:
     slug: str
     name: str
-    color: str  # 견본에 쓸 색: #[0-9a-fA-F]{6}에 맞을 때만 값, 아니면 ''
-    color_text: str  # 표에 글자로 보여 줄 원래 값(없으면 '')
+    color: str  # 견본 색: 지정한 색, 없거나 형식이 틀리면 자동 팔레트 색(항상 #rrggbb)
+    color_text: str  # 표에 보여 줄 글자: 지정한 색의 원래 값, 자동이면 '자동'
     description: str  # 또는 ''
     archived: bool
     is_common: bool  # 보관 버튼을 두지 않는다
@@ -91,15 +98,17 @@ class ProjectRowView:
 class ProjectAddValues:
     slug: str = ""
     name: str = ""
-    color: str = ""
+    color: str = CHART_PALETTE[0]
+    is_auto: bool = True
 
 
 @dataclass(frozen=True)
 class ProjectEditValues:
     name: str
-    color: str
+    color: str  # 색 고르기 칸의 값
     description: str
     version: str
+    is_auto: bool = False  # '자동' 체크
 
 
 @dataclass(frozen=True)
@@ -171,13 +180,18 @@ def category_section_view(ctx: WebContext, s: Session, *, message: str = "") -> 
     return CategorySectionView(rows, message=message)
 
 
-def project_row(project: Project) -> ProjectRowView:
+def _chosen_color(project: Project) -> str:
+    """지정한 색(검증된 #rrggbb). 없거나 형식이 틀리면 ''(자동)."""
     color = project.color or ""
+    return color if services.is_valid_color(color) else ""
+
+
+def project_row(project: Project) -> ProjectRowView:
     return ProjectRowView(
         slug=project.slug,
         name=project.name,
-        color=color if services.is_valid_color(color) else "",
-        color_text=color,
+        color=project_color(project),
+        color_text=_chosen_color(project) or AUTO_LABEL,
         description=project.description or "",
         archived=project.archived,
         is_common=project.slug == services.COMMON_SLUG,
@@ -247,11 +261,14 @@ def add_project(
     slug: FormText = "",
     name: FormText = "",
     color: FormText = "",
+    color_auto: FormText = "",
 ) -> HTMLResponse:
-    values = ProjectAddValues(slug, name, color)
+    is_auto = color_auto == AUTO_ON
+    values = ProjectAddValues(slug, name, color, is_auto)
     try:
         with ctx.session() as s:
-            project = services.create_project(s, slug.strip(), name, color=color.strip() or None)
+            chosen = None if is_auto else color.strip() or None
+            project = services.create_project(s, slug.strip(), name, color=chosen)
             message = PROJECT_ADDED.format(slug=project.slug, name=project.name)
             section = section_view(s, message=message)
     except InvalidInputError as error:
@@ -262,8 +279,13 @@ def add_project(
 
 
 def _edit_values(project: Project) -> ProjectEditValues:
+    chosen = _chosen_color(project)
     return ProjectEditValues(
-        project.name, project.color or "", project.description or "", project_version(project)
+        project.name,
+        chosen or project_color(project),
+        project.description or "",
+        project_version(project),
+        is_auto=not chosen,
     )
 
 
@@ -282,13 +304,20 @@ def view_row(request: Request, ctx: Ctx, slug: str) -> HTMLResponse:
     return render(request, ROW_TEMPLATE, {"row": row})
 
 
+def _same_color(new: str | None, stored: str | None) -> bool:
+    """색 비교는 대소문자를 무시한다(색 고르기 칸은 소문자로 보낸다)."""
+    if new is None or stored is None:
+        return new is stored
+    return new.lower() == stored.lower()
+
+
 def _changes(project: Project, form: ProjectEditValues) -> dict[str, Any]:
     """폼 값 중 프로젝트와 다른 것만 update_project 인자로 고른다."""
     changes: dict[str, Any] = {}
     if form.name.strip() != project.name:
         changes["name"] = form.name
-    color = form.color.strip() or None
-    if color != project.color:
+    color = None if form.is_auto else form.color.strip() or None
+    if not _same_color(color, project.color):
         changes["color"] = color
     description = form.description.strip() or None
     if description != project.description:
@@ -334,10 +363,11 @@ def patch_project(
     slug: str,
     name: FormText = "",
     color: FormText = "",
+    color_auto: FormText = "",
     description: FormText = "",
     version: FormText = "",
 ) -> HTMLResponse:
-    form = ProjectEditValues(name, color, description, version)
+    form = ProjectEditValues(name, color, description, version, is_auto=color_auto == AUTO_ON)
     try:
         section = _apply_update(ctx, slug, form)
     except (InvalidInputError, ConflictError) as error:

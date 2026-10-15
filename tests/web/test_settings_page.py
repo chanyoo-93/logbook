@@ -72,7 +72,7 @@ def test_common_row_has_no_archive_button(client: TestClient, web_engine: Engine
     assert "/settings/projects/common/archive" not in archive_urls
 
 
-def test_invalid_color_from_import_has_no_swatch(client: TestClient, web_engine: Engine) -> None:
+def test_invalid_color_from_import_is_shown_as_auto(client: TestClient, web_engine: Engine) -> None:
     add_project(web_engine, "legacy", "가져온 것")
     with db.session_scope(web_engine) as s:
         services.get_project(s, "legacy").color = "red"
@@ -80,11 +80,11 @@ def test_invalid_color_from_import_has_no_swatch(client: TestClient, web_engine:
 
     html = client.get("/settings").text
 
-    assert "red" in by_id(html, "project-legacy").text
-    swatches = [e for e in by_class(html, "swatch") if e.tag == "svg"]
+    assert "자동" in by_id(html, "project-legacy").text
+    assert "red" not in by_id(html, "project-legacy").text
     rects = [e.attrs.get("fill") for e in parse_html(html) if e.tag == "rect"]
-    assert len(swatches) == 1
-    assert rects == ["#00ff00"]
+    assert "#00ff00" in rects
+    assert "red" not in rects
 
 
 @pytest.fixture

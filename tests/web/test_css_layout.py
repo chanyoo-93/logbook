@@ -217,7 +217,7 @@ def test_old_single_radius_token_is_gone() -> None:
         ("report.css", ".report-notes textarea", "var(--radius-xs)"),
         (
             "settings.css",
-            ".project-form input, .grid--projects .is-editing input",
+            '.project-form input[type="text"], .grid--projects .is-editing input[type="text"]',
             "var(--radius-xs)",
         ),
         ("tasks.css", ".task-form input, .task-form select", "var(--radius-xs)"),

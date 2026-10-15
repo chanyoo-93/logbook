@@ -18,6 +18,7 @@ from logbook.web.pages.settings import (
     PROJECT_UPDATED,
     project_version,
 )
+from logbook.web.pages.views import CHART_PALETTE, project_color
 from tests.web.helpers import (
     add_project,
     all_by_tag,
@@ -56,6 +57,18 @@ def _patch(client: TestClient, engine: Engine, slug: str, **fields: str):  # typ
     return client.patch(f"/settings/projects/{slug}", data={**form, **fields}, headers=HTMX)
 
 
+def _color_inputs(html: str, scope: str) -> dict[str, dict[str, str | None]]:
+    """scope(폼 또는 행 id) 안 color·color_auto 입력의 속성."""
+    result: dict[str, dict[str, str | None]] = {}
+    inside = False
+    for e in parse_html(html):
+        if e.tag in ("form", "tr"):
+            inside = e.attrs.get("id") == scope
+        elif inside and e.tag == "input" and e.attrs.get("name") in ("color", "color_auto"):
+            result[str(e.attrs["name"])] = e.attrs
+    return result
+
+
 def _flash_text(html: str) -> str:
     """#flash OOB 조각이면 그 안의 문구, 알림 조각(<p class="flash">)이면 그 문구."""
     flash = [e for e in parse_html(html) if e.tag == "p" and "flash" in str(e.attrs.get("class"))]
@@ -91,6 +104,53 @@ def test_add_form_uses_htmx_attributes(client: TestClient) -> None:
     assert form.attrs["hx-sync"] == "this:drop"
     assert form.attrs["hx-disabled-elt"]
     assert "data-focus" in by_id(html, "project-section-title").attrs
+
+
+def test_add_form_starts_with_auto_on_and_first_palette_color(client: TestClient) -> None:
+    html = client.get("/settings").text
+
+    inputs = _color_inputs(html, "project-add-form")
+
+    assert inputs["color"]["type"] == "color"
+    assert inputs["color"]["value"] == CHART_PALETTE[0]
+    assert inputs["color_auto"]["type"] == "checkbox"
+    assert inputs["color_auto"]["value"] == "1"
+    assert "checked" in inputs["color_auto"]
+    fields = [e for e in parse_html(html) if "data-color-field" in e.attrs]
+    assert any("color-field" in str(e.attrs.get("class")).split() for e in fields)
+    assert inline_code_violations(html) == []
+
+
+def test_add_with_auto_ignores_color_value(client: TestClient, web_engine: Engine) -> None:
+    response = _add(client, slug="infra", name="인프라", color="#22c55e", color_auto="1")
+
+    assert response.status_code == 200
+    assert _stored(web_engine, "infra") == ("인프라", None, None, False)
+
+
+def test_add_without_auto_stores_chosen_color(client: TestClient, web_engine: Engine) -> None:
+    response = _add(client, slug="infra", name="인프라", color="#22c55e")
+
+    assert response.status_code == 200
+    assert _stored(web_engine, "infra") == ("인프라", "#22c55e", None, False)
+
+
+def test_add_invalid_color_keeps_input_and_auto_state(client: TestClient) -> None:
+    response = _add(client, slug="ok", name="이름", color="red")
+
+    assert response.status_code == 400
+    inputs = _color_inputs(response.text, "project-add-form")
+    assert inputs["color"]["value"] == "red"
+    assert "checked" not in inputs["color_auto"]
+
+
+def test_add_error_with_auto_keeps_auto_on(client: TestClient) -> None:
+    response = _add(client, slug="Bad Slug", name="이름", color="#22c55e", color_auto="1")
+
+    assert response.status_code == 400
+    inputs = _color_inputs(response.text, "project-add-form")
+    assert inputs["color"]["value"] == "#22c55e"
+    assert "checked" in inputs["color_auto"]
 
 
 def test_add_without_color_stores_none(client: TestClient, web_engine: Engine) -> None:
@@ -136,7 +196,10 @@ def test_edit_row_shows_current_values(client: TestClient, web_engine: Engine) -
     name = named_input(html, "name")
     assert name.attrs["value"] == "결제"
     assert "data-focus" in name.attrs
-    assert named_input(html, "color").attrs["value"] == "#4f46e5"
+    inputs = _color_inputs(html, "project-payment")
+    assert inputs["color"]["type"] == "color"
+    assert inputs["color"]["value"] == "#4f46e5"
+    assert "checked" not in inputs["color_auto"]
     description = by_id(html, "project-payment-description")
     assert description.attrs.get("value") == "결제 서버"
     assert named_input(html, "version").attrs["value"] == _version(web_engine, "payment")
@@ -147,6 +210,21 @@ def test_edit_row_shows_current_values(client: TestClient, web_engine: Engine) -
     assert buttons["저장"]["hx-sync"] == "this:drop"
     assert buttons["취소"]["hx-get"] == "/settings/projects/payment/row"
     assert buttons["취소"]["hx-target"] == "closest tr"
+    assert inline_code_violations(html) == []
+
+
+def test_edit_row_without_color_shows_palette_color_and_auto_on(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "payment", "결제")
+    with db.session_scope(web_engine) as s:
+        expected = project_color(services.get_project(s, "payment"))
+
+    html = client.get("/settings/projects/payment/edit", headers=HTMX).text
+
+    inputs = _color_inputs(html, "project-payment")
+    assert inputs["color"]["value"] == expected
+    assert "checked" in inputs["color_auto"]
     assert inline_code_violations(html) == []
 
 
@@ -182,17 +260,45 @@ def test_patch_changes_name_color_and_description(client: TestClient, web_engine
     assert _stored(web_engine, "payment") == ("새 결제", "#112233", "설명", False)
 
 
-def test_patch_blank_color_and_description_become_none(
+def test_patch_auto_clears_color_and_blank_description_becomes_none(
     client: TestClient, web_engine: Engine
 ) -> None:
     add_project(web_engine, "payment", "결제", color="#112233")
     with db.session_scope(web_engine) as s:
         services.update_project(s, "payment", description="설명")
 
-    response = _patch(client, web_engine, "payment", name="결제", color=" ", description="  ")
+    response = _patch(
+        client,
+        web_engine,
+        "payment",
+        name="결제",
+        color="#112233",
+        color_auto="1",
+        description="  ",
+    )
 
     assert response.status_code == 200
     assert _stored(web_engine, "payment") == ("결제", None, None, False)
+
+
+def test_patch_color_when_auto_was_on_stores_color(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "payment", "결제")
+
+    response = _patch(client, web_engine, "payment", name="결제", color="#22c55e")
+
+    assert response.status_code == 200
+    assert _stored(web_engine, "payment")[1] == "#22c55e"
+
+
+def test_patch_auto_without_stored_color_is_no_change(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "payment", "결제")
+
+    response = _patch(client, web_engine, "payment", name="결제", color="#2f6fde", color_auto="1")
+
+    assert response.status_code == 200
+    assert _result(response.text) == NO_CHANGE
 
 
 def test_patch_without_changes_says_so(client: TestClient, web_engine: Engine) -> None:
@@ -202,6 +308,16 @@ def test_patch_without_changes_says_so(client: TestClient, web_engine: Engine) -
 
     assert response.status_code == 200
     assert _result(response.text) == NO_CHANGE
+
+
+def test_patch_color_compares_case_insensitively(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "payment", "결제", color="#4F46E5")
+
+    response = _patch(client, web_engine, "payment", name="결제", color="#4f46e5")
+
+    assert response.status_code == 200
+    assert _result(response.text) == NO_CHANGE
+    assert _stored(web_engine, "payment")[1] == "#4F46E5"
 
 
 def test_patch_with_other_version_is_409(client: TestClient, web_engine: Engine) -> None:
@@ -232,7 +348,7 @@ def test_patch_invalid_color_redraws_edit_row_with_values(
     html = response.text
     assert "색상이 올바르지 않습니다" in _flash_text(html)
     assert named_input(html, "name").attrs["value"] == "입력한 이름"
-    assert named_input(html, "color").attrs["value"] == "#12"
+    assert _color_inputs(html, "project-payment")["color"]["value"] == "#12"
     assert _stored(web_engine, "payment") == ("결제", None, None, False)
 
 
@@ -370,3 +486,49 @@ def test_archive_and_unarchive_responses_redraw_the_status_pill(
 
     assert _row_pill(archived.text, "payment") == (["pill"], "보관")
     assert _row_pill(restored.text, "payment") == (["pill", "pill--ok"], "사용 중")
+
+
+def _row_cells(html: str, slug: str) -> list[tuple[str, str, list[str]]]:
+    """행 안 td의 (class, 글, 안의 rect fill 목록)."""
+    cells: list[tuple[str, str, list[str]]] = []
+    in_row = False
+    for e in parse_html(html):
+        if e.tag == "tr":
+            in_row = e.attrs.get("id") == f"project-{slug}"
+        elif in_row and e.tag == "td":
+            cells.append((str(e.attrs.get("class") or ""), e.text.strip(), []))
+        elif in_row and e.tag == "rect" and cells:
+            cells[-1][2].append(str(e.attrs.get("fill")))
+    return cells
+
+
+def test_table_row_shows_swatch_and_hex_for_chosen_color(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "payment", "결제", color="#4f46e5")
+
+    cells = _row_cells(client.get("/settings").text, "payment")
+
+    assert cells[2][1] == "#4f46e5"
+    assert cells[2][2] == ["#4f46e5"]
+
+
+def test_table_row_shows_palette_swatch_and_auto_label(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "payment", "결제")
+    with db.session_scope(web_engine) as s:
+        expected = project_color(services.get_project(s, "payment"))
+
+    cells = _row_cells(client.get("/settings").text, "payment")
+
+    assert cells[2][1] == "자동"
+    assert cells[2][2] == [expected]
+
+
+def test_table_name_cell_does_not_wrap(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "payment", "결제")
+
+    cells = _row_cells(client.get("/settings").text, "payment")
+
+    assert "nowrap" in cells[1][0].split()
