@@ -32,9 +32,6 @@ COLOR_TOKENS = (
     "--ok-soft",
     "--danger-soft",
     "--accent-soft",
-    "--band-bg",
-    "--band-ink",
-    "--band-muted",
     "--shadow-soft",
     "--shadow-raised",
 )
@@ -51,13 +48,10 @@ CONTRAST_PAIRS = (
     ("--ok", "--ok-soft"),
     ("--danger", "--danger-soft"),
     ("--accent-hover", "--accent-soft"),
-    ("--band-ink", "--band-bg"),
-    ("--band-muted", "--band-bg"),
 )
 NON_TEXT_PAIRS = (
     ("--control-border", "--surface"),
     ("--control-border", "--bg"),
-    ("--band-muted", "--band-bg"),
 )
 MIN_CONTRAST = 4.5
 MIN_NON_TEXT_CONTRAST = 3.0

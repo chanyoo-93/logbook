@@ -420,35 +420,19 @@ def test_task_form_fields_wrap_in_a_responsive_grid_with_full_width_title_and_de
     assert "grid-column: 1 / -1" in full
 
 
-def test_running_timer_is_an_inverted_band() -> None:
-    css = _read("components.css")
-    band = _declarations(css, ".timer--running")
+def test_running_timer_keeps_panel_colors_with_an_ok_left_line() -> None:
+    # 사용자 결정(2026-10-15): 색을 뒤집은 띠는 취소했다. 다른 패널과 같은 색에 왼쪽 초록 선.
+    band = _declarations(_read("components.css"), ".timer--running")
 
-    assert "background: var(--band-bg)" in band
-    assert "color: var(--band-ink)" in band
-    assert not any(d.startswith("border-left") for d in band)
+    assert band == {"border-left: 4px solid var(--ok)", "color: var(--ink)"}
 
 
-def test_running_timer_buttons_use_band_colors() -> None:
-    declarations = _declarations(_read("components.css"), ".timer--running .btn")
+def test_running_timer_has_no_band_overrides() -> None:
+    css = "\n".join(_read(name) for name in ("app.css", "components.css", "dashboard.css"))
 
-    assert "background: transparent" in declarations
-    assert "color: var(--band-ink)" in declarations
-    assert "border-color: var(--band-muted)" in declarations
-
-
-def test_running_timer_secondary_text_and_dot_are_readable_on_the_band() -> None:
-    css = _read("components.css")
-
-    assert "color: var(--band-muted)" in _declarations(css, ".timer--running .timer__time")
-    assert "background: var(--band-ink)" in _declarations(css, ".timer--running .timer__dot")
-
-
-def test_running_timer_focus_ring_uses_band_ink() -> None:
-    # 어두운 테마의 밝은 띠 위에서 강조색 윤곽선은 대비가 3:1에 못 미친다(2.1:1).
-    declarations = _declarations(_read("components.css"), ".timer--running :focus-visible")
-
-    assert "outline-color: var(--band-ink)" in declarations
+    assert "--band-" not in css
+    assert ".timer--running ." not in css
+    assert ".timer--running :" not in css
 
 
 def test_today_progress_done_fill_uses_ok_color() -> None:

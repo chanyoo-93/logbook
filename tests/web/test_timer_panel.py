@@ -190,7 +190,7 @@ def test_stop_from_other_origin_is_forbidden(
     assert _has_timer(web_engine)
 
 
-def test_running_timer_panel_has_band_class_and_idle_does_not(
+def test_running_timer_panel_has_running_class_and_idle_does_not(
     client: TestClient, web_engine: Engine
 ) -> None:
     idle = client.get("/timer", headers=HTMX).text
