@@ -90,6 +90,7 @@ class Task(Base):
     created_at: Mapped[dt.datetime] = mapped_column(default=utcnow)
     updated_at: Mapped[dt.datetime] = mapped_column(default=utcnow, onupdate=utcnow)
     done_at: Mapped[dt.datetime | None]
+    dropped_at: Mapped[dt.datetime | None]  # 중단 시각(스키마 4). 중단 상태가 아니면 None
 
     project: Mapped[Project] = relationship()
 

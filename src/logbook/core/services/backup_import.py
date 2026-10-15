@@ -23,11 +23,11 @@ from logbook.core.errors import InvalidInputError
 from logbook.core.models import ActiveTimer, CategoryColor, Project, Task, WeekNote, WorkLog
 from logbook.core.services.backup import (
     EXPORT_TYPE,
-    FIELDS,
     KEY_FIELDS,
     MODELS,
     TABLE_ORDER,
     BackupCounts,
+    fields_for,
 )
 from logbook.core.services.projects import COMMON_SLUG, is_valid_color, is_valid_slug
 from logbook.core.services.week_notes import clean_note_text
@@ -38,10 +38,10 @@ MAX_SQLITE_INTEGER = 2**63 - 1
 BOM = chr(0xFEFF)
 _MIN_UTC_DATE = dt.date(1, 1, 2)
 _MAX_UTC_DATE = dt.date(9999, 12, 30)
-SUPPORTED_FORMATS = (1, 2, 3)
+SUPPORTED_FORMATS = (1, 2, 3, 4)
 # 형식별로 받는 테이블. 형식 1은 week_notes, 형식 2는 category_colors가 생기기 전의 파일이다.
 FORMAT_TABLES: Mapping[int, tuple[str, ...]] = MappingProxyType(
-    {1: TABLE_ORDER[:4], 2: TABLE_ORDER[:5], 3: TABLE_ORDER}
+    {1: TABLE_ORDER[:4], 2: TABLE_ORDER[:5], 3: TABLE_ORDER, 4: TABLE_ORDER}
 )
 _WEEK_PATTERN = re.compile(r"[0-9]{4}-W[0-9]{2}", re.ASCII)
 _INT_RANGE = f"1 이상 {MAX_SQLITE_INTEGER} 이하의 정수"
@@ -74,6 +74,7 @@ _KINDS: Mapping[str, Mapping[str, str]] = MappingProxyType(
             "created_at": "datetime",
             "updated_at": "datetime",
             "done_at": "opt_datetime",
+            "dropped_at": "opt_datetime",
         },
         "worklogs": {
             "id": "id",
@@ -353,8 +354,8 @@ def _check_order(n: int, table: str, state: _ImportState) -> None:
     state.last_table = table
 
 
-def _check_field_names(n: int, table: str, row: dict[str, Any]) -> None:
-    expected = FIELDS[table]
+def _check_field_names(n: int, table: str, row: dict[str, Any], fmt: int) -> None:
+    expected = fields_for(table, fmt)
     unknown = sorted(set(row) - set(expected))
     if unknown:
         raise InvalidInputError(
@@ -367,9 +368,9 @@ def _check_field_names(n: int, table: str, row: dict[str, Any]) -> None:
         )
 
 
-def _convert_fields(n: int, table: str, row: dict[str, Any]) -> dict[str, Any]:
+def _convert_fields(n: int, table: str, row: dict[str, Any], fmt: int) -> dict[str, Any]:
     values: dict[str, Any] = {}
-    for name in FIELDS[table]:
+    for name in fields_for(table, fmt):
         kind = _KINDS[table][name]
         try:
             values[name] = _convert(kind, row[name])
@@ -412,14 +413,8 @@ def _check_invariants(
             f"{n}번째 줄: projects.archived 값이 올바르지 않습니다: true "
             "(common 프로젝트는 false여야 합니다)."
         )
-    if table == "tasks" and (values["status"] is TaskStatus.DONE) != (
-        values["done_at"] is not None
-    ):
-        raise InvalidInputError(
-            f"{n}번째 줄: tasks.done_at 값이 올바르지 않습니다: "
-            f"{_show(row['done_at'])} "
-            "(status가 done이면 시각, 아니면 null이어야 합니다)."
-        )
+    if table == "tasks":
+        _check_task_times(n, values, row, state.format)
     if table == "week_notes":
         _check_week_note(n, values, row)
     task_id = values.get("task_id")
@@ -428,6 +423,26 @@ def _check_invariants(
             f"{n}번째 줄: {table}.task_id 값이 올바르지 않습니다: {task_id} "
             "(그 태스크의 project_id와 같은 프로젝트여야 합니다)."
         )
+
+
+def _check_task_times(n: int, values: dict[str, Any], row: dict[str, Any], fmt: int) -> None:
+    """완료·중단 시각은 해당 상태일 때만 있다. dropped_at은 형식 4부터 파일에 있다."""
+    checks = [("done_at", TaskStatus.DONE, "done")]
+    if fmt >= 4:
+        checks.append(("dropped_at", TaskStatus.DROPPED, "dropped"))
+    for name, status, label in checks:
+        if (values["status"] is status) != (values[name] is not None):
+            raise InvalidInputError(
+                f"{n}번째 줄: tasks.{name} 값이 올바르지 않습니다: "
+                f"{_show(row[name])} "
+                f"(status가 {label}이면 시각, 아니면 null이어야 합니다)."
+            )
+
+
+def _fill_dropped_at(values: dict[str, Any]) -> None:
+    """형식 1~3 파일에는 중단 시각이 없다. 마이그레이션처럼 중단 태스크는 updated_at으로 채운다."""
+    dropped = values["status"] is TaskStatus.DROPPED
+    values["dropped_at"] = values["updated_at"] if dropped else None
 
 
 def _check_week_note(n: int, values: dict[str, Any], row: dict[str, Any]) -> None:
@@ -449,11 +464,13 @@ def _record(n: int, text: str, state: _ImportState) -> None:
     """데이터 줄 하나를 검사 순서대로 검증하고 상태에 반영한다."""
     table, row = _parse_envelope(n, text, FORMAT_TABLES[state.format])
     _check_order(n, table, state)
-    _check_field_names(n, table, row)
-    values = _convert_fields(n, table, row)
+    _check_field_names(n, table, row, state.format)
+    values = _convert_fields(n, table, row, state.format)
     _check_unique(n, table, values, state)
     _check_references(n, table, values, state)
     _check_invariants(n, table, values, row, state)
+    if table == "tasks" and state.format < 4:
+        _fill_dropped_at(values)
     state.ids[table].add(values[KEY_FIELDS[table]])
     if table == "projects":
         state.slugs.add(values["slug"])

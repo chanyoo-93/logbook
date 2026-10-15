@@ -116,13 +116,19 @@ def header_v2(**changes: Any) -> str:
 
 
 def header_v3(**changes: Any) -> str:
-    """형식 3 머리글(현재 스키마)."""
-    return header(**{"format": 3, "schema_version": db.SCHEMA_VERSION, **changes})
+    """형식 3 머리글. 형식 3 파일은 스키마 3에서 만들어졌다."""
+    return header(**{"format": 3, "schema_version": 3, **changes})
+
+
+def header_v4(**changes: Any) -> str:
+    """형식 4 머리글(현재 스키마)."""
+    return header(**{"format": 4, "schema_version": db.SCHEMA_VERSION, **changes})
 
 
 HEADER = header()
 HEADER_V2 = header_v2()
 HEADER_V3 = header_v3()
+HEADER_V4 = header_v4()
 
 
 def line(table: str, **changes: Any) -> str:
@@ -132,7 +138,8 @@ def line(table: str, **changes: Any) -> str:
 
 COMMON = line("projects")
 PAY = line("projects", id=2, slug="pay", name="결제")
-TASK = line("tasks")
+TASK = line("tasks")  # 형식 1~3의 태스크 줄(dropped_at 없음)
+TASK_V4 = line("tasks", dropped_at=None)
 WORKLOG = line("worklogs")
 TIMER = line("active_timer")
 WEEK_NOTE = line("week_notes")
@@ -202,7 +209,15 @@ def populate(s: Session) -> None:
         created_at=NOW,
         updated_at=NOW,
     )
-    s.add_all([full, sparse])
+    dropped = Task(
+        project_id=pay.id,
+        title="중단",
+        status=TaskStatus.DROPPED,
+        created_at=datetime(2026, 9, 5, 1, 0, 0, tzinfo=UTC),
+        updated_at=datetime(2026, 9, 6, 1, 0, 0, tzinfo=UTC),
+        dropped_at=datetime(2026, 9, 6, 1, 0, 0, tzinfo=UTC),
+    )
+    s.add_all([full, sparse, dropped])
     s.flush()
     s.add_all(
         [
@@ -285,6 +300,16 @@ def add_exotic_rows(s: Session) -> None:
         done_at=micro,
     )
     s.add(task)
+    s.add(
+        Task(
+            project_id=pay.id,
+            title=mixed,
+            status=TaskStatus.DROPPED,
+            created_at=micro,
+            updated_at=micro,
+            dropped_at=micro,
+        )
+    )
     s.flush()
     s.add(
         WorkLog(

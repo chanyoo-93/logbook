@@ -25,7 +25,7 @@ from .backup_helpers import LS, NEL, NOW, PS, populate
 KST = timezone(timedelta(hours=9))
 
 HEADER_LINE = (
-    '{"exported_at": "2026-10-08T03:00:00+00:00", "format": 3, '
+    '{"exported_at": "2026-10-08T03:00:00+00:00", "format": 4, '
     f'"schema_version": {db.SCHEMA_VERSION}, "type": "logbook-export"}}'
 )
 
@@ -53,7 +53,7 @@ def test_exports_all_tables_and_fields_including_nulls(session: Session) -> None
     lines, counts = services.export_records(session, now=NOW)
 
     assert counts == services.BackupCounts(
-        projects=2, tasks=2, worklogs=2, timers=1, week_notes=2, category_colors=2
+        projects=2, tasks=3, worklogs=2, timers=1, week_notes=2, category_colors=2
     )
     rows = _rows(lines)
     by_table: dict[str, list[dict[str, Any]]] = {}
@@ -86,6 +86,7 @@ def test_exports_all_tables_and_fields_including_nulls(session: Session) -> None
         "created_at": "2026-09-02T01:00:00+00:00",
         "updated_at": "2026-09-03T01:00:00+00:00",
         "done_at": "2026-09-04T01:00:00+00:00",
+        "dropped_at": None,
     }
     sparse = by_table["tasks"][1]
     assert sparse["status"] == "todo"
@@ -93,6 +94,10 @@ def test_exports_all_tables_and_fields_including_nulls(session: Session) -> None
     assert sparse["estimate_minutes"] is None
     assert sparse["due_date"] is None
     assert sparse["done_at"] is None
+    assert sparse["dropped_at"] is None
+    dropped = by_table["tasks"][2]
+    assert (dropped["status"], dropped["done_at"]) == ("dropped", None)
+    assert dropped["dropped_at"] == "2026-09-06T01:00:00+00:00"
     assert by_table["worklogs"][1]["task_id"] is None
     assert by_table["worklogs"][1]["started_at"] is None
     assert by_table["worklogs"][1]["note"] == ""
@@ -272,7 +277,12 @@ def test_field_tuples_match_model_columns() -> None:
         assert list(backup.FIELDS[table]) == list(model.__table__.columns.keys()), table
     assert set(backup.TABLE_ORDER) == set(Base.metadata.tables) - {"schema_version"}
     assert set(backup.FIELDS) == set(backup.TABLE_ORDER)
-    assert backup.FORMAT_VERSION == 3
+    assert backup.FORMAT_VERSION == 4
+    assert backup.TASK_FIELDS[:-1] == backup.TASK_FIELDS_BEFORE_4
+    assert backup.TASK_FIELDS[-1] == "dropped_at"
+    assert backup.fields_for("tasks", 3) == backup.TASK_FIELDS_BEFORE_4
+    assert backup.fields_for("tasks", 4) == backup.TASK_FIELDS
+    assert backup.fields_for("worklogs", 1) == backup.WORKLOG_FIELDS
     assert backup.WEEK_NOTE_FIELDS == ("week", "risks", "notes", "updated_at")
 
 
@@ -300,7 +310,7 @@ def test_week_notes_export_header_order_and_fields(session: Session) -> None:
     lines, counts = services.export_records(session, now=NOW)
 
     header = json.loads(lines[0])
-    assert (header["format"], header["schema_version"]) == (3, db.SCHEMA_VERSION)
+    assert (header["format"], header["schema_version"]) == (4, db.SCHEMA_VERSION)
     assert counts.week_notes == 2
     tail = [json.loads(line) for line in lines if '"table": "week_notes"' in line]
     assert [r["table"] for r in tail] == ["week_notes", "week_notes"]

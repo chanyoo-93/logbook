@@ -10,7 +10,6 @@ from sqlalchemy import Engine, create_engine, text
 
 from logbook.core import db
 from logbook.core.errors import LogbookError
-from logbook.core.models import ActiveTimer, Project, Task, WorkLog
 from tests.helpers import make_v1_database
 
 KST = dt.timezone(dt.timedelta(hours=9))
@@ -39,24 +38,25 @@ def seed_v1(path: Path) -> None:
     """v1 DB에 프로젝트·태스크·기록·타이머를 한 건씩 넣는다."""
     make_v1_database(path)
     engine = db.create_engine_for(path)
+    stamp = "2026-10-01 00:00:00"
     try:
-        with db.session_scope(engine) as session:
-            project = Project(slug="payment", name="결제 시스템")
-            task = Task(project=project, title="환불 API 설계")
-            session.add_all(
-                [
-                    project,
-                    task,
-                    WorkLog(
-                        project=project,
-                        task=task,
-                        category="dev",
-                        date=dt.date(2026, 10, 1),
-                        minutes=30,
-                        note="구현",
-                    ),
-                    ActiveTimer(project=project, category="dev", note="진행", started_at=NOW),
-                ]
+        # v1 스키마에는 최신 모델의 컬럼이 없으므로 ORM 대신 고정 SQL로 넣는다.
+        with engine.begin() as conn:
+            conn.exec_driver_sql(
+                "INSERT INTO projects (slug, name, archived, created_at) "
+                f"VALUES ('payment', '결제 시스템', 0, '{stamp}')"
+            )
+            conn.exec_driver_sql(
+                "INSERT INTO tasks (project_id, title, status, created_at, updated_at) "
+                f"VALUES (1, '환불 API 설계', 'todo', '{stamp}', '{stamp}')"
+            )
+            conn.exec_driver_sql(
+                "INSERT INTO worklogs (project_id, task_id, category, date, minutes, note, "
+                f"created_at) VALUES (1, 1, 'dev', '2026-10-01', 30, '구현', '{stamp}')"
+            )
+            conn.exec_driver_sql(
+                "INSERT INTO active_timer (id, project_id, category, note, started_at) "
+                f"VALUES (1, 1, 'dev', '진행', '{stamp}')"
             )
     finally:
         engine.dispose()
