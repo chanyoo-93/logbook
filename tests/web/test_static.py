@@ -270,6 +270,11 @@ def test_board_js_is_served_as_javascript(client: TestClient) -> None:
         "/status",
         # 열 밖(머리, 열 사이 틈 등)에 놓으면 원래 자리로 되돌린다(2026-10-15 사용자 결정)
         "revertOnSpill: true",
+        # 카드를 누르는 순간 목록 높이를 고정하고 놓으면 푼다.
+        # 원래 열이 줄어 아래 행이 올라오지 않게 한다(2026-10-15 QA).
+        "onChoose: freezeHeights",
+        "onUnchoose: releaseHeights",
+        "style.minHeight",
     ],
 )
 def test_board_js_contains(needle: str) -> None:

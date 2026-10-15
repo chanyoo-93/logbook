@@ -23,6 +23,21 @@
     });
   }
 
+  // 끄는 동안 목록 높이가 줄지 않게 고정한다. 카드가 원래 열을 떠나 그 열이 줄면, 위아래로 쌓인 배치(2×2, 1열)에서
+  // 아래 행이 올라와 포인터가 놓으려던 열 밖에 놓인다(2026-10-15 QA). 늘어나는 것은 막지 않는다.
+  // 카드를 누르는 순간(choose)에 잰다. 끌기 시작(start)은 다음 틱이라 그 전에 카드가 옮겨질 수 있다.
+  function freezeHeights() {
+    boardLists().forEach(function (list) {
+      list.style.minHeight = list.getBoundingClientRect().height + "px";
+    });
+  }
+
+  function releaseHeights() {
+    boardLists().forEach(function (list) {
+      list.style.minHeight = "";
+    });
+  }
+
   function filterProject() {
     var select = document.getElementById("filter-project");
     return select ? select.value : "";
@@ -80,6 +95,8 @@
       chosenClass: "task-card--chosen",
       // 열 밖(머리, 열 사이 틈 등)에 놓으면 원래 자리로 되돌린다. onEnd에서 from과 to가 같아 요청을 보내지 않는다.
       revertOnSpill: true,
+      onChoose: freezeHeights,
+      onUnchoose: releaseHeights,
       onEnd: moveCard,
     });
   }
