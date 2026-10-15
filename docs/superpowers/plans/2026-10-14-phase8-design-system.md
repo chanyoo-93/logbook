@@ -757,16 +757,16 @@ def _upgrade_to_3(conn: Connection) -> None:
 
 ## Task 8-11: 보완 문서와 확인
 
-- [ ] **SPEC.md**
+- [x] **SPEC.md** (c8b3361)
   - 2장: `### week_notes`(62행 부근) 다음에 `### category_colors` 표와 규칙, `### schema_version`(73~74행 "현재 스키마 버전은 2") → 3(버전 3: category_colors 추가)
   - 백업 형식(292행 "JSONL 형식(버전 2)", 296행 week_notes 규칙): 형식 3, 행 순서, `category_colors` 규칙(키 형식, `#rrggbb`, 형식 2 파일에 줄이 있으면 오류), 형식 1·2도 계속 가져옴, 결과 줄
   - 6장 Phase 8 절: 카테고리 색 표, `/colors.css`, 카테고리 꼬리표 색, 프로젝트 색 고르기, 색 규칙
   - 후속 항목: 차트 팔레트 항목 정리
-- [ ] **README.md**
+- [x] **README.md** (c8b3361)
   - 설정 화면(카테고리 색, 프로젝트 색 고르기), 백업 형식 3
   - 업그레이드: DB를 여는 `lb` 명령이나 `lb serve`를 처음 실행할 때 스키마 3으로 올리고, 그 전에 백업 파일을 만든다. 올리기 전에는 셸 자동완성 후보가 비어 있다(기존 동작).
-- [ ] **CLAUDE.md, AGENTS.md**: services 목록에 `category_colors`, `web/colors.py`, `web/pages/colors.py`, db.py 줄
-- [ ] **ROADMAP.md**: Phase 8에 사용자 지정 색 항목
+- [x] **CLAUDE.md, AGENTS.md** (c8b3361): services 목록에 `category_colors`, `web/colors.py`, `web/pages/colors.py`, db.py 줄
+- [x] **ROADMAP.md** (c8b3361): Phase 8에 사용자 지정 색 항목
 - [ ] **화면 확인(메인 세션, Edge 헤드리스)**
   - 다섯 화면과 설정 카테고리 표 × 1280·375·320px × 밝은·어두운
   - 가로 넘침, 포커스, 꼬리표 색과 차트 색이 같은지
@@ -850,6 +850,7 @@ def _upgrade_to_3(conn: Connection) -> None:
 - **검토에서 미룬 minor 처리(f1aad24):** 입력칸 테두리 토큰 검사를 CSS 전체로 넓힘(8-1 R1), 글꼴 거부 테스트 세 키(8-3 R1), 설정 화면 글꼴 줄 각각 확인(8-4b R1), HTMX 조각 응답의 꼬리표 단정(8-5 R1), 빈 `timer__state` class 제거(8-5 R2). 8-5 R3(최근 기록의 글자와 꼬리표 간격)은 스크린샷에서 괜찮아 그대로 두었다.
 - **최종 리뷰로 고친 것:** major 1건(문서가 `document_font`를 특이사항 입력란에도 쓴다고 적음 → 실제 사용처로 고침, c320fe5). minor: 모서리 토큰 사용처 문서, 낡은 명조 설명의 테스트 이름(755ff59), 계획서 8-7 문서 항목 체크
 - **검증(메인 세션):** ruff, ruff format --check, mypy(core strict·전체) 통과. pytest 2853 passed, 2 skipped(커버리지 core·web 100%, 전체 99%이고 미커버 4줄은 기존 cli). 화면 확인은 위 8-7 항목.
+- **보완(사용자 지정 색, Task 8-8~8-11):** 서브에이전트(Sonnet)가 Task 8-8~8-10을 구현하고 검토했고, 메인 세션이 스크린샷 확인 뒤 보완을 더했다(표 안 색 고르기 포커스 윤곽선 11780f6, 카테고리·프로젝트 표 이름 칸 `nowrap` 0a48130 등). 8-11 문서(SPEC·README·CLAUDE.md·AGENTS.md·ROADMAP)는 c8b3361에서 반영했다. 최종 리뷰 지적(SPEC 설정 항목 낡은 문구, 되돌리기 예시 v2 통일, `flash_text` 도우미 공용화)은 별도 커밋으로 고쳤다. 화면 확인·전체 검증·CI·PR 갱신은 메인 세션이 끝낸 뒤 체크한다.
 - **비교 페이지:** Task마다 전후 스크린샷 비교 페이지를 세션 스크래치패드(`design/compare-8-*.html`, Phase 8 전체는 `design/compare-phase8.html`)에 만들었다. 저장소에는 넣지 않는다.
 
 ---

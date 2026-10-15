@@ -311,10 +311,10 @@ logbook을 업데이트했는데 DB 구조가 바뀌었으면, DB를 여는 첫 
 
 ```
 # PowerShell
-Copy-Item "$HOME\.logbook\logbook.db.v1-20261013-153000.bak" "$HOME\.logbook\logbook.db" -Force
+Copy-Item "$HOME\.logbook\logbook.db.v2-20261015-153000.bak" "$HOME\.logbook\logbook.db" -Force
 
 # macOS (zsh)
-cp ~/.logbook/logbook.db.v1-20261013-153000.bak ~/.logbook/logbook.db
+cp ~/.logbook/logbook.db.v2-20261015-153000.bak ~/.logbook/logbook.db
 ```
 
 ### 웹 대시보드
