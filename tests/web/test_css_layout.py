@@ -117,6 +117,14 @@ def test_board_card_lists_keep_a_min_height_to_receive_drops() -> None:
     assert any(d.startswith("min-height: ") for d in declarations)
 
 
+def test_board_gap_under_the_column_head_belongs_to_the_list() -> None:
+    # 열 머리와 목록 사이 틈이 "열 밖"이면 거기 놓을 때 되돌아간다. 틈을 목록의 위쪽 여백으로 둔다.
+    css = _read("tasks.css")
+
+    assert not any(d.startswith("margin-bottom") for d in _declarations(css, ".board__col-head"))
+    assert "padding-top: var(--space-2)" in _declarations(css, ".board__cards")
+
+
 def test_board_empty_notice_hides_when_a_card_enters_the_list() -> None:
     # 끄는 카드가 빈 열에 들어오면 "없습니다."를 감춘다(안내는 목록의 유일한 항목일 때만 보인다).
     declarations = _declarations(_read("tasks.css"), ".board__empty:not(:only-child)")

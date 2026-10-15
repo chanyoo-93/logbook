@@ -78,6 +78,8 @@
       draggable: CARD_SELECTOR,
       ghostClass: "task-card--ghost",
       chosenClass: "task-card--chosen",
+      // 열 밖(머리, 열 사이 틈 등)에 놓으면 원래 자리로 되돌린다. onEnd에서 from과 to가 같아 요청을 보내지 않는다.
+      revertOnSpill: true,
       onEnd: moveCard,
     });
   }

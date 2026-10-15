@@ -268,6 +268,8 @@ def test_board_js_is_served_as_javascript(client: TestClient) -> None:
         "oldIndex",
         "htmx:afterSettle",
         "/status",
+        # 열 밖(머리, 열 사이 틈 등)에 놓으면 원래 자리로 되돌린다(2026-10-15 사용자 결정)
+        "revertOnSpill: true",
     ],
 )
 def test_board_js_contains(needle: str) -> None:
