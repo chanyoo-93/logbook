@@ -128,7 +128,12 @@
 - `new Sortable(list, { group: "tasks", sort: false, animation: 150, delayOnTouchOnly: true, delay: 150, draggable: ".task-card", ghostClass: "task-card--ghost", chosenClass: "task-card--chosen", onEnd: … })`.
 - `onEnd`: `evt.from !== evt.to`면 `htmx.ajax("POST", "/tasks/" + id + "/status", { target: "#task-board", swap: "outerHTML", values: { status: evt.to.dataset.status, version: item.dataset.version, project: <필터 값> } })`.
 - 요청이 끝날 때까지 보드의 끌기를 잠근다(`option("disabled", true)`). 기존 버튼의 `hx-sync="this:drop"`처럼 겹치는 요청을 만들지 않는다.
-- 실패 복원: 상태 변경 요청이 실패하면(`htmx:responseError`, `htmx:sendError`) 오류 문구는 지금처럼 `#flash`가 보여 주고, `board.js`가 `GET /tasks?project=…`의 보드를 `#task-board`에 다시 불러와 카드를 제자리로 돌린다.
+- 실패 복원: 상태 변경 요청이 실패하면 오류 문구는 지금처럼 `#flash`가 보여 준다. 카드는 `board.js`가 제자리로 돌린다.
+  - 메인 세션 보완(구현 전, 2026-10-15): 처음 계획은 보드를 GET으로 다시 불러오는 것이었다. 그런데 `app.js`는 `htmx:beforeRequest`마다 `#flash`를 비운다. 그래서 다시 부르는 순간 409 문구가 지워진다. 서버가 꺼진 경우(`htmx:sendError`)에는 GET도 실패해 카드가 잘못된 열에 남는다.
+  - 그래서 다시 요청하지 않는다. `htmx.ajax`가 돌려주는 Promise가 끝나면(성공·실패 모두) 끈 카드가 아직 문서 안에 있는지 본다(`item.isConnected`). 있으면 보드가 교체되지 않은 것이다. 이때 카드를 원래 목록(`evt.from`)의 원래 자리(`evt.oldIndex`)로 되돌리고 잠금을 푼다.
+  - 성공하면 보드가 통째로 바뀌어 옛 카드는 문서에 없다.
+  - 409 문구는 지금 버튼과 같다("목록을 새로 고친 뒤 다시 시도하세요"). 서버 응답은 바꾸지 않는다.
+- 빈 열: `ul.board__cards`에 최소 높이를 둬서 카드가 없는 열에도 놓을 수 있게 한다. 빈 열의 높이가 0이면 SortableJS가 놓을 자리를 찾지 못한다.
 - 끄는 중에는 카드 링크가 눌리지 않는다(끈 거리가 있으면 click이 없다). 눌렀다 바로 놓으면 링크로 이동한다.
 - 인라인 코드 금지(CSP): 이벤트는 board.js에서 붙인다.
 
@@ -285,8 +290,8 @@ def _upgrade_to_4(conn: Connection) -> None:
 | 버전 | 중단 시각이 바뀐 태스크 | 버전이 다르다 |
 | API | 태스크 JSON | `dropped_at` 필드(중단이면 시각, 아니면 `null`) |
 | 정적 | vendor README 행, sha256, 태스크 화면만 두 스크립트를 싣는다(대시보드엔 없음) | |
-| JS | board.js에 `new Sortable`, `Sortable.get`, `htmx.ajax`, `sort: false`, `group`, `htmx:responseError`·`htmx:sendError` 복원, 인라인 코드 없음 | 문자열 테스트 |
-| CSS | 4열·2×2·1열 미디어 규칙, 끄는 중 모양 | |
+| JS | board.js에 `new Sortable`, `Sortable.get`, `htmx.ajax`, `sort: false`, `group`, 실패 복원(`isConnected`, `oldIndex`), 보드를 다시 부르는 GET 없음, 인라인 코드 없음 | 문자열 테스트 |
+| CSS | 4열·2×2·1열 미디어 규칙, 끄는 중 모양, 빈 목록 최소 높이 | |
 
 - 메인 세션 화면 확인: Edge 헤드리스에서 board.js의 이동 함수를 직접 불러(끌기 대신) 상태가 바뀌고 보드가 다시 그려지는지, 409를 일부러 일으켜 카드가 제자리로 돌아오는지, 끄는 중 모양, CSP 위반 로그가 없는지 본다.
 
