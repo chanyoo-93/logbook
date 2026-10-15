@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING
@@ -61,6 +61,24 @@ def project_color(project: Project) -> str:
     if services.is_valid_color(color):
         return color
     return CHART_PALETTE[(project.id - 1) % len(CHART_PALETTE)]
+
+
+def _palette_color(position: int) -> str:
+    return CHART_PALETTE[position % len(CHART_PALETTE)]
+
+
+def category_color_map(
+    configured: Sequence[str], stored: Mapping[str, str], present: Sequence[str] = ()
+) -> dict[str, str]:
+    """카테고리 색: 저장한 색이 있으면 그 색, 없으면 설정 순서 위치의 팔레트 색.
+
+    대상은 설정 카테고리 전부와 present 중 설정에 없는 key다. 설정에 없는 key는
+    설정 개수 뒤의 위치를 이름 순으로 받는다. 같은 카테고리는 주마다 같은 색이다.
+    """
+    position = {key: i for i, key in enumerate(configured)}
+    unknown = sorted(key for key in present if key not in position)
+    position.update({key: len(configured) + i for i, key in enumerate(unknown)})
+    return {key: stored.get(key) or _palette_color(i) for key, i in position.items()}
 
 
 @dataclass(frozen=True)

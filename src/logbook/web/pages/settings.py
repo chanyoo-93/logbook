@@ -15,13 +15,13 @@ from starlette.responses import HTMLResponse
 
 from logbook.core import services
 from logbook.core.duration import format_duration
-from logbook.core.errors import InvalidInputError
+from logbook.core.errors import InvalidInputError, NotFoundError
 from logbook.web.context import Ctx, WebContext
-from logbook.web.errors import PROJECT_CHANGED, ConflictError
+from logbook.web.errors import CATEGORY_CHANGED, PROJECT_CHANGED, ConflictError
 from logbook.web.pages.forms import FormText
 from logbook.web.pages.panels import NO_CHANGE, RESULT_MARK
 from logbook.web.pages.templating import render, render_error
-from logbook.web.pages.views import Choice, content_version
+from logbook.web.pages.views import category_color_map, content_version
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -32,6 +32,7 @@ router = APIRouter()
 
 PAGE_TEMPLATE = "settings.html"
 SECTION_TEMPLATE = "partials/project_section.html"
+CATEGORY_TEMPLATE = "partials/category_section.html"
 ROW_TEMPLATE = "partials/project_row.html"
 EDIT_TEMPLATE = "partials/project_edit_row.html"
 PROJECT_ADDED = f"{RESULT_MARK} 프로젝트 추가: {{slug}} ({{name}})"
@@ -46,8 +47,12 @@ ARCHIVE_CONFIRM = (
     "보관할까요? 과거 기록은 집계에 계속 포함되고, 새 기록과 태스크는 추가할 수 없습니다."
 )
 CATEGORY_NOTE = (
-    "카테고리와 기본값은 설정 파일에서 바꿉니다. 저장한 뒤 화면을 새로 고치면 반영됩니다."
+    "카테고리 추가와 이름은 설정 파일 [categories]에서 바꿉니다. "
+    "저장한 뒤 화면을 새로 고치면 반영됩니다."
 )
+CATEGORY_SAVED = f"{RESULT_MARK} {{key}} 색을 저장했습니다."
+CATEGORY_RESET = f"{RESULT_MARK} {{key}} 색을 자동으로 되돌렸습니다."
+CATEGORY_UNKNOWN = "설정에 없는 카테고리입니다: {key}. 설정 파일 [categories]를 확인하세요."
 FONT_NOTE = (
     "글꼴은 이 PC에 설치된 글꼴 이름으로 정합니다"
     "(설정 [web]의 heading_font·document_font·body_font). "
@@ -113,6 +118,22 @@ class ProjectSectionView:
 
 
 @dataclass(frozen=True)
+class CategoryRowView:
+    key: str
+    label: str
+    color: str  # 색 칸의 값: 저장한 색, 없으면 자동 팔레트 색
+    is_auto: bool  # 저장한 색이 없다
+    version: str
+
+
+@dataclass(frozen=True)
+class CategorySectionView:
+    rows: tuple[CategoryRowView, ...]  # 설정 순서
+    note: str = CATEGORY_NOTE
+    message: str = ""
+
+
+@dataclass(frozen=True)
 class FontRowView:
     label: str
     name: str  # 설정 값. 비어 있으면 '기본 글꼴'
@@ -123,11 +144,31 @@ class FontRowView:
 class SettingsInfoView:
     config_file: str  # str(Path) 그대로(Windows 역슬래시)
     db_path: str  # 실제로 연 DB. 설정의 db_path는 다시 시작하기 전에는 다를 수 있다
-    categories: tuple[Choice, ...]  # (key, 라벨), 설정 순서
     default_project: str
     week_start: str
     daily_target: str
     fonts: tuple[FontRowView, ...]
+
+
+def category_version(key: str, stored_color: str | None) -> str:
+    """화면이 본 카테고리 색이 그사이 바뀌었는지 가리는 값."""
+    return content_version(key, stored_color or "")
+
+
+def category_section_view(ctx: WebContext, s: Session, *, message: str = "") -> CategorySectionView:
+    stored = services.category_colors(s)
+    colors = category_color_map(tuple(ctx.cfg.categories), stored)
+    rows = tuple(
+        CategoryRowView(
+            key=key,
+            label=label,
+            color=colors[key],
+            is_auto=key not in stored,
+            version=category_version(key, stored.get(key)),
+        )
+        for key, label in ctx.cfg.categories.items()
+    )
+    return CategorySectionView(rows, message=message)
 
 
 def project_row(project: Project) -> ProjectRowView:
@@ -161,7 +202,6 @@ def info_view(ctx: WebContext) -> SettingsInfoView:
     return SettingsInfoView(
         config_file=str(ctx.config_file),
         db_path=str(ctx.engine.url.database),
-        categories=tuple(Choice(key, label) for key, label in cfg.categories.items()),
         default_project=cfg.default_project,
         week_start=cfg.week_start,
         daily_target=format_duration(cfg.daily_target_minutes),
@@ -189,11 +229,12 @@ def _section_response(
 def settings_page(request: Request, ctx: Ctx) -> HTMLResponse:
     with ctx.session() as s:
         section = section_view(s)
+        categories = category_section_view(ctx, s)
     context = {
         "active": "settings",
         "section": section,
+        "categories": categories,
         "info": info_view(ctx),
-        "category_note": CATEGORY_NOTE,
         "font_note": FONT_NOTE,
     }
     return render(request, PAGE_TEMPLATE, context)
@@ -330,3 +371,37 @@ def unarchive(request: Request, ctx: Ctx, slug: str, version: FormText = "") -> 
     return render(
         request, SECTION_TEMPLATE, {"section": _set_archived(ctx, slug, version, archive=False)}
     )
+
+
+def _set_category_color(
+    ctx: WebContext, key: str, color: str, auto: str, version: str
+) -> CategorySectionView:
+    with ctx.session() as s:
+        if key not in ctx.cfg.categories:
+            raise NotFoundError(CATEGORY_UNKNOWN.format(key=key))
+        stored = services.category_colors(s).get(key)
+        if category_version(key, stored) != version:
+            raise ConflictError(CATEGORY_CHANGED.format(key=key))
+        message = NO_CHANGE
+        new_color = color.strip()
+        if auto:
+            if services.clear_category_color(s, key):
+                message = CATEGORY_RESET.format(key=key)
+        elif stored is None or stored.lower() != new_color.lower():
+            services.set_category_color(s, key, new_color)
+            message = CATEGORY_SAVED.format(key=key)
+        return category_section_view(ctx, s, message=message)
+
+
+@router.post("/settings/categories/{key}/color", response_class=HTMLResponse)
+def set_category_color(
+    request: Request,
+    ctx: Ctx,
+    key: str,
+    color: FormText = "",
+    auto: FormText = "",
+    version: FormText = "",
+) -> HTMLResponse:
+    """오류(404, 409, 400)는 잡지 않는다. 전역 처리기가 #flash로 보내고 표는 그대로 남는다."""
+    section = _set_category_color(ctx, key, color, auto, version)
+    return render(request, CATEGORY_TEMPLATE, {"categories": section})

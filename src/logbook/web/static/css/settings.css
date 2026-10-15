@@ -76,12 +76,6 @@
   overflow-wrap: anywhere;
 }
 
-.info__categories {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 .font-preview {
   margin-left: var(--space-3);
   font-size: var(--text-md);
@@ -107,3 +101,27 @@
   font-size: var(--text-sm);
 }
 
+
+/* 카테고리·프로젝트 색 고르기 */
+.color-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.color-field input[type="color"] {
+  width: 2.5rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+}
+
+.color-field__auto {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}

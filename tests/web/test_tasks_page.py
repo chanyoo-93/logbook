@@ -172,7 +172,11 @@ def test_card_shows_project_and_category(client: TestClient, web_engine: Engine)
     assert "style=" not in html
     assert [e.text for e in by_class(html, "task-card__category")] == ["design"]
     category = by_class(html, "task-card__category")[0]
-    assert str(category.attrs["class"]).split() == ["pill", "task-card__category"]
+    assert str(category.attrs["class"]).split() == [
+        "pill",
+        "pill--cat-design",
+        "task-card__category",
+    ]
     assert f"#{task}" in _card(html, task)
 
 

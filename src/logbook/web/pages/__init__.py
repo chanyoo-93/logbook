@@ -3,6 +3,7 @@
 from fastapi import APIRouter
 
 from logbook.web.pages import (
+    colors,
     dashboard,
     fonts,
     logs,
@@ -14,6 +15,7 @@ from logbook.web.pages import (
 )
 
 router = APIRouter()
+router.include_router(colors.router)
 router.include_router(dashboard.router)
 router.include_router(fonts.router)
 router.include_router(logs.router)

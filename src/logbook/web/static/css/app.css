@@ -59,6 +59,7 @@
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-full: 999px;
+  --pill-tint: 20%; /* 카테고리 꼬리표에 깔리는 색의 비율(/colors.css) */
   --focus-ring: 2px solid var(--accent);
 }
 

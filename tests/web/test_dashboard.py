@@ -9,7 +9,7 @@ from sqlalchemy import Engine
 from logbook.core import db, services
 from logbook.core.taskstatus import TaskStatus
 from logbook.web.app import create_app
-from logbook.web.assets import FONTS_CSS_URL
+from logbook.web.assets import COLORS_CSS_URL, FONTS_CSS_URL
 from logbook.web.context import WebContext
 from logbook.web.pages.views import CHART_PALETTE
 from tests.helpers import Clock, hold_lock
@@ -225,7 +225,7 @@ def test_recent_logs_table_columns_and_cells(client: TestClient, web_engine: Eng
     for header in ("ID", "날짜", "프로젝트/카테고리", "시간", "메모", "태스크"):
         assert header in recent
     row = next(e for e in all_by_tag(html, "tr") if e.attrs.get("id") == f"log-{log_id}")
-    assert '<span class="pill">dev</span>' in html
+    assert '<span class="pill pill--cat-dev">dev</span>' in html
     assert row.text == f"{log_id} 10-01 (목) payment dev 1h 30m 재시도 로직 #{task_id}"
     assert f'<circle cx="4" cy="4" r="4" fill="{CHART_PALETTE[1]}"/></svg>payment' in html
     assert 'class="dot" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"' in html
@@ -366,7 +366,7 @@ def test_dashboard_references_only_local_assets(client: TestClient) -> None:
         if e.attrs.get(name)
     ]
     assert urls
-    assert all(str(url).startswith(("/static/", FONTS_CSS_URL)) for url in urls)
+    assert all(str(url).startswith(("/static/", FONTS_CSS_URL, COLORS_CSS_URL)) for url in urls)
     assert "https://" not in html and "http://" not in html
 
 

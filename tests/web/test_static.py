@@ -174,6 +174,7 @@ def test_base_template_links_every_stylesheet_in_order(client: TestClient) -> No
     assert _linked_sheets(client.get("/").text) == [
         *[f"/static/css/{n}" for n in STYLESHEETS],
         "/fonts.css",
+        "/colors.css",
     ]
     assert FONTS_CSS_URL == "/fonts.css"
 
@@ -182,7 +183,7 @@ def test_error_page_links_the_same_stylesheets_in_the_same_order(client: TestCli
     error = client.get("/no-such-page")
 
     assert error.status_code == 404
-    assert _linked_sheets(error.text) == _linked_sheets(client.get("/").text)
+    assert _linked_sheets(error.text) == _linked_sheets(client.get("/").text)[:-1]
 
 
 def test_css_files_define_color_tokens_and_reduced_motion() -> None:

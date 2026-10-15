@@ -50,7 +50,7 @@ def test_settings_page_lists_projects_and_info(
     assert "보관" in by_id(html, "project-old").text
     assert '<span class="pill">보관</span>' in html
     assert '<span class="pill pill--ok">사용 중</span>' in html
-    assert "dev — 개발" in html
+    assert by_id(html, "category-dev").text.startswith("dev 개발")
     assert str(web_ctx.config_file) in html
     assert str(web_ctx.engine.url.database) in html
     assert CATEGORY_NOTE in html

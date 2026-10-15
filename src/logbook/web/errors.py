@@ -43,6 +43,9 @@ NOTES_CHANGED = (
 PROJECT_CHANGED = (
     "다른 곳에서 프로젝트가 바뀌었습니다: {slug}. 목록을 새로 고친 뒤 다시 시도하세요."
 )
+CATEGORY_CHANGED = (
+    "다른 곳에서 카테고리 색이 바뀌었습니다: {key}. 목록을 새로 고친 뒤 다시 시도하세요."
+)
 RECORD_CHANGED = "다른 곳에서 기록이 바뀌었습니다: #{id}. 목록을 새로 고친 뒤 다시 시도하세요."
 VALUE_INVALID = "요청 값이 올바르지 않습니다: '{field}' ({reason})."
 INTERNAL_ERROR = (

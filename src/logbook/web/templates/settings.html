@@ -2,6 +2,7 @@
 {% block title %}설정{% endblock %}
 {% block content %}
 {% include "partials/project_section.html" %}
+{% include "partials/category_section.html" %}
 <section id="settings-info" class="panel" aria-labelledby="settings-info-title">
   <div class="panel__head">
     <h2 id="settings-info-title" class="panel__title">설정 정보</h2>
@@ -21,16 +22,7 @@
     <dt>{{ font.label }}</dt>
     <dd>{{ font.name }} <span class="font-preview {{ font.preview_class }}">가나다 ABC 123 · 8h 55m</span></dd>
 {% endfor %}
-    <dt>카테고리</dt>
-    <dd>
-      <ul class="info__categories">
-{% for choice in info.categories %}
-        <li>{{ choice.value }} — {{ choice.label }}</li>
-{% endfor %}
-      </ul>
-    </dd>
   </dl>
-  <p class="info__note">{{ category_note }}</p>
   <p class="info__note">{{ font_note }}</p>
 </section>
 {% endblock %}
