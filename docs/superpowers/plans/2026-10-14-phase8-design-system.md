@@ -484,6 +484,286 @@ def project_color(project: Project) -> str:
 
 ---
 
+## 보완: 사용자 지정 색 (사용자 결정, 2026-10-15)
+
+아침 확인에서 차트 팔레트 시작 위치(`common`이 카테고리 첫 색과 같은 파랑, 후속 5)를 여쭸다. 사용자 답은 "꼬리표 pill은 사용자가 정할 수 있도록, 프로젝트 색 점도 사용자가 정할 수 있도록. 차트 색은 그럼 자동으로 이를 따라가면 되겠지."였다. 결정 게이트에서 정한 것은 다음과 같다.
+
+| 결정 | 내용 |
+|---|---|
+| C1 카테고리 색 저장 | 웹 설정 화면(`/settings`)에서 고르고 DB(`category_colors`)에 저장한다. 카테고리 정의(키·이름)는 지금처럼 설정 파일 `[categories]`에 있다 |
+| C2 카테고리 꼬리표 | 그 색을 옅게(20%) 깐 바탕에 본문색 글자를 쓴다. 카테고리 차트는 같은 색(진하게)이다 |
+| C3 상태 꼬리표 | 그대로 둔다(주차·예상 초과·이월 후보·진행 중·보관·사용 중은 의미 색 고정) |
+| C4 프로젝트 색 | 설정 화면의 추가·수정 칸을 브라우저 색 고르기(`<input type="color">`)와 `자동` 체크로 바꾼다. CLI `--color`는 그대로다 |
+
+- 색을 정하지 않은 카테고리·프로젝트는 지금 규칙을 따른다. 카테고리는 설정 순서 팔레트, 프로젝트는 ID 팔레트다. 팔레트를 한 칸 미는 조정(후속 5)은 하지 않는다.
+- 이 보완은 설계 결정 6(Phase 8은 겉모양만)의 예외다. 설정 화면에 카테고리 색 표와 색 고르기 칸이 생기고, DB 스키마가 3으로 오른다.
+- 스키마 3이 들어간 버전을 처음 실행하면 기존 DB가 자동으로 업그레이드되고, 그 전에 백업 파일(`logbook.db.v2-YYYYMMDD-HHMMSS.bak`)이 생긴다. 이것은 Phase 6의 v1 → v2와 같은 기존 동작이다.
+- 진행은 Phase 8과 같다. 이 보완 계획을 승인받는다 → Task마다 구현 1명 + 검토 1명(Sonnet, medium) → 메인 세션 스크린샷 → 사용자 승인. 결과는 PR #18에 함께 넣는다.
+- 8-5(꼬리표)·8-6(색 점)의 승인은 Task 8-9 스크린샷(카테고리 꼬리표가 바뀜)을 확인할 때 함께 받는다.
+
+### 색 규칙 (Task 8-8~8-10 공통)
+
+| 대상 | 색 | 쓰는 곳 |
+|---|---|---|
+| 카테고리(설정에 있음) | `category_colors`에 행이 있으면 그 색이다. 없으면 설정 `[categories]` 순서 위치의 `CHART_PALETTE` 색이다 | 꼬리표(`/colors.css`), 카테고리 차트, 설정 화면 표 |
+| 카테고리(설정에 없음: 설정에서 지운 카테고리로 남은 기록) | 행이 있으면 그 색이다. 없으면 차트는 지금 규칙(설정 개수 뒤 위치를 이름 순으로)을 따르고, 꼬리표는 회색 그대로다 | 같음 |
+| 프로젝트 | 지금과 같다(`project_color`: 지정 색, 없으면 ID 팔레트) | 색 점, 프로젝트 차트, 설정 화면 견본 |
+
+- 카테고리 색은 함수 하나가 정한다. `summary.py`의 `category_colors`를 `web/pages/views.py`로 옮겨 `category_color_map(configured, stored, present=())`로 넓힌다. 차트, `/colors.css`, 설정 화면 표가 모두 이 함수를 쓴다.
+- 카테고리 키 형식은 한 규칙을 함께 쓴다. `core/config.py`의 `_CATEGORY_KEY`(`[a-z][a-z0-9_-]*`)를 공개 이름으로 바꿔 설정·서비스·가져오기·`/colors.css`·꼬리표 class가 같이 쓴다. 이 형식이면 CSS class 이름(`pill--cat-<키>`)으로 그대로 쓸 수 있다.
+- **꼬리표 class는 형식이 맞는 키에만 붙인다.** 기록·태스크의 `category`에는 설정에 없는 문자열이 남을 수 있다(백업 가져오기의 category 종류는 문자열 검사만 한다). 템플릿 필터 `category_class`(templating.py에 등록)가 키가 형식에 맞으면 `pill--cat-<키>`를, 아니면 빈 문자열을 돌려준다. 형식이 틀린 키는 기본 꼬리표(회색)다.
+- **`/colors.css`는 순수 함수가 만든다.** `web/colors.py`의 `colors_css(configured, stored)`는 설정 카테고리 키와 저장 색 사전을 받는다. 라우트가 `services.category_colors(s)`로 저장 색을 읽어 넘긴다(web은 SQLAlchemy를 쓰지 않는다, `tests/web/test_layering.py`).
+  - 화면을 열 때마다 DB를 한 번 더 읽는다(`no-store`).
+  - DB가 잠겨 있거나 없어 `/colors.css`가 실패하면 꼬리표는 회색으로 보인다(허용).
+- **색 비교는 대소문자를 무시한다.** `<input type="color">`는 값을 소문자로 보낸다. 저장된 `#4F46E5`와 받은 `#4f46e5`는 같은 색으로 보고 `바뀐 내용이 없습니다.`를 보여 준다. 프로젝트·카테고리 모두 같다.
+- **`자동` 체크의 폼 이름과 값:** 카테고리는 `auto`, 프로젝트는 `color_auto`이고 켜짐 값은 `"1"`이다. 꺼지면 키가 오지 않으므로 `FormText` 기본값 `""`로 받는다. 켜져 있으면 색 칸 값은 무시한다.
+
+---
+
+## Task 8-8: 카테고리 색 저장 (core: 모델·마이그레이션·서비스·백업)
+
+**Files:**
+- Create: `src/logbook/core/services/category_colors.py`
+- Modify:
+  - `src/logbook/core/models.py`(`CategoryColor`, 맨 위 docstring의 테이블 목록)
+  - `core/db.py`(`SCHEMA_VERSION = 3`, `_upgrade_to_3`, `MIGRATIONS`, 51행 부근 마이그레이션 주석)
+  - `core/config.py`(키 정규식 공개)
+  - `core/services/__init__.py`(import와 `__all__`)
+  - `core/services/projects.py`(색 검증을 공개 함수로)
+  - `core/services/backup.py`, `core/services/backup_import.py`
+  - `cli/commands/data.py`(내보내기·가져오기 결과 줄)
+- Modify tests:
+  - `tests/core/test_db.py:18`(`TABLES`)
+  - `test_db_migration_v2.py`
+    - 102행 `SCHEMA_VERSION == 2`
+    - 117·261·270행 `InitResult(1, 2, …)`, 233행 `InitResult(2, 2)`, 274행 `InitResult(None, 2)` → 최신 버전 기준
+    - 242~248행: 여러 단계 백업 테스트가 3을 "다음 버전"으로 쓰므로 `SCHEMA_VERSION + 1` 기준으로 바꾼다
+  - 새 `test_db_migration_v3.py`, 새 `test_services_category_colors.py`
+  - `tests/core/backup_helpers.py:110`(머리글 형식)
+  - `test_services_backup.py`: 20~21행(머리글), 262행(`TABLE_ORDER`와 모델 테이블), 264행(`FORMAT_VERSION`), 291행(`(2, 2)`), 320행(export 이름)
+  - `test_services_backup_import.py`, `test_services_backup_import_validation.py:258`(형식 2 테이블 순서 문구)
+  - 결과 줄: `tests/cli/test_data.py`(19·215·252·268행), `tests/cli/test_entry.py`(254·262행)
+
+```python
+# core/models.py
+class CategoryColor(Base):
+    """카테고리 색. 행이 없으면 자동(설정 순서 팔레트)이다. 카테고리 정의는 설정 파일에 있다."""
+
+    __tablename__ = "category_colors"
+
+    category: Mapped[str] = mapped_column(String(32), primary_key=True)
+    color: Mapped[str] = mapped_column(String(7))
+    updated_at: Mapped[dt.datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+```
+
+```python
+# core/db.py: 고정 DDL이다. 모델이 나중에 바뀌어도 이 단계는 그대로 둔다.
+def _upgrade_to_3(conn: Connection) -> None:
+    conn.exec_driver_sql(
+        "CREATE TABLE category_colors (category VARCHAR(32) NOT NULL, color VARCHAR(7) NOT NULL, "
+        "updated_at DATETIME NOT NULL, PRIMARY KEY (category))"
+    )
+```
+- 새 DB(`create_all`)와 올린 DB의 `PRAGMA table_info(category_colors)`가 같아야 한다. 기존 v2 테스트와 같은 방식으로 비교한다.
+
+**서비스** (`core/services/category_colors.py`)
+
+| 함수 | 동작 |
+|---|---|
+| `category_colors(s) -> dict[str, str]` | 저장된 색 전부를 `{키: 색}`으로 돌려준다 |
+| `set_category_color(s, category, color) -> None` | 키 형식과 색(`#rrggbb`, 프로젝트와 같은 오류 문구)을 검사한다. 행이 있으면 바꾸고, 없으면 만든다 |
+| `clear_category_color(s, category) -> bool` | 행을 지운다(자동으로 되돌림). 지운 행이 있으면 True |
+
+- 키가 설정에 있는지는 web이 확인한다. core 서비스는 설정을 받지 않는다.
+- 색 검증은 `projects.py`의 `_validate_color`를 공개 함수로 바꿔 함께 쓴다. 대소문자는 지금 프로젝트처럼 입력 그대로 저장한다.
+- 쓰기는 `s.flush()`까지만 한다. 커밋은 호출자의 `session_scope`가 한다(`week_notes.py`와 같다).
+
+**백업 (형식 3)**
+
+| 대상 | 바꾼 뒤 |
+|---|---|
+| `FORMAT_VERSION` | 3 |
+| `TABLE_ORDER` | 끝에 `category_colors`를 더한다. 필드는 `category`, `color`, `updated_at`, 정렬 키는 `category` |
+| 가져오기 형식 | `SUPPORTED_FORMATS = (1, 2, 3)`, `FORMAT_TABLES = {1: TABLE_ORDER[:4], 2: TABLE_ORDER[:5], 3: TABLE_ORDER}`. 형식 2 파일에 `category_colors` 줄이 있으면 오류다 |
+| 가져오기 검증 | `category`는 키 형식, `color`는 새 검증 종류(`#rrggbb`, 오류 문구 포함), `updated_at`은 시각이다. 키가 겹치면 오류다 |
+| 가져오기 표 | `_REFERENCES["category_colors"] = ()`(없으면 `_check_references`가 KeyError), `_KINDS["category_colors"]`(필드 순서는 `FIELDS`와 같게), 새 종류 둘(카테고리 키 형식, `#rrggbb` 색)과 그 `_EXPECTED` 안내 문구·`_CONVERTERS` 변환기 |
+| 빈 DB 검사 | `_existing_common`의 모델 목록에 `CategoryColor`를 더한다 |
+| 개수 | `BackupCounts.category_colors`(기본값 0). 내보내기(`export_records`)와 가져오기(`import_records`) 모두 센다 |
+| 문서 문자열 | `backup.py` 모듈 docstring의 형식 버전 |
+| CLI 결과 줄 | `프로젝트 N · 태스크 N · 기록 N · 타이머 N · 특이사항 N · 카테고리 색 N` |
+
+- 알 수 없는 테이블 줄은 지금처럼 `N번째 줄: 알 수 없는 테이블입니다: …` 오류다. 형식 2 파일의 `category_colors` 줄도 이 오류가 된다(추가 코드 없음).
+- 기존 `projects.color`의 가져오기 검증(`opt_str`)은 그대로 둔다(범위 밖, 후속 항목).
+
+**테스트 케이스**
+
+| 대상 | 케이스 | 기대 |
+|---|---|---|
+| 마이그레이션 | 데이터가 있는 v2 DB → v3 | 기존 행 수 그대로, `category_colors` 생김, 버전 3, 백업 1개 |
+| 마이그레이션 | v1 → v3 | 두 단계 모두 적용, 백업은 1개 |
+| 마이그레이션 | 새 DB와 올린 DB | `PRAGMA table_info(category_colors)`가 같음 |
+| 서비스 | 저장 → 바꾸기 → 목록 → 지우기 → 다시 지우기 | 목록 내용, 지우기는 True 다음 False |
+| 서비스 | 잘못된 색(`red`, `#12345`), 잘못된 키(`Dev`, `1x`, `a b`) | `InvalidInputError`와 문구 |
+| 백업 | 내보내기 | 머리글 `format: 3`, `category_colors` 줄(키 순) |
+| 백업 | 가져오기 | 형식 1·2·3을 모두 받음, 형식 2 파일의 `category_colors` 줄은 오류, 잘못된 색·키는 오류, 내보낸 뒤 다시 가져오면 같음 |
+| CLI | `lb data export`·`lb data import` 결과 줄 | `카테고리 색 N` |
+
+- [ ] RED → GREEN → 커밋 `feat: 카테고리 색 저장(스키마 3, 서비스, 백업 형식 3)`
+- [ ] 메인 세션: 임시 DB로 v2 → v3 업그레이드와 백업 파일을 확인한다. 화면 변화가 없으므로 승인은 Task 8-9 확인 때 함께 받는다.
+
+---
+
+## Task 8-9: 카테고리 색 화면 (설정 표, /colors.css, 꼬리표, 차트)
+
+**Files:**
+- Create: `src/logbook/web/colors.py`(`colors_css`), `web/pages/colors.py`(`GET /colors.css`), `templates/partials/category_section.html`
+- Modify:
+  - `web/pages/views.py`(`category_color_map`)
+  - `web/pages/summary.py`(차트가 저장 색을 따름)
+  - `web/pages/settings.py`(카테고리 색 표, 라우트, 버전)
+  - `web/errors.py`(`CATEGORY_CHANGED`)
+  - `web/assets.py`(`COLORS_CSS_URL`), `web/pages/__init__.py`(라우터 등록)
+  - `web/pages/templating.py`(전역 `COLORS_CSS_URL`, 필터 `category_class`)
+  - `templates/base.html`, `templates/settings.html`
+  - `templates/partials/marks.html`(`category_pill`), `log_row.html`, `recent.html`, `task_card.html`
+  - `static/css/app.css`(`--pill-tint: 20%`), `static/css/settings.css`(색 칸)
+  - `static/js/app.js`(색을 고르면 같은 행의 `자동` 체크를 끔)
+- Modify tests:
+  - 꼬리표: `tests/web/test_dashboard.py:228`, `test_logs_page.py:84~85`, `test_tasks_page.py:175`(class 목록은 순서까지 `["pill", "pill--cat-design", "task-card__category"]`처럼)
+  - 링크: `tests/web/test_static.py:175`(화면 링크 목록 끝에 `/colors.css`), `:178`(오류 페이지 링크는 화면 링크에서 `/colors.css`를 뺀 목록), `tests/web/test_dashboard.py:369`(허용 접두사에 `COLORS_CSS_URL`)
+  - `test_settings_page.py:53`(`dev — 개발` 목록이 표로 옮겨 감)
+  - 새 `test_colors.py`(`test_fonts.py`처럼 헤더를 직접 검사), 새 `test_settings_categories.py`
+  - `test_theme.py`(대비)
+
+**`/colors.css`** (예)
+
+```css
+/* 카테고리 색(설정 화면에서 고른 색, 없으면 자동 팔레트). 서버가 요청마다 만든다. */
+.pill--cat-dev { background: color-mix(in srgb, #2f6fde var(--pill-tint), var(--surface)); color: var(--ink); }
+.pill--cat-review { background: color-mix(in srgb, #e8590c var(--pill-tint), var(--surface)); color: var(--ink); }
+```
+- 대상 키는 설정 카테고리 전부(설정 순서)와, 색이 저장된 그 밖의 키(이름 순)다.
+- 키가 형식 규칙에 맞지 않거나 색이 `#rrggbb`가 아니면 그 줄을 내지 않는다(CSS 주입 방지).
+- 응답은 `text/css; charset=utf-8`이다. `/static/` 밖이라 `no-store`가 붙는다(security.py는 고치지 않는다).
+- `base.html`이 `/fonts.css` 다음에 링크한다. 오류 페이지는 링크하지 않는다. 오류 페이지에는 꼬리표가 없고, DB를 읽지 않고 그려져야 한다.
+- `--surface`가 테마마다 다르므로 어두운 테마도 따로 정하지 않고 따라간다. `color-mix()`를 모르는 브라우저는 그 선언을 버리므로 기본 꼬리표(회색 바탕)로 보인다.
+- 대비: 20%로 섞은 바탕 위의 `--ink` 글자는 어떤 색이든 두 테마 모두 4.5:1 이상이다. 가장 낮은 경우는 어두운 테마에서 `#ffffff`를 골랐을 때 6.97:1이다(18%는 7.47, 25%는 5.86). 팔레트 10색과 극단값(검정·흰색·노랑·하늘·자홍)으로 테스트한다(sRGB 섞기 계산).
+
+**꼬리표 마크업**
+
+```jinja
+{# partials/marks.html: 카테고리 꼬리표. 색은 /colors.css의 pill--cat-<키> 규칙이 칠한다.
+   category_class는 형식이 맞는 키에만 class를 돌려준다(틀리면 빈 문자열이라 기본 꼬리표). #}
+{% macro category_pill(key, extra="") -%}
+{%- set cat = key|category_class -%}
+<span class="pill{% if cat %} {{ cat }}{% endif %}{% if extra %} {{ extra }}{% endif %}">{{ key }}</span>
+{%- endmacro %}
+```
+- `log_row.html`, `recent.html`, `task_card.html`에 있는 `pill(…category)` 세 곳을 `category_pill`로 바꾼다. 태스크 카드는 `extra="task-card__category"`를 그대로 넘긴다.
+- 상태 꼬리표(`pill`)는 그대로다.
+
+**설정 화면 카테고리 색 표** (`#category-section`, 프로젝트 표 다음)
+
+```
+카테고리 색
+| 키  | 이름 | 색                 | 동작   |
+| dev | 개발 | [■ 색 고르기] ☑ 자동 | [저장] |
+카테고리 추가와 이름은 설정 파일 [categories]에서 바꿉니다. 저장한 뒤 화면을 새로 고치면 반영됩니다.
+```
+- 행 id는 `category-{key}`이고 숨은 칸 `version`을 둔다. `version`은 `content_version(키, 저장된 색 또는 "")`이다.
+- 색 칸의 값은 지금 쓰는 색이다(저장된 색, 없으면 자동 팔레트 색). `자동` 체크는 저장된 색이 없을 때 켜져 있다.
+- 색을 고르면 `app.js`가 같은 행의 `자동` 체크를 끈다. 이벤트 위임이라 HTMX로 다시 그린 표에도 동작한다.
+- `저장`은 `POST /settings/categories/{key}/color`(폼 `color`, `auto`, `version`)다.
+  - `auto`가 켜져 있으면 행을 지우고, 꺼져 있으면 색을 저장한다.
+  - 바뀐 것이 없으면 `바뀐 내용이 없습니다.`를 보여 준다.
+- 성공하면 `#category-section`을 다시 그리고 결과 줄을 보여 준다(`✔ dev 색을 저장했습니다.`, `✔ dev 색을 자동으로 되돌렸습니다.`).
+- 오류:
+  - 버전이 다르면 409(`다른 곳에서 카테고리 색이 바뀌었습니다: dev. 목록을 새로 고친 뒤 다시 시도하세요.`)
+  - 설정에 없는 키는 404(`NotFoundError`), 잘못된 색은 400(`InvalidInputError`)
+  - 세 오류 모두 라우트에서 잡지 않고 전역 처리기가 `#flash`로 보낸다(`HX-Retarget: #flash`, 프로젝트 보관 409와 같음). 표는 그대로 남는다.
+  - 교차 출처 요청은 다른 쓰기처럼 403이다.
+- 설정 정보 패널의 카테고리 목록(`info__categories`)은 이 표로 옮기고 지운다. `CATEGORY_NOTE`는 표 아래 안내로 옮겨 위 문구로 고친다.
+- 저장한 색은 다른 화면을 열 때 반영된다. `/colors.css`는 `no-store`라 페이지를 열 때마다 새로 받는다.
+
+**차트**
+- `summary.py`가 `services.category_colors(s)`를 읽어 `category_color_map`에 넘긴다.
+- 저장된 색이 없으면 지금과 같은 색이라 `EXPECTED_CHART`는 그대로 통과한다.
+
+**테스트 케이스**
+
+| 대상 | 케이스 | 기대 |
+|---|---|---|
+| `category_color_map` | 저장 색 있음 / 없음(설정 순서) / 설정에 없는 키(저장 색 있음·없음) | 저장 색 / 팔레트 위치 / 저장 색 또는 설정 개수 뒤 위치 |
+| `colors_css` | 기본 설정, 저장 색 하나, 설정에서 지운 키의 저장 색, 형식이 틀린 키·색 | 설정 순서 줄, 저장 색 반영, 지운 키도 줄이 있음(설정 표에는 없음), 틀린 줄은 없음 |
+| `category_class` | `dev`, `ops-2`, `Bad Key`, `한글`, 빈 값 | `pill--cat-dev`, `pill--cat-ops-2`, 나머지는 빈 문자열(기본 꼬리표) |
+| `GET /colors.css` | 응답 | `text/css; charset=utf-8`, `no-store`, CSP 헤더. 저장 직후 요청에 새 색이 나옴 |
+| 링크 | 화면(base.html) / 오류 페이지 | `/fonts.css` 다음에 `/colors.css` / 링크 없음 |
+| 꼬리표 | 기록 표, 최근 기록, 태스크 카드 | `class="pill pill--cat-dev"`(카드는 `task-card__category` 유지). 상태 꼬리표는 그대로 |
+| 대비 | 팔레트 10색과 극단값 × 두 테마, 20% 섞기 | `--ink` 대비 4.5 이상 |
+| 설정 표 | 기본 상태 | 설정 순서 행, 색 칸 값은 팔레트 색, `자동` 켜짐, 버전 숨은 칸 |
+| 설정 표 | 저장 / 자동으로 되돌림 / 바뀐 것 없음 / 저장 `#2F6FDE`에 `#2f6fde` 보냄 | DB 행 생김 / 행 지움 / `바뀐 내용이 없습니다.` / `바뀐 내용이 없습니다.` |
+| 설정 표 | 버전 다름 / 설정에 없는 키 / `color=red` / 교차 출처 | 409와 문구 / 404 / 400 / 403. 앞의 셋은 `HX-Retarget: #flash`. DB는 그대로 |
+| 설정 표 | 인라인 코드 | `inline_code_violations(html) == []` |
+| 차트 | 저장 색이 있는 카테고리 | `categories.colors`가 저장 색. 저장이 없으면 `EXPECTED_CHART` 그대로 |
+| JS | `app.js` | 색 고르기 `input` 이벤트에서 같은 행의 `자동` 체크를 끄는 위임 처리가 있다(정적 검사) |
+
+- [ ] RED → GREEN → 커밋 `feat: 설정 화면에서 카테고리 색을 고르고 꼬리표·차트가 따르게 함`
+- [ ] 메인 세션: 전후 스크린샷(설정 화면 카테고리 표 포함, 색을 하나 저장한 상태도) → 8-5·8-6·8-8과 함께 사용자 승인
+
+---
+
+## Task 8-10: 프로젝트 색 고르기
+
+**Files:**
+- Modify: `templates/partials/project_section.html`(추가 폼), `project_edit_row.html`(수정 행), `project_row.html`(자동 표시), `web/pages/settings.py`(`color_auto` 처리와 뷰 값), `static/css/settings.css`
+- `app.js`는 Task 8-9의 처리를 그대로 쓴다.
+- Modify tests: `tests/web/test_settings_projects.py`, `test_settings_page.py`
+
+| 화면 | 지금 | 바꾼 뒤 |
+|---|---|---|
+| 추가 폼 | 텍스트 칸(`#4f46e5`) | 색 고르기 + `자동` 체크(처음에는 켜짐). 색 고르기의 처음 값은 `CHART_PALETTE[0]`이다 |
+| 수정 행 | 텍스트 칸 | 색 고르기 + `자동` 체크. 색 고르기 값은 지금 색(지정 색, 없으면 자동 팔레트 색)이고, 지정 색이 없으면 `자동`이 켜져 있다 |
+| 표 색 칸 | 지정 색만 견본과 글자 | 지정 색이면 견본과 `#rrggbb`, 자동이면 자동 팔레트 색 견본과 `자동` |
+
+- 서버: 폼의 `color_auto`가 `"1"`이면 `color=None`, 없으면 `color` 값을 쓴다(검증은 그대로). 수정은 지금처럼 바뀐 항목만 반영하고, 색은 대소문자를 무시하고 비교한다(저장된 `#4F46E5`와 받은 `#4f46e5`는 바뀐 것이 아님).
+- 색 고르기 칸은 입력칸 규칙(`--control-border`, 4px 모서리)을 따르고 높이를 다른 입력칸과 맞춘다. 표 안 편집 행이 표 폭을 넘지 않는지 스크린샷으로 확인한다.
+
+**테스트 케이스**
+
+| 대상 | 케이스 | 기대 |
+|---|---|---|
+| 추가 | `자동` 켜짐(색 값 무시) / 꺼짐 + `#22c55e` / 꺼짐 + `red` | 색 없음 / 그 색 / 400, 입력값 유지 |
+| 수정 행 | 지정 색 있음 / 없음 | `type="color"` 값이 그 색이고 `자동` 꺼짐 / 팔레트 색이고 `자동` 켜짐 |
+| 수정 | 지정 색 → `자동` / 자동 → 색 / 바뀐 것 없음 / 저장 `#4F46E5`에 `#4f46e5` 보냄 | `None` / 그 색 / `바뀐 내용이 없습니다.` / `바뀐 내용이 없습니다.` |
+| 표 | 지정 색 / 자동 | 견본과 `#rrggbb` / 팔레트 견본과 `자동` |
+| 기존 | `test_patch_blank_color_and_description_become_none` | `자동` 체크 기준으로 바꾼다 |
+| 인라인 코드 | 추가 폼·수정 행 | `inline_code_violations(html) == []` |
+
+- [ ] RED → GREEN → 커밋 `feat: 설정 화면의 프로젝트 색을 색 고르기와 자동 선택으로 바꿈`
+- [ ] 메인 세션: 전후 스크린샷(추가 폼, 수정 행) → 사용자 승인
+
+---
+
+## Task 8-11: 보완 문서와 확인
+
+- [ ] **SPEC.md**
+  - 2장: `### week_notes`(62행 부근) 다음에 `### category_colors` 표와 규칙, `### schema_version`(73~74행 "현재 스키마 버전은 2") → 3(버전 3: category_colors 추가)
+  - 백업 형식(292행 "JSONL 형식(버전 2)", 296행 week_notes 규칙): 형식 3, 행 순서, `category_colors` 규칙(키 형식, `#rrggbb`, 형식 2 파일에 줄이 있으면 오류), 형식 1·2도 계속 가져옴, 결과 줄
+  - 6장 Phase 8 절: 카테고리 색 표, `/colors.css`, 카테고리 꼬리표 색, 프로젝트 색 고르기, 색 규칙
+  - 후속 항목: 차트 팔레트 항목 정리
+- [ ] **README.md**
+  - 설정 화면(카테고리 색, 프로젝트 색 고르기), 백업 형식 3
+  - 업그레이드: DB를 여는 `lb` 명령이나 `lb serve`를 처음 실행할 때 스키마 3으로 올리고, 그 전에 백업 파일을 만든다. 올리기 전에는 셸 자동완성 후보가 비어 있다(기존 동작).
+- [ ] **CLAUDE.md, AGENTS.md**: services 목록에 `category_colors`, `web/colors.py`, `web/pages/colors.py`, db.py 줄
+- [ ] **ROADMAP.md**: Phase 8에 사용자 지정 색 항목
+- [ ] **화면 확인(메인 세션, Edge 헤드리스)**
+  - 다섯 화면과 설정 카테고리 표 × 1280·375·320px × 밝은·어두운
+  - 가로 넘침, 포커스, 꼬리표 색과 차트 색이 같은지
+  - 카테고리 색 하나를 저장한 상태
+- [ ] **전체 검증, CI, PR #18 본문과 확인 절차 댓글 갱신**
+
+---
+
 ## 크로스 플랫폼 체크리스트 (Phase 8 추가분)
 
 - 글꼴 이름은 OS와 상관없이 같다(`Bookk Gothic`). 설치되지 않은 OS에서는 기존 고딕 목록(`--font-sans`)으로 넘어간다.
@@ -500,7 +780,7 @@ def project_color(project: Project) -> str:
 3. **글꼴 이름은 하나만 받는다:** 쉼표 목록을 받지 않는다. 대체 글꼴은 서버가 기존 OS 글꼴 목록을 붙인다. CSS 주입을 막으려고 따옴표·세미콜론·중괄호 등을 거부한다.
 4. **입력칸 경계는 3:1을 지킨다:** 옅은 경계선(`--rule`)은 장식용이고, 입력칸 테두리는 별도 토큰(`--control-border`)으로 3:1 이상이다.
 5. **프로젝트 색은 ID로 고정한다:** 같은 프로젝트는 어느 화면에서나 같은 색이다. 차트 색이 이번 주 순서에서 ID 순서로 바뀐다(지정 색은 그대로).
-6. **화면 구조는 바꾸지 않는다:** 버튼·폼·칸반 구성은 Phase 9에서 바꾼다. Phase 8은 겉모양만이다.
+6. **화면 구조는 바꾸지 않는다:** 버튼·폼·칸반 구성은 Phase 9에서 바꾼다. Phase 8은 겉모양만이다. 예외: 보완 Task 8-8~8-10(사용자 지정 색, 2026-10-15 사용자 결정)은 설정 화면에 카테고리 색 표와 색 고르기 칸을 더하고 스키마를 3으로 올린다.
 
 ---
 
@@ -511,6 +791,10 @@ def project_color(project: Project) -> str:
 - 구현: Task마다 서브에이전트 구현 1명 + 검토 1명, Task마다 사용자 승인
 - 1번(색 토큰)을 계획 없이 먼저 적용한 커밋은 되돌리고 이 계획대로 다시 한다.
 
+## 사용자 결정 (2026-10-15)
+
+- 차트 팔레트 시작 위치 질문에 대한 답으로, 꼬리표(카테고리)와 프로젝트 색 점의 색을 사용자가 정하고 차트가 그 색을 따르게 한다. 결정 C1~C4는 "보완: 사용자 지정 색" 절에 있다. 팔레트를 한 칸 미는 조정은 하지 않는다.
+
 ---
 
 ## 계획 검토 (2026-10-14)
@@ -519,6 +803,22 @@ def project_color(project: Project) -> str:
 - 맞음: 기존 코드 전제, 대비 26개 수치, 글꼴 이름 정규식 판정, `overflow: clip` 안의 가로 스크롤 유지, reduced-motion 규칙이 transition을 끔, 나중 스타일시트의 `var(--font-sans)` 참조
 - 반영: 팔레트는 `views.py`로 옮김(순환 import 없음), 차트 색 테스트(`common` 색)·`project_colors` 테스트 교체, `.timer__state` 규칙 삭제, 꼬리표에 기존 class 표지를 남기는 `extra` 인자, 표 머리·바닥 선의 실제 속성 이름, `/fonts.css`를 `STYLESHEETS`에 넣지 않음과 링크 테스트 기대
 - 참고: 이 PC의 Edge는 `prefers-reduced-motion: reduce`가 켜져 있다. 누름 효과(scale)는 transition 없이 즉시 적용된다.
+
+## 계획 검토 (2026-10-15, 보완: 사용자 지정 색)
+
+코드 조사 3명(읽기 전용, Sonnet)의 결과로 초안을 쓰고, 사실 확인 에이전트 1명(Sonnet)이 주장 12개를 확인했다.
+- 맞음
+  - 코드 위치·이름과 상태 코드 매핑(404·409·400), 전역 처리기의 `#flash` 경로, 마이그레이션 구조와 백업 파일 이름(`v2-…bak`)
+  - 고정 DDL과 모델의 `PRAGMA table_info`가 같음(임시 SQLite 실험)
+  - `color-mix()`의 `var()` 비율이 Edge에서 sRGB 계산값과 정확히 같음
+  - 대비 수치(20%에서 최저 6.97)
+  - `app.js` 위임 패턴, `/fonts.css` 링크 방식
+- 반영(빠진 곳)
+  - 백업 가져오기의 `_REFERENCES`(없으면 KeyError)·검증 종류(카테고리 키 형식 포함)·`BackupCounts`, 깨지는 테스트의 파일·줄(마이그레이션·백업·CLI 결과 줄·링크·꼬리표·설정 화면), SPEC 위치
+  - `colors_css`를 순수 함수로(web은 SQLAlchemy를 쓰지 않음)
+  - 형식이 틀린 카테고리 키에는 class를 붙이지 않음(`category_class` 필터)
+  - `<input type="color">`의 소문자 값 때문에 색 비교는 대소문자 무시, `자동` 체크의 폼 이름과 값
+  - 오류 페이지 링크 테스트 조정, 업그레이드 안내 문구(첫 실행 명령, 자동완성)
 
 ---
 
@@ -549,4 +849,7 @@ def project_color(project: Project) -> str:
 2. 설치 글꼴 목록에서 고르기와 웹에서 설정 저장(방법 B)
 3. 어두운 테마의 차트 팔레트 대비 점검(Phase 6 후속 4). 프로젝트 색 점도 같은 팔레트라, 어두운 표면에서 짙은 팔레트 색 점의 대비가 낮다(8-6 검토 R2). 점 옆에 slug 글자가 있어 색만으로 정보를 전하지는 않는다.
 4. 수정 중인 태스크 카드의 프로젝트 색 점: 수정 폼이 열린 카드에는 프로젝트가 글자만 나온다(8-6 검토 R1). Phase 9의 수정 화면 분리와 함께 정한다.
-5. 차트 팔레트 시작 위치(아침 확인 질문): `common`(ID 1)이 `CHART_PALETTE[0]`(파랑)이라 카테고리 첫 색(개발)과 같고, 지정 색이 파란 계열인 프로젝트와 나란히 놓이면 구분이 약하다. 대안은 팔레트를 한 칸 밀어 쓰는 것이다(Task 8-6 관찰).
+5. ~~차트 팔레트 시작 위치~~ → 사용자 지정 색(보완 Task 8-8~8-10)으로 정리했다(2026-10-15 사용자 결정). 팔레트를 한 칸 밀지 않는다.
+6. 카테고리 색 CLI(`lb category color` 같은 명령)와 JSON API로 색 읽기. 지금은 웹 설정 화면에서만 정한다.
+7. 백업 가져오기의 `projects.color` 검증 강화(지금은 문자열 검사만 한다).
+8. 설정에서 지운 카테고리의 색 행 정리. 지금은 남겨 두고, 카테고리를 다시 더하면 그 색이 돌아온다.
