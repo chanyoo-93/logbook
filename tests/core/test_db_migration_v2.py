@@ -98,8 +98,8 @@ def week_notes_shape(engine: Engine) -> tuple[list[tuple[object, ...]], list[tup
     return columns, indexes
 
 
-def test_schema_version_is_two() -> None:
-    assert db.SCHEMA_VERSION == 2
+def test_schema_version_includes_week_notes_step() -> None:
+    assert db.SCHEMA_VERSION >= 2
     assert 2 in db.MIGRATIONS
 
 
@@ -114,10 +114,10 @@ def test_upgrade_from_v1_keeps_rows_and_adds_week_notes(
 
     result = db.init_db(engine, now=NOW)
 
-    assert result == db.InitResult(1, 2, tmp_path / BACKUP_NAME)
+    assert result == db.InitResult(1, db.SCHEMA_VERSION, tmp_path / BACKUP_NAME)
     assert row_counts(path) == before
     assert "week_notes" in table_names(path)
-    assert stored_version(path) == 2
+    assert stored_version(path) == db.SCHEMA_VERSION
 
 
 def test_upgraded_and_new_databases_have_same_week_notes_table(
@@ -230,7 +230,7 @@ def test_backup_is_skipped_when_version_is_already_current_under_lock(
 
     result = db.init_db(engine, now=NOW)
 
-    assert result == db.InitResult(2, 2)
+    assert result == db.InitResult(db.SCHEMA_VERSION, db.SCHEMA_VERSION)
     assert list(tmp_path.glob("*.bak")) == []
 
 
@@ -239,12 +239,13 @@ def test_backup_is_made_once_for_multiple_steps(
 ) -> None:
     path = tmp_path / "logbook.db"
     make_v1_database(path)
-    monkeypatch.setattr(db, "SCHEMA_VERSION", 3)
-    monkeypatch.setitem(db.MIGRATIONS, 3, lambda conn: None)
+    next_version = db.SCHEMA_VERSION + 1
+    monkeypatch.setattr(db, "SCHEMA_VERSION", next_version)
+    monkeypatch.setitem(db.MIGRATIONS, next_version, lambda conn: None)
 
     result = db.init_db(make_engine(path), now=NOW)
 
-    assert result == db.InitResult(1, 3, tmp_path / BACKUP_NAME)
+    assert result == db.InitResult(1, next_version, tmp_path / BACKUP_NAME)
     assert [p.name for p in tmp_path.glob("*.bak")] == [BACKUP_NAME]
 
 
@@ -258,7 +259,7 @@ def test_open_database_reports_upgrade_once(tmp_path: Path) -> None:
     second = db.open_database(path, now=NOW, on_upgrade=reports.append)
     second.dispose()
 
-    assert reports == [db.InitResult(1, 2, tmp_path / BACKUP_NAME)]
+    assert reports == [db.InitResult(1, db.SCHEMA_VERSION, tmp_path / BACKUP_NAME)]
 
 
 def test_initialize_database_returns_backup_path(tmp_path: Path) -> None:
@@ -267,11 +268,11 @@ def test_initialize_database_returns_backup_path(tmp_path: Path) -> None:
 
     result = db.initialize_database(path, now=NOW)
 
-    assert result == db.InitResult(1, 2, tmp_path / BACKUP_NAME)
+    assert result == db.InitResult(1, db.SCHEMA_VERSION, tmp_path / BACKUP_NAME)
 
 
 def test_init_result_backup_path_defaults_to_none() -> None:
-    assert db.InitResult(None, 2).backup_path is None
+    assert db.InitResult(None, db.SCHEMA_VERSION).backup_path is None
 
 
 def test_backup_is_skipped_for_in_memory_database() -> None:

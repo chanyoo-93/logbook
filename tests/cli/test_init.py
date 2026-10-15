@@ -126,7 +126,10 @@ def test_v1_database_is_upgraded_with_backup_line(
     backup = tmp_home / "logbook.db.v1-20261001-093000.bak"
     assert result.exit_code == 0, result.stderr
     lines = result.stdout.splitlines()
-    assert lines[1] == f"✔ 데이터베이스 업그레이드: {db_path} (v1 {render.arrow()} v2)"
+    assert (
+        lines[1]
+        == f"✔ 데이터베이스 업그레이드: {db_path} (v1 {render.arrow()} v{db.SCHEMA_VERSION})"
+    )
     assert lines[2] == f"{render.info_mark()} 이전 데이터베이스 백업: {backup}"
     assert lines[3] == "✔ 기본 프로젝트 준비: common (공통)"
     assert backup.is_file()

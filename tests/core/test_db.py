@@ -15,7 +15,15 @@ from logbook.core.errors import LogbookError
 from logbook.core.models import Project
 from tests.helpers import add_extra_column, add_project, column_names, project_slugs, set_version
 
-TABLES = {"projects", "tasks", "worklogs", "active_timer", "schema_version", "week_notes"}
+TABLES = {
+    "projects",
+    "tasks",
+    "worklogs",
+    "active_timer",
+    "schema_version",
+    "week_notes",
+    "category_colors",
+}
 
 MakeEngine = Callable[[Path | str], Engine]
 

@@ -40,7 +40,7 @@ DEFAULT_CATEGORIES: Mapping[str, str] = MappingProxyType(
     }
 )
 
-_CATEGORY_KEY = re.compile(r"[a-z][a-z0-9_-]*", re.ASCII)
+CATEGORY_KEY = re.compile(r"[a-z][a-z0-9_-]*", re.ASCII)
 # 글꼴 이름: 100자 이하, 따옴표·역슬래시·세미콜론·쉼표·중괄호·꺾쇠·제어 문자 없음. 빈 값은 기본.
 _FONT_NAME = re.compile(r"[^\x00-\x1f\x7f\"'\\;,{}<>]{0,100}")
 FONT_NAME_RULE = (
@@ -337,7 +337,7 @@ class _Table:
         if not table.data:
             raise self._invalid("categories", table.data, "카테고리를 하나 이상 담은 테이블")
         for key in table.data:
-            if _CATEGORY_KEY.fullmatch(key) is None:
+            if CATEGORY_KEY.fullmatch(key) is None:
                 raise InvalidInputError(
                     f"카테고리 키가 올바르지 않습니다: '{key}' (파일: {self.source}). "
                     "영문 소문자로 시작하고 영문 소문자·숫자·'_'·'-'만 쓰세요."

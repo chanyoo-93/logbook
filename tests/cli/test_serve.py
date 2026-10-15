@@ -15,6 +15,7 @@ import pytest
 from typer.testing import Result
 
 from logbook.cli import render
+from logbook.core import db
 from logbook.web import server as web_server
 from logbook.web.config_watch import ConfigWatcher
 from tests.cli.helpers import assert_rejected, lb_env, run_lb
@@ -108,7 +109,8 @@ def test_serve_announces_database_upgrade_before_start_line(
     assert result.exit_code == 0, result.stderr
     arrow = render.arrow()
     upgrade_line = (
-        f"데이터베이스를 업그레이드했습니다: v1 {arrow} v2. 이전 데이터베이스 백업: {backup}\n"
+        f"데이터베이스를 업그레이드했습니다: v1 {arrow} v{db.SCHEMA_VERSION}. "
+        f"이전 데이터베이스 백업: {backup}\n"
     )
     assert result.stderr == upgrade_line
     assert result.stdout == start_line(DEFAULT_PORT) + STOP_LINE

@@ -10,6 +10,11 @@ from logbook.core.services.backup import (
     export_records,
 )
 from logbook.core.services.backup_import import import_records
+from logbook.core.services.category_colors import (
+    category_colors,
+    clear_category_color,
+    set_category_color,
+)
 from logbook.core.services.github_import import (
     IssueImport,
     IssueImportResult,
@@ -84,6 +89,9 @@ __all__ = [
     "BackupCounts",
     "export_records",
     "import_records",
+    "category_colors",
+    "clear_category_color",
+    "set_category_color",
     "COMMON_SLUG",
     "SLUG_PATTERN",
     "archive_project",

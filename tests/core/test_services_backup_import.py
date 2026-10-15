@@ -12,14 +12,16 @@ from sqlalchemy.orm import Session
 
 from logbook.core import db, services
 from logbook.core.errors import DatabaseBusyError, InvalidInputError
-from logbook.core.models import ActiveTimer, Project, Task, WeekNote, WorkLog
+from logbook.core.models import ActiveTimer, CategoryColor, Project, Task, WeekNote, WorkLog
 from logbook.core.services import backup, backup_import
 from logbook.core.taskstatus import TaskStatus
 
 from .backup_helpers import (
+    CATEGORY_COLOR,
     COMMON,
     HEADER,
     HEADER_V2,
+    HEADER_V3,
     LS,
     NEL,
     NON_EMPTY_MESSAGE,
@@ -262,9 +264,10 @@ def test_flush_operational_error_is_not_translated(
 
 def test_validation_kind_tables_are_consistent() -> None:
     assert tuple(backup_import._KINDS) == backup.TABLE_ORDER
-    assert backup_import.SUPPORTED_FORMATS == (1, 2)
+    assert backup_import.SUPPORTED_FORMATS == (1, 2, 3)
     assert backup_import.FORMAT_TABLES[1] == backup.TABLE_ORDER[:4]
-    assert backup_import.FORMAT_TABLES[2] == backup.TABLE_ORDER
+    assert backup_import.FORMAT_TABLES[2] == backup.TABLE_ORDER[:5]
+    assert backup_import.FORMAT_TABLES[3] == backup.TABLE_ORDER
     assert set(backup_import._REFERENCES) == set(backup.TABLE_ORDER)
     used_kinds = set()
     for table, fields in backup.FIELDS.items():
@@ -276,3 +279,34 @@ def test_validation_kind_tables_are_consistent() -> None:
     # 쓰이지 않는 변환기·문구가 남아 있지 않다.
     assert set(backup_import._CONVERTERS) == base_kinds
     assert set(backup_import._EXPECTED) == used_kinds
+
+
+def test_imports_format_3_file_with_category_colors(fresh: Session) -> None:
+    other = line("category_colors", category="meeting", color="#0F7A3D")
+    lines = [HEADER_V3, COMMON, PAY, TASK, WORKLOG, TIMER, WEEK_NOTE, CATEGORY_COLOR, other]
+
+    counts = services.import_records(fresh, lines)
+    fresh.flush()
+
+    assert counts.category_colors == 2
+    rows = fresh.scalars(select(CategoryColor).order_by(CategoryColor.category)).all()
+    assert [(r.category, r.color) for r in rows] == [("dev", "#4f46e5"), ("meeting", "#0F7A3D")]
+    assert rows[0].updated_at == datetime(2026, 9, 1, 0, 0, 0, tzinfo=UTC)
+
+
+def test_imports_older_formats_without_category_colors(fresh: Session) -> None:
+    for lines in (valid(), [HEADER_V2, COMMON, PAY, TASK, WORKLOG, TIMER, WEEK_NOTE]):
+        counts = services.import_records(fresh, lines)
+        assert counts.category_colors == 0
+        fresh.rollback()
+    assert fresh.scalars(select(CategoryColor)).all() == []
+
+
+def test_rejects_non_empty_database_with_only_category_colors(fresh: Session) -> None:
+    fresh.add(CategoryColor(category="dev", color="#4f46e5"))
+    fresh.flush()
+
+    with pytest.raises(InvalidInputError) as excinfo:
+        services.import_records(fresh, [HEADER, COMMON])
+
+    assert str(excinfo.value) == NON_EMPTY_MESSAGE

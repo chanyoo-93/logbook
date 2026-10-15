@@ -1,6 +1,6 @@
 """전체 데이터 JSONL 내보내기.
 
-형식(버전 2)은 공개 계약이다. 필드 목록은 모델 컬럼에서 만들지 않고 아래 튜플로 고정한다.
+형식(버전 3)은 공개 계약이다. 필드 목록은 모델 컬럼에서 만들지 않고 아래 튜플로 고정한다.
 컬럼이 늘면 형식을 의도적으로 바꾸고 FORMAT_VERSION을 올린다.
 """
 
@@ -16,11 +16,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from logbook.core import db
-from logbook.core.models import ActiveTimer, Project, Task, WeekNote, WorkLog
+from logbook.core.models import ActiveTimer, CategoryColor, Project, Task, WeekNote, WorkLog
 
-FORMAT_VERSION = 2
+FORMAT_VERSION = 3
 EXPORT_TYPE = "logbook-export"
-TABLE_ORDER = ("projects", "tasks", "worklogs", "active_timer", "week_notes")
+TABLE_ORDER = (
+    "projects",
+    "tasks",
+    "worklogs",
+    "active_timer",
+    "week_notes",
+    "category_colors",
+)
 
 PROJECT_FIELDS = ("id", "slug", "name", "description", "color", "archived", "created_at")
 TASK_FIELDS = (
@@ -52,6 +59,7 @@ WORKLOG_FIELDS = (
 )
 TIMER_FIELDS = ("id", "project_id", "task_id", "category", "note", "started_at")
 WEEK_NOTE_FIELDS = ("week", "risks", "notes", "updated_at")
+CATEGORY_COLOR_FIELDS = ("category", "color", "updated_at")
 
 FIELDS: Mapping[str, tuple[str, ...]] = MappingProxyType(
     {
@@ -60,6 +68,7 @@ FIELDS: Mapping[str, tuple[str, ...]] = MappingProxyType(
         "worklogs": WORKLOG_FIELDS,
         "active_timer": TIMER_FIELDS,
         "week_notes": WEEK_NOTE_FIELDS,
+        "category_colors": CATEGORY_COLOR_FIELDS,
     }
 )
 
@@ -71,6 +80,7 @@ KEY_FIELDS: Mapping[str, str] = MappingProxyType(
         "worklogs": "id",
         "active_timer": "id",
         "week_notes": "week",
+        "category_colors": "category",
     }
 )
 
@@ -82,6 +92,7 @@ MODELS: Mapping[str, type[Any]] = MappingProxyType(
         "worklogs": WorkLog,
         "active_timer": ActiveTimer,
         "week_notes": WeekNote,
+        "category_colors": CategoryColor,
     }
 )
 
@@ -99,6 +110,7 @@ class BackupCounts:
     worklogs: int
     timers: int
     week_notes: int
+    category_colors: int = 0
 
 
 def _encode_value(value: object) -> object:
@@ -144,4 +156,5 @@ def export_records(s: Session, *, now: dt.datetime) -> tuple[list[str], BackupCo
         worklogs=counts["worklogs"],
         timers=counts["active_timer"],
         week_notes=counts["week_notes"],
+        category_colors=counts["category_colors"],
     )

@@ -10,11 +10,13 @@ from logbook.core import db, services
 
 from .backup_helpers import (
     BOM,
+    CATEGORY_COLOR,
     COMMON,
     DATE_EXPECT,
     DEFAULT_ROWS,
     ENVELOPE_MESSAGE,
     HEADER,
+    HEADER_V2,
     INT_EXPECT,
     NO_COMMON_MESSAGE,
     OPT_INT_EXPECT,
@@ -43,7 +45,7 @@ def _header_cases() -> Iterator[Any]:
     empty = "logbook 내보내기 파일이 아닙니다 (내용이 없습니다)."
     no_type = "logbook 내보내기 파일이 아닙니다 (첫 줄에 type 값이 없습니다)."
     version = (
-        "지원하지 않는 내보내기 형식 버전입니다: {}. 이 버전의 logbook이 읽을 수 있는 형식: 1, 2"
+        "지원하지 않는 내보내기 형식 버전입니다: {}. 이 버전의 logbook이 읽을 수 있는 형식: 1, 2, 3"
     )
     schema = "내보내기 파일의 스키마 버전이 올바르지 않습니다: {}"
     yield pytest.param([], empty, id="빈 입력")
@@ -62,7 +64,7 @@ def _header_cases() -> Iterator[Any]:
         ("1.0", 1.0, "1.0"),
         ("문자열", "1", '"1"'),
         ("없음", "<missing>", "null"),
-        ("3", 3, "3"),
+        ("4", 4, "4"),
     ):
         yield pytest.param([header(format=value)], version.format(shown), id=f"format {label}")
     for label, value, shown in (
@@ -511,3 +513,56 @@ def test_allows_null_task_id_rows_in_any_project(fresh: Session) -> None:
     lines = [*PREFIX["active_timer"], line("worklogs", id=2, project_id=1, task_id=None)]
 
     assert services.import_records(fresh, lines).worklogs == 2
+
+
+def test_category_colors_row_in_format_2_file_is_unknown_table(fresh: Session) -> None:
+    lines = [HEADER_V2, COMMON, PAY, TASK, WORKLOG, TIMER, CATEGORY_COLOR]
+
+    rejects(
+        fresh,
+        lines,
+        '7번째 줄: 알 수 없는 테이블입니다: "category_colors". '
+        "projects, tasks, worklogs, active_timer, week_notes 중 하나여야 합니다.",
+    )
+
+
+def test_duplicate_category_in_category_colors(fresh: Session) -> None:
+    lines = [*PREFIX["category_colors"], CATEGORY_COLOR, CATEGORY_COLOR]
+
+    rejects(fresh, lines, '9번째 줄: category_colors 행의 category가 중복됩니다: "dev".')
+
+
+@pytest.mark.parametrize("category", ["Dev", "1x", "a b", "", 5, None])
+def test_invalid_category_key_in_category_colors(fresh: Session, category: object) -> None:
+    lines = [*PREFIX["category_colors"], line("category_colors", category=category)]
+
+    rejects(
+        fresh,
+        lines,
+        f"8번째 줄: category_colors.category 값이 올바르지 않습니다: {dumps(category)} "
+        "(영문 소문자로 시작하고 영문 소문자·숫자·'_'·'-'만 쓴 문자열).",
+    )
+
+
+@pytest.mark.parametrize("color", ["red", "#12345", "#1234567", "4f46e5", "#4f46eg", None, 5])
+def test_invalid_color_in_category_colors(fresh: Session, color: object) -> None:
+    lines = [*PREFIX["category_colors"], line("category_colors", color=color)]
+
+    rejects(
+        fresh,
+        lines,
+        f"8번째 줄: category_colors.color 값이 올바르지 않습니다: {dumps(color)} "
+        "('#'과 16진수 6자리 색, 예: #4f46e5).",
+    )
+
+
+def test_table_order_violation_week_notes_after_category_colors(fresh: Session) -> None:
+    lines = [*PREFIX["category_colors"], CATEGORY_COLOR, line("week_notes", week="2026-W42")]
+
+    rejects(
+        fresh,
+        lines,
+        "9번째 줄: 테이블 순서가 올바르지 않습니다: week_notes 행이 category_colors 행 뒤에 "
+        "있습니다. projects, tasks, worklogs, active_timer, week_notes, category_colors "
+        "순서여야 합니다.",
+    )

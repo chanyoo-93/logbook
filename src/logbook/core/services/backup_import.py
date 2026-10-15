@@ -17,9 +17,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from logbook.core import db
+from logbook.core.config import CATEGORY_KEY
 from logbook.core.duration import MAX_MINUTES, echo_input
 from logbook.core.errors import InvalidInputError
-from logbook.core.models import ActiveTimer, Project, Task, WeekNote, WorkLog
+from logbook.core.models import ActiveTimer, CategoryColor, Project, Task, WeekNote, WorkLog
 from logbook.core.services.backup import (
     EXPORT_TYPE,
     FIELDS,
@@ -28,7 +29,7 @@ from logbook.core.services.backup import (
     TABLE_ORDER,
     BackupCounts,
 )
-from logbook.core.services.projects import COMMON_SLUG, is_valid_slug
+from logbook.core.services.projects import COMMON_SLUG, is_valid_color, is_valid_slug
 from logbook.core.services.week_notes import clean_note_text
 from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import Week
@@ -37,10 +38,10 @@ MAX_SQLITE_INTEGER = 2**63 - 1
 BOM = chr(0xFEFF)
 _MIN_UTC_DATE = dt.date(1, 1, 2)
 _MAX_UTC_DATE = dt.date(9999, 12, 30)
-SUPPORTED_FORMATS = (1, 2)
-# 형식별로 받는 테이블. 형식 1은 week_notes가 생기기 전의 파일이다.
+SUPPORTED_FORMATS = (1, 2, 3)
+# 형식별로 받는 테이블. 형식 1은 week_notes, 형식 2는 category_colors가 생기기 전의 파일이다.
 FORMAT_TABLES: Mapping[int, tuple[str, ...]] = MappingProxyType(
-    {1: TABLE_ORDER[:4], 2: TABLE_ORDER}
+    {1: TABLE_ORDER[:4], 2: TABLE_ORDER[:5], 3: TABLE_ORDER}
 )
 _WEEK_PATTERN = re.compile(r"[0-9]{4}-W[0-9]{2}", re.ASCII)
 _INT_RANGE = f"1 이상 {MAX_SQLITE_INTEGER} 이하의 정수"
@@ -100,6 +101,11 @@ _KINDS: Mapping[str, Mapping[str, str]] = MappingProxyType(
             "notes": "str",
             "updated_at": "datetime",
         },
+        "category_colors": {
+            "category": "category",
+            "color": "color",
+            "updated_at": "datetime",
+        },
     }
 )
 
@@ -111,6 +117,8 @@ _EXPECTED: Mapping[str, str] = MappingProxyType(
         "timer_id": "1",
         "slug": _SLUG_RULE,
         "week": "YYYY-Www 형식의 주차 (예: 2026-W41)",
+        "category": "영문 소문자로 시작하고 영문 소문자·숫자·'_'·'-'만 쓴 문자열",
+        "color": "'#'과 16진수 6자리 색, 예: #4f46e5",
         "status": f"{', '.join(_STATUS_VALUES)} 중 하나",
         "bool": "true 또는 false",
         "str": "문자열",
@@ -130,6 +138,7 @@ _REFERENCES: Mapping[str, tuple[tuple[str, str], ...]] = MappingProxyType(
         "worklogs": (("project_id", "projects"), ("task_id", "tasks")),
         "active_timer": (("project_id", "projects"), ("task_id", "tasks")),
         "week_notes": (),
+        "category_colors": (),
     }
 )
 
@@ -173,6 +182,18 @@ def _to_week(value: object) -> str:
         Week(int(value[:4]), int(value[6:]))
     except InvalidInputError:
         raise ValueError(value) from None
+    return value
+
+
+def _to_category(value: object) -> str:
+    if type(value) is not str or CATEGORY_KEY.fullmatch(value) is None:
+        raise ValueError(value)
+    return value
+
+
+def _to_color(value: object) -> str:
+    if type(value) is not str or not is_valid_color(value):
+        raise ValueError(value)
     return value
 
 
@@ -226,6 +247,8 @@ _CONVERTERS: Mapping[str, Callable[[object], Any]] = MappingProxyType(
         "timer_id": _to_timer_id,
         "slug": _to_slug,
         "week": _to_week,
+        "category": _to_category,
+        "color": _to_color,
         "status": _to_status,
         "bool": _to_bool,
         "str": _to_str,
@@ -466,7 +489,7 @@ def _existing_common(s: Session) -> Project | None:
     has_other_project = any(project.slug != COMMON_SLUG for project in projects)
     has_rows = any(
         s.scalar(select(func.count()).select_from(model))
-        for model in (Task, WorkLog, ActiveTimer, WeekNote)
+        for model in (Task, WorkLog, ActiveTimer, WeekNote, CategoryColor)
     )
     if has_other_project or has_rows:
         raise InvalidInputError(
@@ -509,4 +532,5 @@ def import_records(s: Session, lines: Iterable[str]) -> BackupCounts:
         worklogs=len(state.objects["worklogs"]),
         timers=len(state.objects["active_timer"]),
         week_notes=len(state.objects["week_notes"]),
+        category_colors=len(state.objects["category_colors"]),
     )

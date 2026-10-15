@@ -9,7 +9,15 @@ import pytest
 from sqlalchemy.orm import Session
 
 from logbook.core import db, services
-from logbook.core.models import ActiveTimer, Base, Project, Task, WeekNote, WorkLog
+from logbook.core.models import (
+    ActiveTimer,
+    Base,
+    CategoryColor,
+    Project,
+    Task,
+    WeekNote,
+    WorkLog,
+)
 from logbook.core.services import backup
 
 from .backup_helpers import LS, NEL, NOW, PS, populate
@@ -17,7 +25,7 @@ from .backup_helpers import LS, NEL, NOW, PS, populate
 KST = timezone(timedelta(hours=9))
 
 HEADER_LINE = (
-    '{"exported_at": "2026-10-08T03:00:00+00:00", "format": 2, '
+    '{"exported_at": "2026-10-08T03:00:00+00:00", "format": 3, '
     f'"schema_version": {db.SCHEMA_VERSION}, "type": "logbook-export"}}'
 )
 
@@ -44,7 +52,9 @@ def test_exports_all_tables_and_fields_including_nulls(session: Session) -> None
 
     lines, counts = services.export_records(session, now=NOW)
 
-    assert counts == services.BackupCounts(projects=2, tasks=2, worklogs=2, timers=1, week_notes=2)
+    assert counts == services.BackupCounts(
+        projects=2, tasks=2, worklogs=2, timers=1, week_notes=2, category_colors=2
+    )
     rows = _rows(lines)
     by_table: dict[str, list[dict[str, Any]]] = {}
     for record in rows:
@@ -255,13 +265,14 @@ def test_field_tuples_match_model_columns() -> None:
         "worklogs": WorkLog,
         "active_timer": ActiveTimer,
         "week_notes": WeekNote,
+        "category_colors": CategoryColor,
     }
     for table, model in models.items():
         assert set(backup.FIELDS[table]) == set(model.__table__.columns.keys()), table
         assert list(backup.FIELDS[table]) == list(model.__table__.columns.keys()), table
     assert set(backup.TABLE_ORDER) == set(Base.metadata.tables) - {"schema_version"}
     assert set(backup.FIELDS) == set(backup.TABLE_ORDER)
-    assert backup.FORMAT_VERSION == 2
+    assert backup.FORMAT_VERSION == 3
     assert backup.WEEK_NOTE_FIELDS == ("week", "risks", "notes", "updated_at")
 
 
@@ -280,6 +291,7 @@ def test_models_mapping_follows_table_order() -> None:
     assert backup.MODELS["worklogs"] is WorkLog
     assert backup.MODELS["active_timer"] is ActiveTimer
     assert backup.MODELS["week_notes"] is WeekNote
+    assert backup.MODELS["category_colors"] is CategoryColor
 
 
 def test_week_notes_export_header_order_and_fields(session: Session) -> None:
@@ -288,9 +300,9 @@ def test_week_notes_export_header_order_and_fields(session: Session) -> None:
     lines, counts = services.export_records(session, now=NOW)
 
     header = json.loads(lines[0])
-    assert (header["format"], header["schema_version"]) == (2, 2)
+    assert (header["format"], header["schema_version"]) == (3, db.SCHEMA_VERSION)
     assert counts.week_notes == 2
-    tail = [json.loads(line) for line in lines[-2:]]
+    tail = [json.loads(line) for line in lines if '"table": "week_notes"' in line]
     assert [r["table"] for r in tail] == ["week_notes", "week_notes"]
     assert [r["row"]["week"] for r in tail] == ["2026-W40", "2026-W41"]
     for record in tail:
@@ -322,3 +334,20 @@ def test_naive_now_is_rejected_as_programming_error(session: Session) -> None:
 def test_public_names_are_exported_from_services(name: str) -> None:
     assert name in services.__all__
     assert hasattr(services, name)
+
+
+def test_category_colors_export_sorted_by_category_with_fields(session: Session) -> None:
+    populate(session)
+
+    lines, counts = services.export_records(session, now=NOW)
+
+    assert counts.category_colors == 2
+    records = [json.loads(line) for line in lines if '"table": "category_colors"' in line]
+    assert [r["row"]["category"] for r in records] == ["dev", "meeting"]
+    assert backup.CATEGORY_COLOR_FIELDS == ("category", "color", "updated_at")
+    assert records[0]["row"] == {
+        "category": "dev",
+        "color": "#4F46E5",
+        "updated_at": "2026-10-03T01:00:00+00:00",
+    }
+    assert json.loads(lines[-1])["table"] == "category_colors"
