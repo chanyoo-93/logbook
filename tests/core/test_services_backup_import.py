@@ -142,6 +142,33 @@ def test_export_import_export_is_byte_identical_except_header_time(
     }
 
 
+def _color_rows(s: Session) -> list[tuple[str, str, datetime]]:
+    rows = s.scalars(select(CategoryColor).order_by(CategoryColor.category))
+    return [(r.category, r.color, r.updated_at) for r in rows]
+
+
+def test_round_trip_keeps_category_color_rows(session: Session, tmp_path: Path) -> None:
+    populate(session)
+    expected = _color_rows(session)
+    lines, _ = services.export_records(session, now=NOW)
+    other = _new_engine(tmp_path / "colors.db")
+    try:
+        with Session(other, expire_on_commit=False) as target:
+            services.ensure_common_project(target)
+            target.flush()
+            services.import_records(target, lines)
+            target.flush()
+            actual = _color_rows(target)
+    finally:
+        other.dispose()
+
+    assert expected == [
+        ("dev", "#4F46E5", datetime(2026, 10, 3, 1, 0, 0, tzinfo=UTC)),
+        ("meeting", "#0f7a3d", datetime(2026, 10, 2, 1, 0, 0, tzinfo=UTC)),
+    ]
+    assert actual == expected
+
+
 def test_imports_common_with_id_3_and_new_ids_follow_max(fresh: Session) -> None:
     lines = [
         HEADER,

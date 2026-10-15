@@ -174,9 +174,6 @@ def test_tinted_background_keeps_ink_contrast(theme: str, color: str) -> None:
     span = light if theme == "light" else dark
     tokens = _tokens(css[span[0] + 1 : span[1]])
     assert re.fullmatch(r"20%", _tokens(css[light[0] + 1 : light[1]])["--pill-tint"])
-    surface = tokens.get("--surface") or _tokens(css[light[0] + 1 : light[1]])["--surface"]
-    ink = tokens.get("--ink") or _tokens(css[light[0] + 1 : light[1]])["--ink"]
-
-    ratio = _contrast(ink, _mix(color, surface))
+    ratio = _contrast(tokens["--ink"], _mix(color, tokens["--surface"]))
 
     assert ratio >= MIN_TEXT_CONTRAST, f"{theme} {color}: {ratio:.2f}"
