@@ -749,8 +749,9 @@ def _upgrade_to_3(conn: Connection) -> None:
 | 기존 | `test_patch_blank_color_and_description_become_none` | `자동` 체크 기준으로 바꾼다 |
 | 인라인 코드 | 추가 폼·수정 행 | `inline_code_violations(html) == []` |
 
-- [ ] RED → GREEN → 커밋 `feat: 설정 화면의 프로젝트 색을 색 고르기와 자동 선택으로 바꿈`
-- [ ] 메인 세션: 전후 스크린샷(추가 폼, 수정 행) → 사용자 승인
+- [x] RED → GREEN → 커밋 `feat: 설정 화면의 프로젝트 색을 색 고르기와 자동 선택으로 바꿈` (423e0d2)
+  - 구현이 정한 것: 텍스트 입력칸 규칙을 `input[type="text"]`로 좁혀 체크박스·색 고르기 칸에 번지지 않게 했다. 형식이 틀린 저장 색(가져온 데이터)은 지정 색이 없는 것과 같게 자동으로 보인다.
+- [ ] 메인 세션: 전후 스크린샷(compare-8-10.html: 설정 화면과 프로젝트 수정 중, 12장 가로 넘침 없음, 320px에서 프로젝트 이름 한 줄) → 사용자 승인
 
 ---
 
