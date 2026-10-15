@@ -86,6 +86,7 @@ class TaskCardView:
     actual: str  # 연결 기록 합계 '3h'(없으면 '0m')
     estimate: str  # '4h' 또는 ''
     over: bool  # 실적이 예상보다 많음
+    percent: int  # 진행 막대 채움 0~100(예상이 없으면 0, 막대도 그리지 않는다)
     version: str
     actions: tuple[StatusAction, ...]
 
@@ -212,6 +213,13 @@ def _week_tag(label: str | None, this_week: Week) -> str:
     return ""
 
 
+def progress_percent(actual_minutes: int, estimate_minutes: int) -> int:
+    """실적/예상 비율을 0~100 정수로. 예상이 0이면 실적이 있을 때만 100."""
+    if estimate_minutes <= 0:
+        return 100 if actual_minutes > 0 else 0
+    return min(100, round(actual_minutes / estimate_minutes * 100))
+
+
 def task_card(task: Task, actual_minutes: int, this_week: Week) -> TaskCardView:
     estimate = task.estimate_minutes
     return TaskCardView(
@@ -225,6 +233,7 @@ def task_card(task: Task, actual_minutes: int, this_week: Week) -> TaskCardView:
         actual=format_duration(actual_minutes),
         estimate="" if estimate is None else format_duration(estimate),
         over=estimate is not None and actual_minutes > estimate,
+        percent=0 if estimate is None else progress_percent(actual_minutes, estimate),
         version=task_version(task),
         actions=_actions(task),
     )

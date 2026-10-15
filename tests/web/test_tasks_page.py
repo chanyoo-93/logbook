@@ -338,3 +338,68 @@ def test_board_title_can_take_focus(client: TestClient) -> None:
     title = by_id(html, "task-board-title")
     assert title.attrs["tabindex"] == "-1"
     assert "data-focus" in title.attrs
+
+
+def _progress(html: str, task_id: int) -> tuple[list[str], str | None]:
+    """카드 안 진행 막대 svg의 class 목록과 채움 막대 width(막대가 없으면 [], None)."""
+    elements = parse_html(html)
+    start = next(i for i, e in enumerate(elements) if e.attrs.get("id") == f"task-{task_id}")
+    svg: list[str] = []
+    width: str | None = None
+    for element in elements[start + 1 :]:
+        if element.tag == "li":
+            break
+        classes = str(element.attrs.get("class") or "").split()
+        if element.tag == "svg" and "progress" in classes:
+            svg = classes
+        if element.tag == "rect" and "progress__fill" in classes:
+            width = str(element.attrs.get("width"))
+    return svg, width
+
+
+def test_card_has_no_progress_bar_without_estimate(client: TestClient, web_engine: Engine) -> None:
+    task = add_task(web_engine, title="예상 없음")
+    add_log(web_engine, minutes=60, note="가", task_id=task)
+
+    html = client.get("/tasks").text
+
+    assert _progress(html, task) == ([], None)
+
+
+def test_card_progress_bar_shows_zero_half_and_capped_over(
+    client: TestClient, web_engine: Engine
+) -> None:
+    zero = add_task(web_engine, title="0", estimate=120)
+    half = add_task(web_engine, title="절반", estimate=120)
+    add_log(web_engine, minutes=60, note="가", task_id=half)
+    over = add_task(web_engine, title="초과", estimate=120)
+    add_log(web_engine, minutes=300, note="나", task_id=over)
+
+    html = client.get("/tasks").text
+
+    assert _progress(html, zero) == (["progress"], "0")
+    assert _progress(html, half) == (["progress"], "50")
+    assert _progress(html, over) == (["progress", "progress--over"], "100")
+
+
+def test_card_progress_bar_is_decorative_svg_without_inline_style(
+    client: TestClient, web_engine: Engine
+) -> None:
+    task = add_task(web_engine, title="막대", estimate=120)
+
+    html = client.get("/tasks").text
+
+    svg = next(e for e in by_class(html, "progress") if e.tag == "svg")
+    assert svg.attrs["aria-hidden"] == "true"
+    assert svg.attrs["viewbox"] == "0 0 100 4"
+    assert "style=" not in html
+    assert _progress(html, task)[1] == "0"
+
+
+def test_progress_percent_handles_zero_estimate_and_caps_at_100() -> None:
+    from logbook.web.pages.task_views import progress_percent
+
+    assert progress_percent(0, 0) == 0
+    assert progress_percent(10, 0) == 100
+    assert progress_percent(30, 120) == 25
+    assert progress_percent(999, 120) == 100

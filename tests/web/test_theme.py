@@ -31,6 +31,10 @@ COLOR_TOKENS = (
     "--tag-bg",
     "--ok-soft",
     "--danger-soft",
+    "--accent-soft",
+    "--band-bg",
+    "--band-ink",
+    "--band-muted",
     "--shadow-soft",
     "--shadow-raised",
 )
@@ -46,6 +50,9 @@ CONTRAST_PAIRS = (
     ("--ink-muted", "--tag-bg"),
     ("--ok", "--ok-soft"),
     ("--danger", "--danger-soft"),
+    ("--accent-hover", "--accent-soft"),
+    ("--band-ink", "--band-bg"),
+    ("--band-muted", "--band-bg"),
 )
 NON_TEXT_PAIRS = (
     ("--control-border", "--surface"),

@@ -92,7 +92,6 @@ HEAVY_TOP_RULE = "border-top: 2px solid var(--ink)"
     [
         ("dashboard.css", ".panel"),
         ("tasks.css", ".task-form"),
-        ("tasks.css", ".board__col"),
     ],
 )
 def test_surfaces_use_soft_shadow_instead_of_heavy_top_rule(file_name: str, selector: str) -> None:
@@ -203,7 +202,7 @@ def test_old_single_radius_token_is_gone() -> None:
         ("dashboard.css", ".panel", "var(--radius-md)"),
         ("app.css", ".quick", "var(--radius-md)"),
         ("tasks.css", ".task-form", "var(--radius-md)"),
-        ("tasks.css", ".board__col", "var(--radius-md)"),
+        ("tasks.css", ".board__col-head", "var(--radius-md)"),
         ("app.css", ".config-notice", "var(--radius-md)"),
         ("report.css", ".report__preview", "var(--radius-md)"),
         ("report.css", ".report-polish", "var(--radius-md)"),
@@ -315,3 +314,49 @@ def test_tracking_tokens_are_in_root() -> None:
 
     assert "--tracking-title: -0.01em" in declarations
     assert "--tracking-display: -0.035em" in declarations
+
+
+@pytest.mark.parametrize(
+    ("column", "background", "ink"),
+    [
+        ("todo", "--tag-bg", "--ink-muted"),
+        ("doing", "--accent-soft", "--accent-hover"),
+        ("done", "--ok-soft", "--ok"),
+    ],
+)
+def test_board_column_head_uses_state_color(column: str, background: str, ink: str) -> None:
+    declarations = _declarations(_read("tasks.css"), f".board__col-head--{column}")
+
+    assert f"background: var({background})" in declarations
+    assert f"color: var({ink})" in declarations
+
+
+def test_board_column_has_no_surface_of_its_own() -> None:
+    declarations = _declarations(_read("tasks.css"), ".board__col")
+
+    assert not any(d.startswith(("background", "border", "box-shadow")) for d in declarations)
+
+
+def test_task_card_is_a_white_card_without_a_left_band() -> None:
+    css = _read("tasks.css")
+    declarations = _declarations(css, ".task-card")
+
+    assert "background: var(--surface)" in declarations
+    assert "box-shadow: var(--shadow-soft)" in declarations
+    assert "border: 1px solid var(--rule)" in declarations
+    assert "border-left" not in css
+
+
+def test_task_card_over_and_editing_have_no_left_band_rules() -> None:
+    css = _read("tasks.css")
+
+    assert ".task-card--over {" not in css
+    assert ".task-card.is-editing {" not in css
+
+
+def test_progress_bar_rules_exist() -> None:
+    css = _read("tasks.css")
+
+    assert "fill: var(--accent)" in _declarations(css, ".progress__fill")
+    assert "fill: var(--rule)" in _declarations(css, ".progress__track")
+    assert "fill: var(--danger)" in _declarations(css, ".progress--over .progress__fill")

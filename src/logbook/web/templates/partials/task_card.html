@@ -22,6 +22,9 @@
             {{ pill("예상 초과", "danger", "task-card__over") }}
 {% endif %}
           </p>
+{% if card.estimate %}
+          <svg class="progress{% if card.over %} progress--over{% endif %}" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="progress__track" width="100" height="4"/><rect class="progress__fill" width="{{ card.percent }}" height="4"/></svg>
+{% endif %}
           <div class="task-card__actions">
             <button type="button" class="btn btn--small" hx-get="/tasks/{{ card.id }}/edit" hx-target="#task-{{ card.id }}" hx-swap="outerHTML">수정</button>
 {% for action in card.actions %}
