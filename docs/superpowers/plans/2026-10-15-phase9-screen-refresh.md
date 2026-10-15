@@ -1,0 +1,326 @@
+# Phase 9 구현 계획 (웹 대시보드 — 화면 고도화)
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Phase 8 디자인 시스템 위에서 태스크 보드와 대시보드의 화면 구조를 바꾼다(ROADMAP Phase 9).
+- 중단 시각 기록(스키마 4): "이번 주 중단" 열이 이번 주에 중단한 태스크를 정확히 고르게 한다.
+- 칸반 고도화: 상태 색을 옅게 깐 열 머리와 건수, 흰 카드, 실적/예상 진행 막대
+- 태스크 등록·수정을 별도 화면으로 옮긴다. 카드를 누르면 수정 화면으로 간다.
+- 카드의 버튼을 모두 없애고, 카드를 열 사이로 끌어 놓아 상태를 바꾼다(SortableJS, 로컬 포함). 보드에 "이번 주 중단" 열을 더한다.
+- 대시보드 위계: 오늘 공수의 하루 목표 대비 진행 막대, 진행 중 타이머를 화면에 하나뿐인 강조 띠로
+
+**Architecture:**
+- 계층 규칙은 그대로다. web은 `core.services`와 허용된 core 진입점만 쓰고, SQL·ORM 쿼리를 쓰지 않는다.
+- 새 화면은 지금처럼 HTMX 폼이다. 저장에 성공하면 서버가 `HX-Redirect`로 보드(`/tasks?added=ID` 또는 `?updated=ID`, 필터 유지)로 보내고, 보드가 결과 줄을 보여 준다. 입력 오류·버전 충돌(409)은 같은 화면에 입력값 그대로 문구를 보여 준다.
+- 끌어 놓기는 기존 상태 변경 주소(`POST /tasks/{id}/status`, 버전 확인)를 그대로 쓴다. 충돌·오류면 서버가 지금 상태의 보드를 다시 그려 보내므로 카드가 제자리로 돌아간다.
+- SortableJS는 htmx·Chart.js처럼 npm tarball에서 꺼낸 원본을 `static/vendor`에 넣는다(Phase 5 결정 W3, CDN 없음). 내려받기와 무결성 확인은 메인 세션이 한다. CSP는 바꾸지 않는다(SortableJS는 스타일을 CSSOM으로만 바꾼다. 화면 확인으로 검증한다).
+- 스키마 4: `tasks.dropped_at`(중단 시각)을 더한다. 완료 시각(`done_at`)과 같은 규칙으로 들어가고 빠진다.
+
+**Tech Stack:** 기존과 같다. 새 의존성은 SortableJS 1.15.7이다.
+- MIT, 2026-02-11 배포, `https://registry.npmjs.org/sortablejs/-/sortablejs-1.15.7.tgz`
+- integrity `sha512-Kk8wLQPlS+yi1ZEf48a4+fzHa4yxjC30M/Sr2AnQu+f/MPwvvX9XjZ6OWejiz8crBsLwSq8GHqaxaET7u6ux0A==`
+- 사용자가 Phase 8 결정 게이트에서 "SortableJS 로컬 포함"을 골랐다. 메인 세션이 vendor 직전에 레지스트리에서 최신 버전을 다시 확인하고, 더 새 버전이 있으면 사용자에게 알린다.
+
+**선행 조건:**
+- **브랜치:** `feat/screen-refresh`(develop `cb7e76c`, Phase 8 병합 뒤에서 분기). PR은 develop 대상이다.
+- **uv PATH:** Phase 8 계획서와 같다.
+- **진행 규칙(사용자 결정):**
+  - 이 계획서를 사용자가 승인한 뒤 이슈를 만들고 구현한다.
+  - Task마다 구현 1명 + 통합 검토 1명(Sonnet, effort medium)이 끝나면, 메인 세션이 바꾸기 전후 스크린샷(다섯 화면과 새 화면 × 1280·375·320px × 밝은·어두운)과 비교 페이지를 만들어 사용자 승인을 받은 뒤 다음 Task로 간다.
+  - 화면 변화가 없는 Task 9-1은 Task 9-2와 함께 승인받는다.
+- **Task 공통 완료 조건, 커밋 메시지, TDD, 문구 규칙, 서브에이전트 실행 규칙:** Phase 8 계획서와 같다. 덧붙여:
+  - 파일을 지우지 않는다(`git rm` 포함). 쓰지 않게 된 템플릿·테스트 파일은 `git mv`로 새 용도에 맞는 이름으로 옮겨 내용을 바꾸거나, 옮길 곳이 없으면 메인 세션에 보고한다. 코드 안의 함수·라우트·줄을 지우는 편집은 괜찮다.
+  - 서브에이전트는 외부 네트워크(npm 레지스트리 포함)를 쓰지 않는다. SortableJS vendor 파일은 Task 9-4 전에 메인 세션이 넣는다.
+  - 메인 세션은 에이전트가 같은 작업 트리를 고치는 동안 전체 pytest를 돌리지 않는다(Phase 8 보완에서 진행 중 테스트가 섞여 실패로 보였다).
+
+---
+
+## 결정 (2026-10-15 결정 게이트, 사용자 확정)
+
+| # | 결정할 것 | 결정 |
+|---|---|---|
+| D1 | 끌 수 없는 사용자(키보드·화면 낭독기·끌기 어려운 사용자, WCAG 2.2 2.5.7)의 상태 변경 | 수정 화면의 "상태" 선택(할 일·진행 중·완료·중단). 카드는 링크라 Tab과 Enter로 연다 |
+| D2 | 중단 열에 보여 줄 것 | **이번 주에 중단한 태스크**. 태스크에 중단 시각(`dropped_at`)을 기록한다(스키마 4, 백업 형식 4). 기존 중단 태스크는 마지막 수정 시각(`updated_at`)으로 채운다 |
+| D3 | 등록·수정 화면의 항목 | `lb task add`·`edit`의 범위에 설명을 더한다: 제목, 프로젝트(등록만), 카테고리, 예상, 계획 주차, 마감일, 외부 참조, 설명. 수정 화면은 상태도 바꾼다. 설명은 웹에서만 고친다(CLI에는 설명 옵션이 없다) |
+| D4 | 저장 뒤 | 보드로 돌아가 결과 줄(`✔ 태스크 추가: …`, `✔ 수정했습니다: …`)을 보여 준다. 필터는 유지한다 |
+| D5 | 중단 열로 끌 때 확인 창 | 없음. 중단 열에서 다시 끌어 되돌릴 수 있다 |
+| D6 | 같은 열 안에서 순서 바꾸기 | 없음(보드 정렬 규칙 유지, 순서 저장 필드 없음) |
+| D7 | 대시보드 진행 막대 | "이번 주 공수" 칸 아래에 **오늘 공수 / 하루 목표**(예: 오늘 2h 30m / 목표 8h) |
+| D8 | 타이머 강조 띠 | 색 뒤집기: 밝은 테마는 진한 띠(글자 밝게), 어두운 테마는 밝은 띠(글자 어둡게). 강조색(파랑)은 링크·포커스·주 버튼 전용으로 남는다 |
+| D9 | 보드 열 배치 | 4열(1100px 이상), 2×2(720~1099px), 1열(720px 미만). 가로 스크롤 없음 |
+
+---
+
+## 파일 구조
+
+| 파일 | 구분 | 책임 |
+|---|---|---|
+| `src/logbook/core/models.py` | 수정 | `Task.dropped_at` |
+| `src/logbook/core/db.py` | 수정 | `SCHEMA_VERSION = 4`, `_upgrade_to_4` |
+| `src/logbook/core/services/tasks.py`, `services/__init__.py` | 수정 | `set_task_status`의 `dropped_at`, `dropped_tasks_in_week()`, 등록·수정의 설명(없으면) |
+| `src/logbook/core/services/backup.py`, `backup_import.py` | 수정 | 백업 형식 4(`tasks.dropped_at`) |
+| `src/logbook/web/pages/tasks.py` | 수정 | 보드(4열, 결과 줄 쿼리), 등록·수정 화면 라우트, 상태 변경 충돌 응답 |
+| `src/logbook/web/pages/task_views.py` | 수정 | 카드 뷰(진행 막대, 링크, 버전), 열 뷰(상태 키·색 이름), 등록·수정 화면 뷰 |
+| `src/logbook/web/templates/tasks.html` | 수정 | 추가 폼 대신 "새 태스크" 링크, SortableJS·board.js |
+| `src/logbook/web/templates/task_new.html`, `task_edit.html` | 생성 | 등록·수정 화면 |
+| `src/logbook/web/templates/partials/task_form.html` | 수정 | 등록·수정 공용 폼(필드 묶음) |
+| `src/logbook/web/templates/partials/task_edit_card.html` | `git mv` | 쓰지 않게 되면 공용 폼 조각 이름으로 옮기거나 보고 |
+| `templates/partials/task_board.html`, `task_card.html` | 수정 | 4열, 끌 수 있는 목록, 버튼 없는 카드 |
+| `src/logbook/web/static/js/board.js` | 생성 | SortableJS 연결, 끌어 놓은 뒤 상태 변경 요청 |
+| `src/logbook/web/static/vendor/sortable-1.15.7.min.js`, `LICENSE-sortablejs.txt`, `README.md` | 생성·수정(메인 세션) | vendor 파일과 출처·sha256 |
+| `src/logbook/web/static/css/tasks.css`, `app.css`, `components.css`, `dashboard.css`, `responsive.css` | 수정 | 열 머리 색, 카드, 진행 막대, 새 화면 폼, 끄는 동안 모양, 강조 띠 토큰 |
+| `src/logbook/web/pages/summary.py`, `templates/partials/summary.html`, `templates/partials/timer.html` | 수정 | 오늘 진행 막대, 강조 띠 |
+| tests | 수정·생성 | `tests/core`(마이그레이션 v4, 태스크 서비스, 백업), `tests/web/test_tasks_*.py`, `test_static.py`, `test_theme.py`, `test_css_layout.py`, `test_dashboard.py`, `test_timer_panel.py` |
+| `docs/SPEC.md`, `README.md`, `CLAUDE.md`, `AGENTS.md`, `docs/ROADMAP.md` | 수정 | 문서 |
+
+---
+
+## Phase 9 공통 규칙
+
+### 상태 색과 새 토큰
+
+| 토큰 | 밝은 | 어두운 | 쓰임 |
+|---|---|---|---|
+| `--accent-soft` | `#e6f0fb` | `#1d2c3d` | "진행 중" 열 머리 바탕(글자 `--accent-hover`/`--accent`, 대비 4.5 이상으로 고른다) |
+| `--band-bg` | `#1f1e1c` | `#ecebe9` | 타이머 강조 띠 바탕(색 뒤집기) |
+| `--band-ink` | `#f6f5f4` | `#191918` | 띠 글자 |
+| `--band-muted` | 띠 위 대비 4.5 이상인 회색 | 같은 조건 | 띠 보조 글자 |
+
+- 열 머리: 할 일 `--tag-bg`(중립), 진행 중 `--accent-soft`, 이번 주 완료 `--ok-soft`, 이번 주 중단 `--danger-soft`. 머리 글자는 각 상태 색(`--ink-muted`, `--accent-hover`, `--ok`, `--danger`)이고, 대비는 `test_theme.py`의 쌍으로 확인한다.
+- 정확한 색 값은 구현자가 대비 4.5 이상이 되도록 고르고 테스트 쌍에 더한다(위 값은 출발점).
+- 색 값은 Phase 8 규칙대로 `app.css`의 `:root` 두 블록에만 둔다.
+
+### 카드
+
+```
+[#5] 색인 재구축 스크립트                    ← 카드 전체가 수정 화면 링크(a.task-card__link)
+● search  dev  2026-W41 지난 주              ← 색 점, 카테고리 꼬리표, 주차와 꼬리표(Phase 8)
+▬▬▬▬▬▬▬▬▬▬▬▭▭▭  실적 3h / 예상 2h  예상 초과   ← 진행 막대(예상이 있을 때만), 넘으면 위험색
+```
+- `li.task-card`에 `data-task-id`, `data-version`. 목록 `ul.board__cards`에 `data-status`(`todo`·`doing`·`done`·`dropped`).
+- 진행 막대는 CSP 때문에 `style` 속성을 못 쓰므로 **SVG**로 그린다: `<svg class="progress" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="progress__track" width="100" height="4"/><rect class="progress__fill" width="{{ percent }}" height="4"/></svg>`. `percent`는 서버가 계산한 0~100 정수다. 넘으면 `progress--over`.
+- 화면 낭독기용 글자는 막대 옆의 "실적 3h / 예상 2h"가 맡는다.
+- 카테고리 꼬리표는 Phase 8 보완의 `category_pill`(사용자 지정 색)을 그대로 쓴다.
+
+### 등록·수정 화면
+
+| 화면 | 주소 | 항목 | 저장 |
+|---|---|---|---|
+| 새 태스크 | `GET /tasks/new` | 제목, 프로젝트(보관 제외, 비우면 기본 프로젝트), 카테고리, 예상, 계획 주차, 마감일, 외부 참조, 설명 | `POST /tasks` → 성공하면 `HX-Redirect: /tasks?added=ID`(필터 프로젝트가 있으면 `&project=`) |
+| 태스크 수정 | `GET /tasks/{id}/edit` | 위 항목(프로젝트는 글자로만 보임) + 상태 | `PATCH /tasks/{id}`(버전 확인) → 성공하면 `HX-Redirect: /tasks?updated=ID` |
+- 입력 검증은 지금과 같은 core 함수(`parse_duration`, `parse_week`, `parse_date`, `services.create_task`·`update_task`·`set_task_status`)를 쓴다. 상태가 바뀌면 같은 세션에서 `set_task_status`도 부른다(완료·중단 시각 규칙이 그대로 적용된다).
+- 설명은 여러 줄 입력(`textarea`)이다. 비우면 설명 없음(`None`)이다.
+- 오류는 같은 화면에 입력값 그대로, 문구는 `#flash`(Phase 5 규칙)와 폼 아래 결과 줄에 둔다. 409는 "다른 곳에서 태스크가 바뀌었습니다" 문구와 함께 "최신 내용으로 다시 열기" 링크.
+- 취소는 보드로 돌아가는 링크다(필터 유지).
+- 보드는 `?added=`·`?updated=`가 있으면 그 태스크로 결과 줄을 만든다(없는 ID면 결과 줄 없이 보드만).
+
+### 끌어 놓기 (`static/js/board.js`)
+
+- 보드가 처음 그려질 때와 htmx가 `#task-board`를 바꾼 뒤(`htmx:afterSettle`) 각 `ul.board__cards`에 `new Sortable(list, { group: "tasks", sort: false, animation: 150, delayOnTouchOnly: true, delay: 150, draggable: ".task-card", ghostClass: "task-card--ghost", chosenClass: "task-card--chosen", onEnd: … })`.
+- `onEnd`: `evt.from !== evt.to`면 `htmx.ajax("POST", "/tasks/" + id + "/status", { target: "#task-board", swap: "outerHTML", values: { status: evt.to.dataset.status, version: item.dataset.version, project: <필터 값> } })`.
+- 끄는 중에는 카드 링크가 눌리지 않는다(끈 거리가 있으면 click이 없다). 눌렀다 바로 놓으면 링크로 이동한다.
+- 서버: `set_status`가 `ConflictError`·`NotFoundError`면 지금 보드를 문구와 함께 다시 그려 409/404로 보낸다(`HX-Retarget: #task-board`, `HX-Reswap: outerHTML`). 카드가 제자리로 돌아간다.
+- 인라인 코드 금지(CSP): 이벤트는 board.js에서 붙인다.
+
+---
+
+## Task 9-0: 계획 문서 저장
+
+- [ ] ROADMAP Phase 9 항목을 결정대로 고치고 이 계획서를 커밋한다: `docs: ROADMAP Phase 9 결정 반영`, `docs: Phase 9 화면 고도화 구현 계획 추가`
+
+---
+
+## Task 9-1: 중단 시각 기록 (core: 스키마 4·서비스·백업 형식 4)
+
+**Files:**
+- Modify: `src/logbook/core/models.py`(`Task.dropped_at`, docstring), `core/db.py`(`SCHEMA_VERSION = 4`, `_upgrade_to_4`, `MIGRATIONS`, 마이그레이션 주석), `core/services/tasks.py`(`set_task_status`, `dropped_tasks_in_week`, 설명), `core/services/__init__.py`, `core/services/backup.py`, `core/services/backup_import.py`
+- Modify tests: 마이그레이션 테스트의 버전 하드코딩(`test_db_migration_v2.py`·`v3.py`의 최신 버전 기준), 새 `test_db_migration_v4.py`, `tests/core/test_services_tasks.py`, 백업 테스트(`backup_helpers.py`, `test_services_backup*.py`)
+
+```python
+# core/models.py (Task, done_at 다음에 둔다: ALTER TABLE ADD COLUMN이 끝에 붙이므로 새 DB와 같은 순서)
+    done_at: Mapped[dt.datetime | None]
+    dropped_at: Mapped[dt.datetime | None]  # 중단 시각(스키마 4). 중단 상태가 아니면 None
+```
+
+```python
+# core/db.py: 고정 DDL이다. 모델이 나중에 바뀌어도 이 단계는 그대로 둔다.
+def _upgrade_to_4(conn: Connection) -> None:
+    conn.exec_driver_sql("ALTER TABLE tasks ADD COLUMN dropped_at DATETIME")
+    # 이미 중단한 태스크는 중단 시각을 모르므로 마지막 수정 시각으로 채운다(사용자 결정 D2).
+    conn.exec_driver_sql("UPDATE tasks SET dropped_at = updated_at WHERE status = 'dropped'")
+```
+- 새 DB(`create_all`)와 올린 DB의 `PRAGMA table_info(tasks)`가 같아야 한다(Phase 8의 v3 테스트와 같은 방식).
+- 원본 SQL이라 `updated_at`의 `onupdate`가 돌지 않는다. 마이그레이션이 `updated_at`을 바꾸지 않는지 테스트로 확인한다.
+
+**서비스**
+
+| 함수 | 동작 |
+|---|---|
+| `set_task_status` | 중단으로 바뀌면 `dropped_at = utcnow()`, 중단에서 다른 상태로 바뀌면 `None`, 중단에서 중단이면 그대로 둔다(`done_at`과 같은 규칙) |
+| `dropped_tasks_in_week(s, week, …)` | 중단 태스크 중 `dropped_at`의 로컬 날짜가 그 주 안인 것. 최근 것이 먼저, 같으면 id 순. 인자·시간대·보관 프로젝트 처리는 `done_tasks_in_week`와 같다 |
+| `create_task`·`update_task` | 설명(`description`)을 받지 않으면 받게 한다(빈 값은 `None`). 이미 받으면 그대로 둔다(Task 9-3에서 쓴다) |
+
+**백업 (형식 4)**
+- `FORMAT_VERSION = 4`. `tasks` 필드에 `dropped_at`(`done_at` 다음)을 더한다.
+- 가져오기는 형식 1·2·3·4를 받는다. 형식 1~3의 `tasks` 줄에는 `dropped_at`이 없고(있으면 오류), 가져올 때 중단 태스크는 `dropped_at = updated_at`, 나머지는 `None`으로 채운다(마이그레이션과 같은 규칙). 형식 4는 `dropped_at` 키가 있어야 한다(`null` 허용).
+- 형식 4의 불변식: 중단 상태와 `dropped_at`이 함께 있거나 함께 없다(`done_at`에 같은 검사가 있으면 같은 방식으로).
+- 결과 줄(`lb export`·`lb import`)은 바뀌지 않는다(새 테이블이 없다).
+
+**테스트 케이스**
+
+| 대상 | 케이스 | 기대 |
+|---|---|---|
+| 마이그레이션 | 중단·완료·할 일 태스크가 있는 v3 DB → v4 | 행 수 그대로, 중단 태스크만 `dropped_at = updated_at`, `updated_at` 그대로, 버전 4, 백업 1개 |
+| 마이그레이션 | v1 → v4 | 세 단계 모두 적용, 백업 1개 |
+| 마이그레이션 | 새 DB와 올린 DB | `PRAGMA table_info(tasks)`가 같음 |
+| 서비스 | 할 일 → 중단 → 할 일 / 중단 → 중단 / 완료 → 중단 | 시각 기록 → `None` / 처음 시각 유지 / `done_at` 지워지고 `dropped_at` 기록 |
+| `dropped_tasks_in_week` | 이번 주 중단 / 지난주 중단 / 보관 프로젝트 / 프로젝트 지정 / 시간대 경계(KST) | 포함 / 제외 / `done_tasks_in_week`와 같은 규칙 / 그 프로젝트만 / 로컬 날짜 기준 |
+| 백업 | 내보내기 / 형식 4 왕복 / 형식 3 파일(중단 태스크 포함) / 형식 3 파일에 `dropped_at` 키 / 형식 4 불변식 위반 | 머리글 4·`dropped_at` 필드 / 같음 / `dropped_at = updated_at` / 오류 / 오류 |
+
+- [ ] RED → GREEN → 커밋 `feat: 태스크 중단 시각 기록(스키마 4, 백업 형식 4)`
+- [ ] 메인 세션: 이전 버전으로 만든 v3 임시 DB의 복사본으로 v3 → v4 업그레이드와 백업 파일을 확인한다. 화면 변화가 없으므로 승인은 Task 9-2와 함께 받는다.
+
+---
+
+## Task 9-2: 칸반 고도화 (모양)
+
+**Files:** `task_views.py`(카드 진행 막대 값, 열 키), `task_board.html`, `task_card.html`, `tasks.css`, `app.css`(`--accent-soft` 등), tests(`test_tasks_page.py`, `test_theme.py`, `test_css_layout.py`)
+
+- 열 머리: 상태 색 바탕의 둥근 띠 안에 점·제목·건수. `board__col`은 바탕·테두리·그림자를 없애 흰 카드가 떠 보이게 한다.
+- 카드: `--surface`, `1px solid var(--rule)`, `--radius-sm`, `--shadow-soft`. 왼쪽 굵은 띠(`border-left 3px`)를 없앤다(예상 초과는 막대 색과 꼬리표가 알린다).
+- 진행 막대: 예상이 있을 때만. `percent = min(100, round(actual / estimate * 100))`, 넘으면 `over`.
+- 이 Task에서는 버튼·폼은 그대로 둔다(9-3·9-4에서 바꾼다). 열은 아직 3개다(중단 열은 9-4).
+
+| 대상 | 케이스 | 기대 |
+|---|---|---|
+| 카드 뷰 | 예상 없음 / 실적 0 / 절반 / 초과 | 막대 없음 / 0 / 50 / 100과 over |
+| 템플릿 | 막대 SVG | `width` 속성에 정수, `aria-hidden`, `style=` 없음 |
+| CSS | 열 머리 상태 색 클래스, 카드 왼쪽 띠 없음, 진행 막대 규칙 | |
+| 토큰·대비 | 새 토큰 두 테마, 열 머리 글자/바탕 쌍 4.5 이상 | |
+
+- [ ] RED → GREEN → 커밋 `feat: 칸반 열 머리 상태 색, 흰 카드, 실적·예상 진행 막대`
+- [ ] 메인 세션: 전후 스크린샷·비교 페이지 → 9-1과 함께 사용자 승인
+
+---
+
+## Task 9-3: 태스크 등록·수정 화면 분리
+
+**Files:** `pages/tasks.py`, `task_views.py`, 새 `task_new.html`·`task_edit.html`, `partials/task_form.html`(공용 필드), `tasks.html`, `task_card.html`(카드 전체 링크, "수정" 버튼 삭제), CSS(새 화면 폼 배치), tests(`test_tasks_add.py`→새 화면, `test_tasks_edit.py`→새 화면, `test_tasks_page.py`)
+
+- 보드에서 추가 폼을 빼고 머리에 "새 태스크" 주 버튼(링크)을 둔다.
+- 카드 인라인 수정(`GET /tasks/{id}/edit` 조각, `GET /tasks/{id}/card`, 카드용 `PATCH`)을 새 화면으로 바꾼다. `GET /tasks/{id}/card`는 쓰는 곳이 없어지면 라우트를 지운다(코드 줄 삭제는 허용).
+- 수정 화면의 상태 선택(D1): 바꾸면 저장할 때 `set_task_status`도 부른다(완료·중단 시각 규칙 적용).
+- 항목(D3): 제목, 프로젝트(등록만), 카테고리, 예상, 계획 주차, 마감일, 외부 참조, 설명, 상태(수정만).
+- 저장 뒤(D4): 보드로 돌아가 결과 줄. 필터 유지.
+- 상태 버튼(시작·완료 등)은 9-4에서 지운다.
+- 키보드: 카드 링크에 포커스 윤곽선, Enter로 수정 화면. 새 화면은 제목 칸에 처음 포커스(`data-focus`), Enter 저장(여러 줄 설명 칸 안의 Enter는 줄바꿈), Esc는 보드로(기존 app.js 규칙을 새 폼에도 연결하거나 링크).
+
+| 대상 | 케이스 | 기대 |
+|---|---|---|
+| `GET /tasks/new` | 기본 | 폼 항목 8개, 프로젝트 선택지(보관 제외), 취소 링크 |
+| `POST /tasks` | 정상(설명 포함) / 제목 없음 / 잘못된 예상·주차·마감일 / 모르는 카테고리 / 보관 프로젝트 | `HX-Redirect`와 생성 / 400 입력값 유지·문구 |
+| 보드 | `?added=ID`, `?updated=ID`, 없는 ID | 결과 줄 / 결과 줄 / 없음 |
+| `GET /tasks/{id}/edit` | 기본 / 없는 ID | 값 채운 폼과 상태 선택·버전 / 404 페이지 |
+| `PATCH /tasks/{id}` | 값 수정(설명 포함) / 상태만 바꿈(완료·중단) / 변경 없음 / 버전 다름 / 잘못된 값 | `HX-Redirect` / 상태와 완료·중단 시각 / 결과 줄 "바뀐 것 없음" / 409 문구·다시 열기 링크 / 400 |
+| 카드 | 링크 주소, 수정 버튼 없음 | |
+| 인라인 코드 | 두 화면 | `inline_code_violations(html) == []` |
+
+- [ ] RED → GREEN → 커밋 `feat: 태스크 등록·수정을 별도 화면으로 옮기고 카드를 수정 화면 링크로`
+- [ ] 메인 세션: 전후 스크린샷(보드, 새 태스크, 수정 화면)·비교 페이지 → 사용자 승인
+
+---
+
+## Task 9-4: 끌어 놓기로 상태 변경과 이번 주 중단 열
+
+**Files:** `pages/tasks.py`(4열, 상태 변경 충돌 응답), `task_views.py`(열·카드 데이터 속성, 상태 버튼 정의 삭제), `task_board.html`, `task_card.html`, `tasks.html`(스크립트), 새 `static/js/board.js`, `tasks.css`·`responsive.css`(4열 배치·끄는 중 모양), tests(`test_tasks_status.py`, `test_tasks_page.py`, `test_static.py`, `test_css_layout.py`)
+
+- **vendor(메인 세션, 이 Task 전에):** 레지스트리에서 최신 버전을 확인하고 tarball을 받아 `dist.integrity`(sha512)를 확인한 뒤 `package/Sortable.min.js`·`package/LICENSE`를 꺼낸다(새 임시 폴더, `tarfile`의 `filter="data"`). README 표와 출처 표에 행을 더한다(`test_static.py`가 sha256을 비교한다). 커밋 `chore: SortableJS 1.15.7 로컬 포함`.
+- 보드: 4열 "할 일·진행 중·이번 주 완료·이번 주 중단". 중단 열은 Task 9-1의 `dropped_tasks_in_week`를 쓴다. 빈 열도 `ul`을 그린다(놓을 자리). 빈 안내는 목록 밖 `p.empty`.
+- 카드 버튼(시작·완료·할 일로·중단·다시 열기)과 그 정의(`_ACTIONS`, `DROP_CONFIRM` 등)를 지운다. JSON API는 그대로다.
+- 중단 열로 끌 때 확인 창이 없다(D5). 열 안 순서는 바꾸지 않는다(D6, `sort: false`).
+- `set_status` 충돌: 보드를 문구와 함께 다시 그려 409(`HX-Retarget`·`HX-Reswap`). 성공 결과 줄은 지금 문구 그대로("✔ #5 할 일 → 진행: …").
+- 배치(D9): 4열(1100px 이상), 2×2(720~1099px), 1열(720px 미만).
+
+| 대상 | 케이스 | 기대 |
+|---|---|---|
+| 보드 | 4열과 `data-status`, 카드 `data-task-id`·`data-version`, 버튼 없음 | |
+| 보드 | 이번 주 중단한 태스크가 중단 열에, 지난주 중단은 없음, 열 건수 | |
+| `POST /tasks/{id}/status` | 끌어 놓기 값(중단→할 일 포함) / 버전 다름 / 없는 ID | 보드 / 409 보드·문구·헤더 / 404 보드·문구 |
+| 정적 | vendor README 행, sha256, 태스크 화면만 두 스크립트를 싣는다(대시보드엔 없음) | |
+| JS | board.js에 `new Sortable`, `htmx.ajax`, `sort: false`, `group`, 인라인 코드 없음 | 문자열 테스트 |
+| CSS | 4열·2×2·1열 미디어 규칙, 끄는 중 모양 | |
+
+- 메인 세션 화면 확인: Edge 헤드리스에서 board.js의 이동 함수를 직접 불러(끌기 대신) 상태가 바뀌고 보드가 다시 그려지는지, 끄는 중 모양, CSP 위반 로그가 없는지 본다.
+
+- [ ] RED → GREEN → 커밋 `feat: 카드를 끌어 놓아 상태를 바꾸고 이번 주 중단 열 추가(SortableJS)`
+- [ ] 메인 세션: 전후 스크린샷·끌어 놓기 확인·비교 페이지 → 사용자 승인
+
+---
+
+## Task 9-5: 대시보드 위계
+
+**Files:** `pages/summary.py`(오늘 공수·목표 대비), `templates/partials/summary.html`, `templates/partials/timer.html`, `app.css`(띠 토큰), `dashboard.css`·`components.css`(진행 막대, 띠), tests(`test_dashboard.py`, `test_timer_panel.py`, `test_theme.py`, `test_css_layout.py`)
+
+- 진행 막대(D7): "이번 주 공수" 칸 아래 `오늘 2h 30m / 목표 8h` 글자와 9-2와 같은 SVG 막대. 목표를 넘으면 꽉 찬 막대와 "목표 달성" 꼬리표(ok).
+- 오늘 공수는 기존 서비스(빠른 기록 결과 줄의 "오늘 누적"과 같은 값, 실제 함수 이름은 구현자가 확인)로 구한다. 대시보드를 다시 그리는 경로(빠른 기록 뒤 요약 갱신 OOB 포함)에서도 같은 값이다.
+- 강조 띠(D8): `.timer--running`이 `--band-bg` 바탕, `--band-ink` 글자. 띠 안 버튼은 띠 색에 맞춘 변형(`.timer--running .btn`: 투명 바탕, `--band-ink` 글자, 대비 4.5 이상 테두리). "진행 중" 꼬리표는 띠 위에서도 읽히게 한다.
+- 타이머가 없을 때(시작 폼)는 지금 모양 그대로다.
+
+| 대상 | 케이스 | 기대 |
+|---|---|---|
+| 요약 뷰 | 오늘 0 / 절반 / 목표 초과 | 0% / 50% / 100%와 달성 꼬리표 |
+| 템플릿 | 막대 SVG, 글자 | `style=` 없음 |
+| 토큰·대비 | `--band-*` 두 테마, 글자/바탕 4.5 이상, 띠 위 버튼 테두리 3:1 이상 | |
+| 타이머 | 진행 중 띠 클래스, 버튼 변형 | |
+
+- [ ] RED → GREEN → 커밋 `feat: 대시보드에 오늘 목표 대비 진행 막대와 진행 중 타이머 강조 띠`
+- [ ] 메인 세션: 전후 스크린샷·비교 페이지 → 사용자 승인
+
+---
+
+## Task 9-6: 문서 마무리와 Phase 9 완료
+
+- [ ] **SPEC.md**
+  - 2장: `tasks.dropped_at`, `schema_version` 4(버전 4: tasks.dropped_at 추가)
+  - 5장 백업 형식 4(`tasks.dropped_at`, 형식 1~3 가져오기 규칙)
+  - 6장: 태스크 화면(4열, 끌어 놓기, 이번 주 중단 열, 등록·수정 화면과 주소, 상태 선택, 키보드 경로), 대시보드(진행 막대, 강조 띠), 의존성(SortableJS)
+  - 후속 항목: 태스크 화면 확장(끌어 놓기·설명·마감일·외부 참조 수정·중단 태스크 보기)을 정리한다
+- [ ] **README.md**: 태스크 화면 사용법(끌어 놓기, 새 태스크, 수정 화면), 키보드로 상태 바꾸는 방법, 업그레이드(스키마 4)
+- [ ] **CLAUDE.md, AGENTS.md**: `static/js/board.js`, vendor 목록(SortableJS), 새 템플릿
+- [ ] **ROADMAP.md**: Phase 9 체크
+- [ ] **화면 확인(메인 세션)**: 다섯 화면 + 새 화면 두 개 × 1280·375·320px × 밝은·어두운, 끌어 놓기 동작, 키보드 경로
+- [ ] **브라우저 확인(사용자, Windows·macOS, PR 댓글)**: 마우스·터치패드 끌어 놓기, 중단 열, 새 태스크·수정 화면, 키보드만으로 상태 바꾸기, 409(다른 터미널에서 `lb task edit` 뒤 끌어 놓기)
+- [ ] **전체 검증**, **최종 리뷰**, **PR**(develop 대상, `Closes #<이슈>`)
+
+---
+
+## 크로스 플랫폼 체크리스트 (Phase 9 추가분)
+
+- 끌어 놓기는 마우스·터치패드(Windows 정밀 터치패드, macOS 트랙패드) 모두 확인한다. 터치스크린은 SortableJS가 처리하지만 서버가 이 PC에서만 열리므로 확인 범위 밖이다.
+- 날짜 경계는 로컬 시간대 기준이다(`dropped_tasks_in_week`는 `done_tasks_in_week`와 같은 방식).
+- 스키마 4 업그레이드 백업 이름은 `<DB 파일 이름>.v3-YYYYMMDD-HHMMSS.bak`이다(두 OS 같음).
+
+## 설계 결정 요약
+
+1. **상태 변경 주소 하나:** 끌어 놓기, 수정 화면의 상태 선택, JSON API가 같은 서비스 함수를 쓴다.
+2. **실패하면 보드를 다시 그린다:** 화면과 DB가 어긋난 채 남지 않는다.
+3. **중단 시각은 완료 시각과 같은 규칙:** 중단으로 바뀔 때 기록하고 벗어나면 지운다. 기존 중단 태스크는 마지막 수정 시각으로 채운다(정확한 시각을 알 수 없다).
+4. **CSP 그대로:** 진행 막대는 SVG 속성, 끌기는 CSSOM이라 인라인 스타일 허용이 필요 없다.
+5. **외부 내려받기는 메인 세션만:** SortableJS tarball은 메인 세션이 받아 무결성을 확인한다.
+
+## 사용자 결정 (2026-10-15)
+
+- 결정 게이트 D1~D9를 모두 추천안으로 정했다(위 "결정" 표). D1은 설명을 다시 들은 뒤 골랐다.
+- 이미 정해진 방향(Phase 8 결정 게이트): 등록·수정 별도 화면, 카드 버튼 모두 제거와 SortableJS 로컬 포함 끌어 놓기, 보드에 중단 열.
+
+## 계획 검토
+
+(사실 확인 뒤 적는다.)
+
+## 후속 항목 (Phase 9 범위 밖)
+
+1. 지난 중단 태스크 보기(중단 열은 이번 주만 보인다)
+2. 같은 열 안 순서(우선순위) 저장
+3. 카드 단축키(키보드로 열 이동)
+4. 설명 CLI 옵션(`lb task add/edit --desc`)
+5. Phase 8 후속 4(수정 중인 카드의 프로젝트 색 점)는 인라인 수정 카드가 없어져 해당 없다(Task 9-3에서 확인)
