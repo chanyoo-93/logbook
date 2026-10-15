@@ -38,8 +38,10 @@ HTMX_CONFIG = {
 VENDOR_FILES = (
     "htmx-2.0.11.min.js",
     "chart-4.5.1.umd.min.js",
+    "sortable-1.15.7.min.js",
     "LICENSE-htmx.txt",
     "LICENSE-chartjs.md",
+    "LICENSE-sortablejs.txt",
 )
 _README_ROW = re.compile(r"^\|\s*`(?P<name>[^`]+)`.*`(?P<sha>[0-9a-f]{64})`\s*\|\s*$", re.MULTILINE)
 
@@ -58,6 +60,7 @@ def _readme_hashes() -> dict[str, str]:
         ("/static/js/report.js", JS),
         ("/static/vendor/htmx-2.0.11.min.js", JS),
         ("/static/vendor/chart-4.5.1.umd.min.js", JS),
+        ("/static/vendor/sortable-1.15.7.min.js", JS),
     ],
 )
 def test_static_files_are_served_with_type_and_security_headers(
@@ -144,7 +147,8 @@ def test_vendor_directory_has_nothing_unlisted() -> None:
 def test_vendor_readme_names_versions_licenses_and_sources() -> None:
     text = (VENDOR_ROOT / "README.md").read_text(encoding="utf-8")
 
-    for expected in ("2.0.11", "4.5.1", "0BSD", "MIT", "registry.npmjs.org"):
+    words = ("2.0.11", "4.5.1", "1.15.7", "0BSD", "MIT", "registry.npmjs.org", "tasks.html")
+    for expected in words:
         assert expected in text
 
 
