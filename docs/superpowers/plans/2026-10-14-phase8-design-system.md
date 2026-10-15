@@ -772,7 +772,7 @@ def _upgrade_to_3(conn: Connection) -> None:
   - 포커스: 표 안 색 고르기 칸의 윤곽선 잘림(0.9px)을 고친 뒤(11780f6) 그 칸에 포커스를 준 스크린샷으로 확인
   - 꼬리표 색과 차트 색이 같음: dev에 노랑(#fab005)을 저장한 상태(compare-8-9-color.html)에서 꼬리표·도넛이 같은 색
   - Phase 8 전체 비교(compare-phase8.html)를 최종 화면으로 다시 만들었다
-- [ ] **전체 검증, CI, PR #18 본문과 확인 절차 댓글 갱신**
+- [x] **전체 검증, CI, PR #18 본문과 확인 절차 댓글 갱신**: ruff·format·mypy·pytest 2972 passed(2 skipped), GitHub Actions 두 OS 통과(37da049 기준, windows-latest 7m5s, macos-latest 3m54s), PR 본문 갱신과 보완 확인 절차 댓글(2026-10-15)
 
 ---
 
