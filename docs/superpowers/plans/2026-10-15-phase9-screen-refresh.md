@@ -12,7 +12,7 @@
 **Architecture:**
 - 계층 규칙은 그대로다. web은 `core.services`와 허용된 core 진입점만 쓰고, SQL·ORM 쿼리를 쓰지 않는다.
 - 새 화면은 전체 페이지의 HTMX 폼이다. 저장에 성공하면 서버가 `HX-Redirect`로 보드(`/tasks?added=ID` 또는 `?updated=ID`, 필터 프로젝트 유지)로 보내고, 보드가 결과 줄을 보여 준다. 입력 오류·버전 충돌(409)은 같은 화면에 입력값 그대로 문구를 보여 준다.
-- 끌어 놓기는 기존 상태 변경 주소(`POST /tasks/{id}/status`, 버전 확인)를 그대로 쓴다. 성공하면 서버가 보드를 다시 그린다(지금과 같다). 실패하면(409·404·400·503·연결 오류) 오류 문구는 지금처럼 `#flash`에 보이고, `board.js`가 보드를 다시 불러와 카드를 제자리로 돌린다.
+- 끌어 놓기는 기존 상태 변경 주소(`POST /tasks/{id}/status`, 버전 확인)를 그대로 쓴다. 성공하면 서버가 보드를 다시 그린다(지금과 같다). 실패하면(409·404·400·503·연결 오류) 오류 문구는 지금처럼 `#flash`에 보이고, `board.js`가 카드를 원래 열의 원래 자리로 되돌린다(보드를 다시 부르지 않는다. 2026-10-15 구현 전 보완, 끌어 놓기 절 참고).
 - SortableJS는 htmx·Chart.js처럼 npm tarball에서 꺼낸 원본을 `static/vendor`에 넣는다(Phase 5 결정 W3, CDN 없음). 내려받기와 무결성 확인은 메인 세션이 한다. CSP는 바꾸지 않는다(SortableJS는 스타일을 CSSOM으로만 바꾼다. 화면 확인으로 검증한다).
 - 스키마 4: `tasks.dropped_at`(중단 시각)을 더한다. 완료 시각(`done_at`)과 같은 규칙으로 들어가고 빠진다. 충돌 확인 버전(`task_version`)과 JSON API(`/api/tasks`)도 `done_at`과 대칭으로 `dropped_at`을 갖는다.
 
@@ -67,7 +67,7 @@
 | `src/logbook/web/templates/partials/task_form.html` | 수정 | 등록·수정 공용 폼(필드 묶음) |
 | `partials/task_edit_card.html`, `partials/task_form_response.html` | `git mv` 또는 보고 | 새 구조에서 쓰이지 않으면 새 용도로 옮기거나 메인 세션에 보고 |
 | `templates/partials/task_board.html`, `task_card.html` | 수정 | 4열, 끌 수 있는 목록, 버튼 없는 카드 |
-| `src/logbook/web/static/js/board.js` | 생성 | SortableJS 연결, 끌어 놓은 뒤 상태 변경 요청, 실패하면 보드 다시 불러오기 |
+| `src/logbook/web/static/js/board.js` | 생성 | SortableJS 연결, 끌어 놓은 뒤 상태 변경 요청, 실패하면 카드를 제자리로 되돌리기 |
 | `src/logbook/web/static/js/app.js` | 수정 | 새 화면의 Esc 취소(`data-cancel`) |
 | `src/logbook/web/static/vendor/sortable-1.15.7.min.js`, `LICENSE-sortablejs.txt`, `README.md` | 생성·수정(메인 세션) | vendor 파일과 출처·sha256, "교체할 때" 절에 `tasks.html` |
 | `src/logbook/web/static/css/tasks.css`, `app.css`, `components.css`, `dashboard.css` | 수정 | 열 머리 색, 카드, 4열·2×2·1열(보드 규칙은 지금처럼 `tasks.css`), 진행 막대, 새 화면 폼, 끄는 동안 모양(강조 띠 토큰은 D8 취소로 지움) |
@@ -363,17 +363,27 @@ def _upgrade_to_4(conn: Connection) -> None:
 
 ## Task 9-6: 문서 마무리와 Phase 9 완료
 
-- [ ] **SPEC.md**
+- [x] **SPEC.md** (0d4769c, 열 이름 바로잡음 7602800)
   - 2장: `tasks.dropped_at`, `schema_version` 4(버전 4: tasks.dropped_at 추가)
   - 5장 백업 형식 4(`tasks.dropped_at`, 형식 1~3 가져오기 규칙)
   - 6장: 태스크 화면(4열, 끌어 놓기, 중단 열(이번 주), 등록·수정 화면과 주소, 상태 선택, 키보드 경로, 실패 복원), 대시보드(진행 막대), 의존성(SortableJS), JSON API의 `dropped_at`
   - 후속 항목: 태스크 화면 확장(끌어 놓기·설명·마감일·외부 참조 수정·중단 태스크 보기)을 정리한다
-- [ ] **README.md**: 태스크 화면 사용법(끌어 놓기, 새 태스크, 수정 화면), 키보드로 상태 바꾸는 방법, 업그레이드(스키마 4)
-- [ ] **CLAUDE.md, AGENTS.md**: `static/js/board.js`, vendor 목록(SortableJS), 새 템플릿
-- [ ] **ROADMAP.md**: Phase 9 체크, Phase 8의 "Windows 확인 완료(2026-10-15), macOS 미확인" 표시
-- [ ] **화면 확인(메인 세션)**: 다섯 화면 + 새 화면 두 개 × 1280·375·320px × 밝은·어두운, 끌어 놓기 동작, 키보드 경로
+- [x] **README.md**: 태스크 화면 사용법(끌어 놓기, 새 태스크, 수정 화면), 키보드로 상태 바꾸는 방법, 업그레이드(스키마 4)
+- [x] **CLAUDE.md, AGENTS.md**: `static/js/board.js`, vendor 목록(SortableJS), 새 템플릿
+- [x] **ROADMAP.md**: Phase 9 체크, Phase 8의 "Windows 확인 완료(2026-10-15), macOS 미확인" 표시
+- [x] **화면 확인(메인 세션)**: 다섯 화면 + 새 화면 두 개 × 1280·375·320px × 밝은·어두운, 끌어 놓기 동작, 키보드 경로
+  - 최종 48장(대시보드, 기록, 보드, 새 태스크, 태스크 수정, 보고서, 설정, 설정 편집 × 3폭 × 2테마). 페이지 가로 넘침은 없다.
+  - 끌어 놓기 일곱 경우(`p9_drag.py`): 성공, 빈 열, 409, 409 뒤 다시 끌기, Promise 거부, 같은 열, 끄는 중 모양. 모두 그대로이고 CSP 위반은 0건이다.
+  - 키보드 경로는 9-3에서 확인했다: 카드 링크 → 수정 화면 상태 선택, Esc, 오류 뒤 제목 칸 포커스.
 - [ ] **브라우저 확인(사용자, Windows·macOS, PR 댓글)**: 마우스·터치패드 끌어 놓기, 중단 열, 새 태스크·수정 화면, 키보드만으로 상태 바꾸기, 409(다른 터미널에서 `lb task edit` 뒤 끌어 놓기)
-- [ ] **전체 검증**, **최종 리뷰**, **PR**(develop 대상, `Closes #<이슈>`)
+- [x] **최종 리뷰**(final-reviewer, Sonnet high): ready. critical·major는 없고 minor는 5건이다.
+  - M1: SPEC의 열 이름 → 7602800
+  - M3: 미디어 쿼리 경계를 소수 뷰포트까지 덮음(719.98px·1099.98px) → 63a83e6
+  - M4: 중단 열 머리 색 테스트 → 63a83e6
+  - M5: 쓰지 않는 `task-card--over` 클래스 제거 → 63a83e6
+  - M2: 계획서의 "보드를 다시 불러온다" 문구 → 메인 세션이 고쳤다.
+- [x] **전체 검증**(최종 리뷰 수정 뒤): ruff·format·mypy(core strict, 전체) 통과, pytest 3083 passed, 2 skipped. 커버리지 core·web 100%, 전체 99%(기존 cli 4줄)
+- [ ] **PR**(develop 대상, `Closes #19`)
 
 ---
 
@@ -387,7 +397,7 @@ def _upgrade_to_4(conn: Connection) -> None:
 ## 설계 결정 요약
 
 1. **상태 변경 주소 하나:** 끌어 놓기, 수정 화면의 상태 선택, JSON API가 같은 서비스 함수를 쓴다.
-2. **실패하면 보드를 다시 불러온다:** 상태 변경이 어떤 이유로든 실패하면 board.js가 보드를 다시 불러와 화면과 DB가 어긋난 채 남지 않는다. 오류 문구는 지금처럼 `#flash`다.
+2. **실패하면 카드를 제자리로 되돌린다:** 상태 변경이 어떤 이유로든 실패하면 board.js가 끈 카드를 원래 열의 원래 자리로 되돌려 화면과 DB가 어긋난 채 남지 않는다. 오류 문구는 지금처럼 `#flash`다. (처음에는 보드를 다시 불러오기로 했으나, 다시 부르는 요청이 `#flash`를 비우고 서버가 꺼지면 실패해서 구현 전에 바꿨다.)
 3. **중단 시각은 완료 시각과 같은 규칙:** 중단으로 바뀔 때 기록하고 벗어나면 지운다. 기존 중단 태스크는 마지막 수정 시각으로 채운다(정확한 시각을 알 수 없다). 버전과 API도 `done_at`과 대칭이다.
 4. **CSP 그대로:** 진행 막대는 SVG 속성, 끌기는 CSSOM이라 인라인 스타일 허용이 필요 없다.
 5. **외부 내려받기는 메인 세션만:** SortableJS tarball은 메인 세션이 받아 무결성을 확인한다.
@@ -411,7 +421,7 @@ def _upgrade_to_4(conn: Connection) -> None:
   - 보드 좁은 화면 규칙은 `tasks.css`에 있다(`responsive.css` 아님). `tasks.html`에 스크립트 블록을 새로 만든다. 카드 띠 규칙 세 곳과 `task_form_response.html`을 정리 대상에 넣었다.
   - 새 화면은 전체 페이지라 첫 포커스는 `autofocus`, Enter는 폼 기본 제출, Esc는 `data-cancel`로 정했다.
   - 필터 유지 경로(링크·숨은 칸·`HX-Redirect`)와 `?added=` 잘못된 값 처리를 정했다.
-  - 끌어 놓기 실패 복원을 409뿐 아니라 모든 실패로 넓히고, 서버 대신 board.js가 보드를 다시 불러오게 했다. 초기화 중복 방지와 요청 중 잠금을 더했다.
+  - 끌어 놓기 실패 복원을 409뿐 아니라 모든 실패로 넓히고, 서버 대신 board.js가 보드를 다시 불러오게 했다. 초기화 중복 방지와 요청 중 잠금을 더했다. (뒤에 메인 세션이 구현 전에 '카드를 제자리로 되돌리기'로 바꿨다. 끌어 놓기 절 참고)
   - `task_version`과 `/api/tasks`에 `dropped_at`을 넣는다(`done_at`과 대칭).
   - 대시보드 막대의 마크업 위치(`dl` 구조)와 `has_logs` 밖 배치, `day_total_minutes`를 정했다.
   - 깨지는 기존 테스트의 파일·줄을 Task별로 적었다.
