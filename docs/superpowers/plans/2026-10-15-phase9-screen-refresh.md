@@ -384,6 +384,7 @@ def _upgrade_to_4(conn: Connection) -> None:
   - M2: 계획서의 "보드를 다시 불러온다" 문구 → 메인 세션이 고쳤다.
 - [x] **전체 검증**(최종 리뷰 수정 뒤): ruff·format·mypy(core strict, 전체) 통과, pytest 3083 passed, 2 skipped. 커버리지 core·web 100%, 전체 99%(기존 cli 4줄)
 - [x] **PR**(develop 대상, `Closes #19`): PR #20(2026-10-15). 사용자 확인 절차는 PR 댓글 issuecomment-6187713060에 있다.
+  - CI 통과(c440169 기준): Windows 3083 passed·2 skipped, macOS 3080 passed·5 skipped.
 
 ---
 
