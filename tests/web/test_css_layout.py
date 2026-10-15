@@ -418,3 +418,34 @@ def test_task_form_fields_wrap_in_a_responsive_grid_with_full_width_title_and_de
     assert "display: grid" in _declarations(css, ".task-form__fields")
     full = _declarations(css, ".task-form__field--title, .task-form__field--description")
     assert "grid-column: 1 / -1" in full
+
+
+def test_running_timer_is_an_inverted_band() -> None:
+    css = _read("components.css")
+    band = _declarations(css, ".timer--running")
+
+    assert "background: var(--band-bg)" in band
+    assert "color: var(--band-ink)" in band
+    assert not any(d.startswith("border-left") for d in band)
+
+
+def test_running_timer_buttons_use_band_colors() -> None:
+    declarations = _declarations(_read("components.css"), ".timer--running .btn")
+
+    assert "background: transparent" in declarations
+    assert "color: var(--band-ink)" in declarations
+    assert "border-color: var(--band-muted)" in declarations
+
+
+def test_running_timer_secondary_text_and_dot_are_readable_on_the_band() -> None:
+    css = _read("components.css")
+
+    assert "color: var(--band-muted)" in _declarations(css, ".timer--running .timer__time")
+    assert "background: var(--band-ink)" in _declarations(css, ".timer--running .timer__dot")
+
+
+def test_today_progress_done_fill_uses_ok_color() -> None:
+    css = _read("dashboard.css")
+
+    assert "fill: var(--ok)" in _declarations(css, ".progress--done .progress__fill")
+    assert "display: flex" in _declarations(css, ".stat__progress")

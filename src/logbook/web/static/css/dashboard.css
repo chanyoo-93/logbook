@@ -75,6 +75,25 @@
   font-size: var(--text-stat-lead);
 }
 
+/* 오늘 공수 / 하루 목표: 글자와 꼬리표를 한 줄에, 막대는 그 아래 */
+.stat__progress {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-2);
+  margin-top: var(--space-2);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.stat__progress .progress {
+  flex: 0 0 100%;
+}
+
+.progress--done .progress__fill {
+  fill: var(--ok);
+}
+
 /* 차트: 막대 2 : 도넛 1(두 도넛을 세로로 쌓는다). 높이는 컨테이너가 정한다(Chart.js 반응형). */
 .charts {
   display: grid;

@@ -188,3 +188,18 @@ def test_stop_from_other_origin_is_forbidden(
 
     assert response.status_code == 403
     assert _has_timer(web_engine)
+
+
+def test_running_timer_panel_has_band_class_and_idle_does_not(
+    client: TestClient, web_engine: Engine
+) -> None:
+    idle = client.get("/timer", headers=HTMX).text
+    _start(web_engine)
+    running = client.get("/timer", headers=HTMX).text
+
+    assert "timer--running" not in str(by_id(idle, "timer").attrs["class"]).split()
+    assert str(by_id(running, "timer").attrs["class"]).split() == [
+        "panel",
+        "timer",
+        "timer--running",
+    ]

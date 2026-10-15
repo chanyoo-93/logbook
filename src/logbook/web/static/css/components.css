@@ -10,9 +10,29 @@
   color: var(--ink-muted);
 }
 
+/* 진행 중: 화면에 하나뿐인 강조 띠(색 뒤집기, 강조색은 링크·포커스·주 버튼 몫) */
 .timer--running {
-  border-left: 4px solid var(--ok);
-  color: var(--ink);
+  background: var(--band-bg);
+  color: var(--band-ink);
+}
+
+.timer--running .btn {
+  background: transparent;
+  color: var(--band-ink);
+  border-color: var(--band-muted);
+}
+
+.timer--running .btn:hover {
+  background: var(--band-ink);
+  color: var(--band-bg);
+}
+
+.timer--running .timer__time {
+  color: var(--band-muted);
+}
+
+.timer--running .timer__dot {
+  background: var(--band-ink);
 }
 
 .timer__actions {

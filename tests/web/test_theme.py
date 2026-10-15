@@ -57,6 +57,7 @@ CONTRAST_PAIRS = (
 NON_TEXT_PAIRS = (
     ("--control-border", "--surface"),
     ("--control-border", "--bg"),
+    ("--band-muted", "--band-bg"),
 )
 MIN_CONTRAST = 4.5
 MIN_NON_TEXT_CONTRAST = 3.0

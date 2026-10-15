@@ -1,3 +1,4 @@
+{% from "partials/marks.html" import pill %}
 {% set chart = summary.chart %}
 {% set daily = chart["daily"] %}
 {% set projects = chart["projects"] %}
@@ -11,6 +12,13 @@
     <div class="stat stat--lead">
       <dt class="stat__label">이번 주 공수</dt>
       <dd class="stat__value">{{ summary.total }}</dd>
+      <dd class="stat__progress">
+        <span class="stat__goal">오늘 {{ summary.today_total }} / 목표 {{ summary.today_target }}</span>
+{% if summary.today_reached %}
+        {{ pill("목표 달성", "ok") }}
+{% endif %}
+        <svg class="progress{% if summary.today_reached %} progress--done{% endif %}" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="progress__track" width="100" height="4"/><rect class="progress__fill" width="{{ summary.today_percent }}" height="4"/></svg>
+      </dd>
     </div>
     <div class="stat">
       <dt class="stat__label">기록</dt>
