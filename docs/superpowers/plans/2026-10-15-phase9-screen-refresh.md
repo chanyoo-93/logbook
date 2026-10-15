@@ -256,8 +256,11 @@ def _upgrade_to_4(conn: Connection) -> None:
 | `app.js` | `data-cancel` Esc 처리, 한글 조합 중 무시 | 정적 검사 |
 | 인라인 코드 | 두 화면 | `inline_code_violations(html) == []` |
 
-- [ ] RED → GREEN → 커밋 `feat: 태스크 등록·수정을 별도 화면으로 옮기고 카드를 수정 화면 링크로`
-- [ ] 메인 세션: 전후 스크린샷(보드, 새 태스크, 수정 화면)·비교 페이지 → 사용자 승인
+- [x] RED → GREEN → 커밋 `feat: 태스크 등록·수정을 별도 화면으로 옮기고 카드를 수정 화면 링크로` (6ee47ca)
+  - 구현이 정한 것: 바뀐 것이 없으면 수정 화면에 머물며 폼 아래 "바뀐 내용이 없습니다" 결과 줄을 보인다(보드 결과 줄은 추가·수정 두 가지뿐). `task_edit_card.html` → `task_edit.html`, `task_form_response.html` → `task_new.html`로 `git mv`. 인라인 수정 뷰를 등록·수정 공용 `TaskFormView`로 합침. "새 태스크" 링크는 필터가 바꾸는 보드 조각 머리에 둠. 오류 뒤 제목 칸 포커스는 폼의 `data-refocus`(app.js)
+  - 메인 세션 보완(6fb77a9): 오류일 때 폼 아래 결과 줄의 `role`을 빼 `#flash`만 알림(화면 낭독기가 두 번 읽었다), 선택 상자의 Esc는 화면 취소로 넘기지 않음(검토 R1·R2)
+  - 남은 것: 충돌 확인 버전의 `dropped_at`은 계획대로 9-4에서 넣는다(검토 R4)
+- [ ] 메인 세션: 전후 스크린샷(compare-9-3.html: 보드, 수정 화면, 새 태스크, 18장 가로 넘침 없음)·비교 페이지 → 사용자 승인
 
 ---
 
