@@ -444,6 +444,13 @@ def test_running_timer_secondary_text_and_dot_are_readable_on_the_band() -> None
     assert "background: var(--band-ink)" in _declarations(css, ".timer--running .timer__dot")
 
 
+def test_running_timer_focus_ring_uses_band_ink() -> None:
+    # 어두운 테마의 밝은 띠 위에서 강조색 윤곽선은 대비가 3:1에 못 미친다(2.1:1).
+    declarations = _declarations(_read("components.css"), ".timer--running :focus-visible")
+
+    assert "outline-color: var(--band-ink)" in declarations
+
+
 def test_today_progress_done_fill_uses_ok_color() -> None:
     css = _read("dashboard.css")
 

@@ -27,6 +27,11 @@
   color: var(--band-bg);
 }
 
+/* 띠 위 포커스: 어두운 테마의 밝은 띠에서는 강조색 윤곽선의 대비가 3:1에 못 미친다 */
+.timer--running :focus-visible {
+  outline-color: var(--band-ink);
+}
+
 .timer--running .timer__time {
   color: var(--band-muted);
 }
