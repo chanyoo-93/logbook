@@ -260,7 +260,7 @@ def _upgrade_to_4(conn: Connection) -> None:
   - 구현이 정한 것: 바뀐 것이 없으면 수정 화면에 머물며 폼 아래 "바뀐 내용이 없습니다" 결과 줄을 보인다(보드 결과 줄은 추가·수정 두 가지뿐). `task_edit_card.html` → `task_edit.html`, `task_form_response.html` → `task_new.html`로 `git mv`. 인라인 수정 뷰를 등록·수정 공용 `TaskFormView`로 합침. "새 태스크" 링크는 필터가 바꾸는 보드 조각 머리에 둠. 오류 뒤 제목 칸 포커스는 폼의 `data-refocus`(app.js)
   - 메인 세션 보완(6fb77a9): 오류일 때 폼 아래 결과 줄의 `role`을 빼 `#flash`만 알림(화면 낭독기가 두 번 읽었다), 선택 상자의 Esc는 화면 취소로 넘기지 않음(검토 R1·R2)
   - 남은 것: 충돌 확인 버전의 `dropped_at`은 계획대로 9-4에서 넣는다(검토 R4)
-- [ ] 메인 세션: 전후 스크린샷(compare-9-3.html: 보드, 수정 화면, 새 태스크, 18장 가로 넘침 없음)·비교 페이지 → 사용자 승인
+- [x] 메인 세션: 전후 스크린샷(compare-9-3.html: 보드, 수정 화면, 새 태스크, 18장 가로 넘침 없음)·비교 페이지 → 사용자 승인(2026-10-15)
 
 ---
 
@@ -290,6 +290,10 @@ def _upgrade_to_4(conn: Connection) -> None:
 
 - 메인 세션 화면 확인: Edge 헤드리스에서 board.js의 이동 함수를 직접 불러(끌기 대신) 상태가 바뀌고 보드가 다시 그려지는지, 409를 일부러 일으켜 카드가 제자리로 돌아오는지, 끄는 중 모양, CSP 위반 로그가 없는지 본다.
 
+- [x] vendor(메인 세션): 커밋 `chore: SortableJS 1.15.7 로컬 포함` (c8ea7c9)
+  - 레지스트리 최신이 1.15.7(2026-02-11)이고 tarball의 sha512가 계획서 값과 같았다.
+  - eval·new Function·style 요소 주입이 없다.
+  - `LICENSE-sortablejs.txt`는 원본이 CRLF라 줄 끝만 LF로 바꿨다(README에 적음).
 - [ ] RED → GREEN → 커밋 `feat: 카드를 끌어 놓아 상태를 바꾸고 중단 열 추가(SortableJS)`
 - [ ] 메인 세션: 전후 스크린샷·끌어 놓기 확인·비교 페이지 → 사용자 승인
 
