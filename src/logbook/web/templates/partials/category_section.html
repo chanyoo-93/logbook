@@ -19,7 +19,7 @@
 {% for row in categories.rows %}
         <tr id="category-{{ row.key }}">
           <td class="nowrap">{{ row.key }}</td>
-          <td>{{ row.label }}</td>
+          <td class="nowrap">{{ row.label }}</td>
           <td class="nowrap">
             <span class="color-field" data-color-field>
               <input type="color" name="color" value="{{ row.color }}" aria-label="{{ row.key }} 색">

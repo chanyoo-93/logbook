@@ -78,6 +78,29 @@ def test_table_shows_configured_categories_in_order(client: TestClient) -> None:
     assert "info__categories" not in html
 
 
+def _row_cells(html: str, key: str) -> list[str]:
+    """행(tr id=category-키) 안 td의 class 문자열 목록(순서대로)."""
+    cells: list[str] = []
+    in_row = False
+    for e in parse_html(html):
+        if e.tag == "tr":
+            in_row = e.attrs.get("id") == f"category-{key}"
+        elif in_row and e.tag == "td":
+            cells.append(str(e.attrs.get("class") or ""))
+    return cells
+
+
+def test_label_cell_does_not_wrap_on_narrow_screens(client: TestClient) -> None:
+    # 다른 칸이 모두 nowrap이라 320px에서 이름 칸만 줄어 글자가 세로로 쌓였다.
+    # 이름도 nowrap으로 두고 표 안 가로 스크롤로 본다.
+    html = client.get("/settings").text
+
+    cells = _row_cells(html, "ops")
+
+    assert len(cells) == 4
+    assert "nowrap" in cells[1].split()
+
+
 def test_default_row_uses_palette_color_and_auto_is_on(client: TestClient) -> None:
     html = client.get("/settings").text
 
