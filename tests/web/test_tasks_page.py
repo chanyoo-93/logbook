@@ -84,7 +84,7 @@ def test_page_has_menu_columns_form_and_filter(client: TestClient) -> None:
     assert by_id(html, "task-board").tag == "section"
     assert list(board_columns(html)) == ["todo", "doing", "done"]
     headings = [e.text for e in all_by_tag(html, "h3")]
-    assert headings == ["할 일", "진행 중", "이번 주 완료"]
+    assert headings == ["할 일", "진행 중", "완료"]
     assert inline_code_violations(html) == []
 
 
