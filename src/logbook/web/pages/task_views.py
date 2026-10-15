@@ -16,7 +16,13 @@ from logbook.core.duration import format_duration
 from logbook.core.report import PlanGroup
 from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import week_heading, week_of
-from logbook.web.pages.views import Choice, category_choices, content_version, project_choices
+from logbook.web.pages.views import (
+    Choice,
+    category_choices,
+    content_version,
+    project_choices,
+    project_color,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -73,6 +79,7 @@ class TaskCardView:
     id: int
     title: str
     project: str  # slug
+    project_color: str  # '#rrggbb' (색 점)
     category: str  # key 또는 ''
     week: str  # '2026-W42' 또는 ''
     week_tag: str  # '이번 주' | '다음 주' | '지난 주' | ''
@@ -211,6 +218,7 @@ def task_card(task: Task, actual_minutes: int, this_week: Week) -> TaskCardView:
         id=task.id,
         title=task.title,
         project=task.project.slug,
+        project_color=project_color(task.project),
         category=task.category or "",
         week=task.planned_week or "",
         week_tag=_week_tag(task.planned_week, this_week),

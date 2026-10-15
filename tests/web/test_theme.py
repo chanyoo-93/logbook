@@ -20,12 +20,18 @@ COLOR_TOKENS = (
     "--ink",
     "--ink-muted",
     "--rule",
+    "--rule-strong",
+    "--control-border",
     "--row-hover",
     "--accent",
     "--accent-hover",
     "--accent-ink",
     "--ok",
     "--danger",
+    "--tag-bg",
+    "--ok-soft",
+    "--danger-soft",
+    "--shadow-soft",
     "--shadow-raised",
 )
 CONTRAST_PAIRS = (
@@ -37,8 +43,16 @@ CONTRAST_PAIRS = (
     ("--accent-ink", "--accent"),
     ("--danger", "--surface"),
     ("--ok", "--surface"),
+    ("--ink-muted", "--tag-bg"),
+    ("--ok", "--ok-soft"),
+    ("--danger", "--danger-soft"),
+)
+NON_TEXT_PAIRS = (
+    ("--control-border", "--surface"),
+    ("--control-border", "--bg"),
 )
 MIN_CONTRAST = 4.5
+MIN_NON_TEXT_CONTRAST = 3.0
 
 
 def _matching_brace(text: str, open_index: int) -> int:
@@ -129,6 +143,18 @@ def test_theme_pairs_meet_wcag_contrast(
     assert ratio >= MIN_CONTRAST, f"{theme} {foreground}/{background}: {ratio:.2f}"
 
 
+@pytest.mark.parametrize("theme", ["light", "dark"])
+@pytest.mark.parametrize(("foreground", "background"), NON_TEXT_PAIRS)
+def test_control_border_meets_non_text_contrast(
+    themes: dict[str, dict[str, str]], theme: str, foreground: str, background: str
+) -> None:
+    colors = themes[theme]
+
+    ratio = _contrast(colors[foreground], colors[background])
+
+    assert ratio >= MIN_NON_TEXT_CONTRAST, f"{theme} {foreground}/{background}: {ratio:.2f}"
+
+
 def test_colors_are_literals_only_inside_the_two_root_blocks(css: str, other_css: str) -> None:
     light, dark = _blocks(css)
     rest = css[: light[0]] + css[light[1] + 1 : dark[0]] + css[dark[1] + 1 :] + other_css
@@ -172,3 +198,11 @@ def test_dashboard_script_redraws_charts_when_os_theme_changes() -> None:
 
     assert 'matchMedia("(prefers-color-scheme: dark)")' in script
     assert re.search(r'addEventListener\("change",\s*drawCharts\)', script)
+
+
+def test_pill_rules_exist_and_old_tag_rules_are_gone(other_css: str) -> None:
+    assert re.search(r"\.pill\s*\{", other_css)
+    assert re.search(r"\.pill--ok\s*\{", other_css)
+    assert re.search(r"\.pill--danger\s*\{", other_css)
+    for old in (".task-card__tag", ".task-card__over", ".timer__state"):
+        assert old not in other_css

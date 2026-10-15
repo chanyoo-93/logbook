@@ -1,0 +1,39 @@
+<section id="category-section" class="panel" aria-labelledby="category-section-title">
+  <div class="panel__head">
+    <h2 id="category-section-title" class="panel__title" tabindex="-1" data-focus>카테고리 색</h2>
+  </div>
+{% if categories.message %}
+  <p id="category-result" class="form-message" role="status">{{ categories.message }}</p>
+{% endif %}
+  <div class="table-wrap">
+    <table class="grid grid--categories">
+      <thead>
+        <tr>
+          <th scope="col">키</th>
+          <th scope="col">이름</th>
+          <th scope="col">색</th>
+          <th scope="col">동작</th>
+        </tr>
+      </thead>
+      <tbody>
+{% for row in categories.rows %}
+        <tr id="category-{{ row.key }}">
+          <td class="nowrap">{{ row.key }}</td>
+          <td class="nowrap">{{ row.label }}</td>
+          <td class="nowrap">
+            <span class="color-field" data-color-field>
+              <input type="color" name="color" value="{{ row.color }}" aria-label="{{ row.key }} 색">
+              <label class="color-field__auto"><input type="checkbox" name="auto" value="1"{% if row.is_auto %} checked{% endif %}> 자동</label>
+            </span>
+            <input type="hidden" name="version" value="{{ row.version }}">
+          </td>
+          <td class="nowrap grid__actions">
+            <button type="button" class="btn btn--small" hx-post="/settings/categories/{{ row.key }}/color" hx-include="closest tr" hx-target="#category-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">저장</button>
+          </td>
+        </tr>
+{% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="info__note">{{ categories.note }}</p>
+</section>

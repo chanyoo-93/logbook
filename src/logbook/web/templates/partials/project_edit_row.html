@@ -1,7 +1,12 @@
 <tr id="project-{{ edit.slug }}" class="is-editing">
   <td class="nowrap">{{ edit.slug }}<input type="hidden" name="version" value="{{ edit.values.version }}"></td>
   <td><input id="project-{{ edit.slug }}-name" type="text" name="name" aria-label="이름" autocomplete="off" data-focus value="{{ edit.values.name }}"></td>
-  <td><input id="project-{{ edit.slug }}-color" type="text" name="color" aria-label="색" autocomplete="off" placeholder="#4f46e5" value="{{ edit.values.color }}"></td>
+  <td class="nowrap">
+    <span class="color-field" data-color-field>
+      <input id="project-{{ edit.slug }}-color" type="color" name="color" aria-label="색" value="{{ edit.values.color }}">
+      <label class="color-field__auto"><input type="checkbox" name="color_auto" value="1"{% if edit.values.is_auto %} checked{% endif %}> 자동</label>
+    </span>
+  </td>
   <td class="grid__note"><input id="project-{{ edit.slug }}-description" type="text" name="description" aria-label="설명" autocomplete="off" value="{{ edit.values.description }}"></td>
   <td></td>
   <td class="grid__actions">

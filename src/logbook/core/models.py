@@ -1,4 +1,4 @@
-"""SQLAlchemy 모델: projects, tasks, worklogs, active_timer, week_notes, schema_version.
+"""SQLAlchemy 모델: projects, tasks, worklogs, active_timer, week_notes, category_colors 등.
 
 관계는 다대일(자식 → 부모)만 둔다. 부모 삭제 시의 처리(거부, task_id NULL)는
 ORM이 아니라 DB 외래 키 규칙이 맡는다.
@@ -140,6 +140,16 @@ class WeekNote(Base):
     week: Mapped[str] = mapped_column(String(8), primary_key=True)  # Week.label: '2026-W41'
     risks: Mapped[str] = mapped_column(Text)
     notes: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[dt.datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+
+class CategoryColor(Base):
+    """카테고리 색. 행이 없으면 자동(설정 순서 팔레트)이다. 카테고리 정의는 설정 파일에 있다."""
+
+    __tablename__ = "category_colors"
+
+    category: Mapped[str] = mapped_column(String(32), primary_key=True)
+    color: Mapped[str] = mapped_column(String(7))
     updated_at: Mapped[dt.datetime] = mapped_column(default=utcnow, onupdate=utcnow)
 
 

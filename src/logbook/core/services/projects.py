@@ -32,7 +32,7 @@ def create_project(
     """새 프로젝트를 만든다. 입력이 잘못되었거나 slug가 이미 있으면 InvalidInputError."""
     _validate_slug(slug)
     clean_name = _clean_name(name)
-    _validate_color(color)
+    validate_color(color)
     if _find_project(s, slug) is not None:
         raise InvalidInputError(_duplicate_message(slug))
     project = Project(
@@ -155,7 +155,7 @@ def is_valid_color(value: str) -> bool:
     return _COLOR_RE.fullmatch(value) is not None
 
 
-def _validate_color(color: str | None) -> None:
+def validate_color(color: str | None) -> None:
     if color is not None and not is_valid_color(color):
         raise InvalidInputError(
             f"색상이 올바르지 않습니다: '{color}'. '#4f46e5'처럼 '#'과 16진수 6자리로 입력하세요."
@@ -170,7 +170,7 @@ def _clean_name(name: str | None) -> str:
 
 
 def _checked_color(color: str | None) -> str | None:
-    _validate_color(color)
+    validate_color(color)
     return color
 
 

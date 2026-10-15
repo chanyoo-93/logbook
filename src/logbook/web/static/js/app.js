@@ -74,6 +74,19 @@
     }
   });
 
+  // 색 고르기를 바꾸면 같은 칸의 '자동' 체크를 끈다. 이벤트 위임이라 HTMX로 다시 그린 표에도 동작한다.
+  document.addEventListener("input", function (event) {
+    var target = event.target;
+    if (!target || !target.matches || !target.matches('input[type="color"]')) {
+      return;
+    }
+    var field = target.closest("[data-color-field]");
+    var auto = field && field.querySelector('input[type="checkbox"]');
+    if (auto) {
+      auto.checked = false;
+    }
+  });
+
   // 서버에 닿지 못한 요청: 서버가 만든 오류 조각이 없으므로 여기서 직접 알린다.
   document.addEventListener("htmx:sendError", function () {
     var area = flashArea();

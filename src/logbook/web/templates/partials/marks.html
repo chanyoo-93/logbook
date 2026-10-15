@@ -1,0 +1,14 @@
+{# 공용 부품: 꼬리표(pill). tone은 "", "ok", "danger"만 쓴다. extra는 화면 코드와 테스트가 찾는 class 표지를 남길 때 쓴다. #}
+{% macro pill(text, tone="", extra="") -%}
+<span class="pill{% if tone %} pill--{{ tone }}{% endif %}{% if extra %} {{ extra }}{% endif %}">{{ text }}</span>
+{%- endmacro %}
+{# 프로젝트 색 점과 이름. color는 서버가 검증한 #rrggbb다(CSP 때문에 style 속성 대신 SVG fill로 칠한다). #}
+{% macro project_mark(slug, color) -%}
+<span class="project-mark"><svg class="dot" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"><circle cx="4" cy="4" r="4" fill="{{ color }}"/></svg>{{ slug }}</span>
+{%- endmacro %}
+{# 카테고리 꼬리표. 색은 /colors.css의 pill--cat-<키> 규칙이 칠한다.
+   category_class는 형식이 맞는 키에만 class를 돌려준다(틀리면 빈 문자열이라 기본 꼬리표). #}
+{% macro category_pill(key, extra="") -%}
+{%- set cat = key|category_class -%}
+<span class="pill{% if cat %} {{ cat }}{% endif %}{% if extra %} {{ extra }}{% endif %}">{{ key }}</span>
+{%- endmacro %}

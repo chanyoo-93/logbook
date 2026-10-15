@@ -24,7 +24,7 @@ from logbook.core.errors import (
     NotFoundError,
 )
 from logbook.web.api.envelope import fail
-from logbook.web.assets import STATIC_CSS_URL, STYLESHEETS
+from logbook.web.assets import FONTS_CSS_URL, STATIC_CSS_URL, STYLESHEETS
 from logbook.web.htmx import is_htmx
 from logbook.web.security import is_api_path, security_headers
 
@@ -42,6 +42,9 @@ NOTES_CHANGED = (
 )
 PROJECT_CHANGED = (
     "다른 곳에서 프로젝트가 바뀌었습니다: {slug}. 목록을 새로 고친 뒤 다시 시도하세요."
+)
+CATEGORY_CHANGED = (
+    "다른 곳에서 카테고리 색이 바뀌었습니다: {key}. 목록을 새로 고친 뒤 다시 시도하세요."
 )
 RECORD_CHANGED = "다른 곳에서 기록이 바뀌었습니다: #{id}. 목록을 새로 고친 뒤 다시 시도하세요."
 VALUE_INVALID = "요청 값이 올바르지 않습니다: '{field}' ({reason})."
@@ -94,9 +97,8 @@ def _flash_fragment(message: str) -> str:
 
 
 def _stylesheet_links() -> str:
-    return "".join(
-        f'<link rel="stylesheet" href="{STATIC_CSS_URL}{name}">\n' for name in STYLESHEETS
-    )
+    hrefs = [f"{STATIC_CSS_URL}{name}" for name in STYLESHEETS] + [FONTS_CSS_URL]
+    return "".join(f'<link rel="stylesheet" href="{href}">\n' for href in hrefs)
 
 
 def _error_page(message: str) -> str:

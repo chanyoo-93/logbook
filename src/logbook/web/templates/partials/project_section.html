@@ -35,7 +35,10 @@
     </div>
     <div class="project-form__field">
       <label for="project-color">색</label>
-      <input id="project-color" type="text" name="color" autocomplete="off" placeholder="#4f46e5" value="{{ section.add_values.color }}">
+      <span class="color-field" data-color-field>
+        <input id="project-color" type="color" name="color" value="{{ section.add_values.color }}">
+        <label class="color-field__auto"><input type="checkbox" name="color_auto" value="1"{% if section.add_values.is_auto %} checked{% endif %}> 자동</label>
+      </span>
     </div>
     <button type="submit" class="btn btn--primary">추가</button>
   </form>

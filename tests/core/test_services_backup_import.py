@@ -12,14 +12,16 @@ from sqlalchemy.orm import Session
 
 from logbook.core import db, services
 from logbook.core.errors import DatabaseBusyError, InvalidInputError
-from logbook.core.models import ActiveTimer, Project, Task, WeekNote, WorkLog
+from logbook.core.models import ActiveTimer, CategoryColor, Project, Task, WeekNote, WorkLog
 from logbook.core.services import backup, backup_import
 from logbook.core.taskstatus import TaskStatus
 
 from .backup_helpers import (
+    CATEGORY_COLOR,
     COMMON,
     HEADER,
     HEADER_V2,
+    HEADER_V3,
     LS,
     NEL,
     NON_EMPTY_MESSAGE,
@@ -138,6 +140,33 @@ def test_export_import_export_is_byte_identical_except_header_time(
     assert {k: v for k, v in json.loads(second[0]).items() if k != "exported_at"} == {
         k: v for k, v in json.loads(first[0]).items() if k != "exported_at"
     }
+
+
+def _color_rows(s: Session) -> list[tuple[str, str, datetime]]:
+    rows = s.scalars(select(CategoryColor).order_by(CategoryColor.category))
+    return [(r.category, r.color, r.updated_at) for r in rows]
+
+
+def test_round_trip_keeps_category_color_rows(session: Session, tmp_path: Path) -> None:
+    populate(session)
+    expected = _color_rows(session)
+    lines, _ = services.export_records(session, now=NOW)
+    other = _new_engine(tmp_path / "colors.db")
+    try:
+        with Session(other, expire_on_commit=False) as target:
+            services.ensure_common_project(target)
+            target.flush()
+            services.import_records(target, lines)
+            target.flush()
+            actual = _color_rows(target)
+    finally:
+        other.dispose()
+
+    assert expected == [
+        ("dev", "#4F46E5", datetime(2026, 10, 3, 1, 0, 0, tzinfo=UTC)),
+        ("meeting", "#0f7a3d", datetime(2026, 10, 2, 1, 0, 0, tzinfo=UTC)),
+    ]
+    assert actual == expected
 
 
 def test_imports_common_with_id_3_and_new_ids_follow_max(fresh: Session) -> None:
@@ -262,9 +291,10 @@ def test_flush_operational_error_is_not_translated(
 
 def test_validation_kind_tables_are_consistent() -> None:
     assert tuple(backup_import._KINDS) == backup.TABLE_ORDER
-    assert backup_import.SUPPORTED_FORMATS == (1, 2)
+    assert backup_import.SUPPORTED_FORMATS == (1, 2, 3)
     assert backup_import.FORMAT_TABLES[1] == backup.TABLE_ORDER[:4]
-    assert backup_import.FORMAT_TABLES[2] == backup.TABLE_ORDER
+    assert backup_import.FORMAT_TABLES[2] == backup.TABLE_ORDER[:5]
+    assert backup_import.FORMAT_TABLES[3] == backup.TABLE_ORDER
     assert set(backup_import._REFERENCES) == set(backup.TABLE_ORDER)
     used_kinds = set()
     for table, fields in backup.FIELDS.items():
@@ -276,3 +306,34 @@ def test_validation_kind_tables_are_consistent() -> None:
     # 쓰이지 않는 변환기·문구가 남아 있지 않다.
     assert set(backup_import._CONVERTERS) == base_kinds
     assert set(backup_import._EXPECTED) == used_kinds
+
+
+def test_imports_format_3_file_with_category_colors(fresh: Session) -> None:
+    other = line("category_colors", category="meeting", color="#0F7A3D")
+    lines = [HEADER_V3, COMMON, PAY, TASK, WORKLOG, TIMER, WEEK_NOTE, CATEGORY_COLOR, other]
+
+    counts = services.import_records(fresh, lines)
+    fresh.flush()
+
+    assert counts.category_colors == 2
+    rows = fresh.scalars(select(CategoryColor).order_by(CategoryColor.category)).all()
+    assert [(r.category, r.color) for r in rows] == [("dev", "#4f46e5"), ("meeting", "#0F7A3D")]
+    assert rows[0].updated_at == datetime(2026, 9, 1, 0, 0, 0, tzinfo=UTC)
+
+
+def test_imports_older_formats_without_category_colors(fresh: Session) -> None:
+    for lines in (valid(), [HEADER_V2, COMMON, PAY, TASK, WORKLOG, TIMER, WEEK_NOTE]):
+        counts = services.import_records(fresh, lines)
+        assert counts.category_colors == 0
+        fresh.rollback()
+    assert fresh.scalars(select(CategoryColor)).all() == []
+
+
+def test_rejects_non_empty_database_with_only_category_colors(fresh: Session) -> None:
+    fresh.add(CategoryColor(category="dev", color="#4f46e5"))
+    fresh.flush()
+
+    with pytest.raises(InvalidInputError) as excinfo:
+        services.import_records(fresh, [HEADER, COMMON])
+
+    assert str(excinfo.value) == NON_EMPTY_MESSAGE

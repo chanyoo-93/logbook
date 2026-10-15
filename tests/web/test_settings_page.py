@@ -12,7 +12,7 @@ from logbook.core.config import load_config
 from logbook.web.app import create_app
 from logbook.web.config_watch import ConfigWatcher
 from logbook.web.context import WebContext
-from logbook.web.pages.settings import CATEGORY_NOTE
+from logbook.web.pages.settings import CATEGORY_NOTE, FONT_NOTE
 from tests.web.conftest import LOCAL_BASE_URL
 from tests.web.helpers import (
     add_project,
@@ -48,7 +48,9 @@ def test_settings_page_lists_projects_and_info(
     assert by_id(html, "project-payment").text.startswith("payment 결제")
     assert "#4f46e5" in by_id(html, "project-payment").text
     assert "보관" in by_id(html, "project-old").text
-    assert "dev — 개발" in html
+    assert '<span class="pill">보관</span>' in html
+    assert '<span class="pill pill--ok">사용 중</span>' in html
+    assert by_id(html, "category-dev").text.startswith("dev 개발")
     assert str(web_ctx.config_file) in html
     assert str(web_ctx.engine.url.database) in html
     assert CATEGORY_NOTE in html
@@ -70,7 +72,7 @@ def test_common_row_has_no_archive_button(client: TestClient, web_engine: Engine
     assert "/settings/projects/common/archive" not in archive_urls
 
 
-def test_invalid_color_from_import_has_no_swatch(client: TestClient, web_engine: Engine) -> None:
+def test_invalid_color_from_import_is_shown_as_auto(client: TestClient, web_engine: Engine) -> None:
     add_project(web_engine, "legacy", "가져온 것")
     with db.session_scope(web_engine) as s:
         services.get_project(s, "legacy").color = "red"
@@ -78,11 +80,11 @@ def test_invalid_color_from_import_has_no_swatch(client: TestClient, web_engine:
 
     html = client.get("/settings").text
 
-    assert "red" in by_id(html, "project-legacy").text
-    swatches = [e for e in by_class(html, "swatch") if e.tag == "svg"]
+    assert "자동" in by_id(html, "project-legacy").text
+    assert "red" not in by_id(html, "project-legacy").text
     rects = [e.attrs.get("fill") for e in parse_html(html) if e.tag == "rect"]
-    assert len(swatches) == 1
-    assert rects == ["#00ff00"]
+    assert "#00ff00" in rects
+    assert "red" not in rects
 
 
 @pytest.fixture
@@ -132,3 +134,49 @@ def test_changed_db_path_shows_running_db_and_restart_notice(
     ]
     assert len(notices) == 1
     assert "db_path" in notices[0].text
+
+
+def _font_row_value(html: str, label: str) -> str:
+    """정의 목록에서 글이 label인 dt 바로 다음 dd의 글."""
+    elements = parse_html(html)
+    for index, element in enumerate(elements):
+        if element.tag == "dt" and element.text == label:
+            following = next(e for e in elements[index + 1 :] if e.tag in {"dt", "dd"})
+            assert following.tag == "dd"
+            return following.text.strip()
+    raise AssertionError(f"'{label}' 줄이 없습니다")
+
+
+def test_settings_info_shows_font_rows_with_previews(client: TestClient) -> None:
+    html = client.get("/settings").text
+
+    assert "제목 글꼴" in html
+    assert "문서 글꼴" in html
+    assert "본문 글꼴" in html
+    assert "Bookk Gothic" in html
+    assert "Bookk Myungjo" not in html
+    for label in ("제목 글꼴", "문서 글꼴", "본문 글꼴"):
+        assert _font_row_value(html, label).startswith("Bookk Gothic")
+    assert FONT_NOTE in html
+    for cls in ("font-preview--heading", "font-preview--document", "font-preview--body"):
+        assert len(by_class(html, cls)) == 1
+    body_row = by_class(html, "font-preview--body")[0]
+    assert body_row.text == "가나다 ABC 123 · 8h 55m"
+
+
+def test_settings_info_shows_default_font_label_for_empty_body_font(client: TestClient) -> None:
+    html = client.get("/settings").text
+
+    assert "기본 글꼴" in html
+
+
+def test_settings_font_rows_follow_config(watched_client: TestClient, config_file: Path) -> None:
+    config_file.write_text(
+        '[web]\nport = 8765\nheading_font = "나눔고딕"\nbody_font = "Batang"\n',
+        encoding="utf-8",
+    )
+
+    html = watched_client.get("/settings").text
+
+    assert "나눔고딕" in html
+    assert "Batang" in html

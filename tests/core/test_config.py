@@ -632,7 +632,13 @@ def test_write_default_config_document(config_file: Path) -> None:
             "include_commits": True,
         },
         "git": {"author_email": ""},
-        "web": {"host": "127.0.0.1", "port": 8765},
+        "web": {
+            "host": "127.0.0.1",
+            "port": 8765,
+            "heading_font": "Bookk Gothic",
+            "document_font": "Bookk Gothic",
+            "body_font": "Bookk Gothic",
+        },
         "llm": {
             "provider": "",
             "anthropic_model": "claude-opus-5-5",
@@ -719,3 +725,57 @@ def test_write_default_config_write_failure_raises_logbook_error(
     with pytest.raises(LogbookError, match=re.escape(str(config_file))) as info:
         write_default_config(config_file)
     assert not isinstance(info.value, OSError)
+
+
+FONT_KEYS = ("heading_font", "document_font", "body_font")
+
+
+def test_font_keys_default_when_absent(config_file: Path) -> None:
+    write_toml(config_file, "[web]\nport = 8765\n")
+
+    web = load_config(config_file).web
+
+    assert (web.heading_font, web.document_font, web.body_font) == (
+        "Bookk Gothic",
+        "Bookk Gothic",
+        "Bookk Gothic",
+    )
+
+
+@pytest.mark.parametrize("key", FONT_KEYS)
+@pytest.mark.parametrize("name", ["나눔고딕", "Noto Sans CJK KR", ""])
+def test_font_name_is_kept_as_written(config_file: Path, key: str, name: str) -> None:
+    write_toml(config_file, f'[web]\n{key} = "{name}"\n')
+
+    assert getattr(load_config(config_file).web, key) == name
+
+
+@pytest.mark.parametrize(
+    "toml_value",
+    [
+        r'"A\"B"',
+        '"A;B"',
+        '"A, B"',
+        '"{x}"',
+        '"<b>"',
+        '" A"',
+        '"A "',
+        f'"{"a" * 101}"',
+        r'"A\u0007"',
+    ],
+)
+@pytest.mark.parametrize("key", FONT_KEYS)
+def test_invalid_font_name_is_rejected_with_key(
+    config_file: Path, key: str, toml_value: str
+) -> None:
+    assert_invalid(config_file, f"[web]\n{key} = {toml_value}\n", f"web.{key}", "글꼴 이름")
+
+
+def test_font_name_of_100_chars_is_accepted(config_file: Path) -> None:
+    write_toml(config_file, f'[web]\nbody_font = "{"a" * 100}"\n')
+
+    assert load_config(config_file).web.body_font == "a" * 100
+
+
+def test_numeric_font_name_is_rejected_with_key(config_file: Path) -> None:
+    assert_invalid(config_file, "[web]\nheading_font = 5\n", "web.heading_font")

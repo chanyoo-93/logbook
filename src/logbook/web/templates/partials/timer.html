@@ -1,9 +1,10 @@
 {% from "partials/choose_macro.html" import choose %}
+{% from "partials/marks.html" import pill %}
 <section id="timer" class="panel timer{% if timer %} timer--running{% endif %}" aria-label="타이머"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
 {% if timer %}
   <span class="timer__dot" aria-hidden="true"></span>
   <div class="timer__body">
-    <p class="timer__state">진행 중</p>
+    <p>{{ pill("진행 중", "ok") }}</p>
     <p class="timer__what">{{ timer.scope }} — {{ timer.note }}{% if timer.task %} [{{ timer.task }}]{% endif %}</p>
     <p class="timer__time">시작 {{ timer.started }} · {% include "partials/timer_elapsed.html" %}</p>
   </div>

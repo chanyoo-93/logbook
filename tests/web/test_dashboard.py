@@ -9,7 +9,9 @@ from sqlalchemy import Engine
 from logbook.core import db, services
 from logbook.core.taskstatus import TaskStatus
 from logbook.web.app import create_app
+from logbook.web.assets import COLORS_CSS_URL, FONTS_CSS_URL
 from logbook.web.context import WebContext
+from logbook.web.pages.views import CHART_PALETTE
 from tests.helpers import Clock, hold_lock
 from tests.web.conftest import LOCAL_BASE_URL, LockedApp
 from tests.web.helpers import (
@@ -47,12 +49,12 @@ EXPECTED_CHART = {
         "totals": [60, 0, 30, 120, 0, 0, 0],
         "datasets": [
             {"label": "payment", "color": INDIGO, "data": [60, 0, 0, 120, 0, 0, 0]},
-            {"label": "common", "color": PALETTE_ORANGE, "data": [0, 0, 30, 0, 0, 0, 0]},
+            {"label": "common", "color": PALETTE_BLUE, "data": [0, 0, 30, 0, 0, 0, 0]},
         ],
     },
     "projects": {
         "labels": ["payment", "common"],
-        "colors": [INDIGO, PALETTE_ORANGE],
+        "colors": [INDIGO, PALETTE_BLUE],
         "data": [180, 30],
     },
     "categories": {
@@ -223,7 +225,11 @@ def test_recent_logs_table_columns_and_cells(client: TestClient, web_engine: Eng
     for header in ("ID", "날짜", "프로젝트/카테고리", "시간", "메모", "태스크"):
         assert header in recent
     row = next(e for e in all_by_tag(html, "tr") if e.attrs.get("id") == f"log-{log_id}")
-    assert row.text == f"{log_id} 10-01 (목) payment/dev 1h 30m 재시도 로직 #{task_id}"
+    assert '<span class="pill pill--cat-dev">dev</span>' in html
+    assert row.text == f"{log_id} 10-01 (목) payment dev 1h 30m 재시도 로직 #{task_id}"
+    assert f'<circle cx="4" cy="4" r="4" fill="{CHART_PALETTE[1]}"/></svg>payment' in html
+    assert 'class="dot" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"' in html
+    assert not inline_code_violations(html)
 
 
 def test_recent_logs_without_task_show_dash(client: TestClient, web_engine: Engine) -> None:
@@ -259,9 +265,11 @@ def test_timer_running(client: TestClient, web_engine: Engine, clock: Clock) -> 
         )
     clock.advance(minutes=85)
 
-    timer = by_id(_get(client), "timer").text
+    html = _get(client)
+    timer = by_id(html, "timer").text
 
     assert "진행 중 " in f"{timer} "
+    assert '<span class="pill pill--ok">진행 중</span>' in html
     assert f"payment/design — 환불 API 설계 [#{task_id}]" in timer
     assert "시작 09:30 · 경과 1h 25m" in timer
     assert "진행 중인 타이머가 없습니다" not in timer
@@ -358,7 +366,7 @@ def test_dashboard_references_only_local_assets(client: TestClient) -> None:
         if e.attrs.get(name)
     ]
     assert urls
-    assert all(str(url).startswith("/static/") for url in urls)
+    assert all(str(url).startswith(("/static/", FONTS_CSS_URL, COLORS_CSS_URL)) for url in urls)
     assert "https://" not in html and "http://" not in html
 
 
@@ -383,3 +391,17 @@ def test_dashboard_when_database_is_locked(locked_client: LockedApp) -> None:
     assert response.status_code == 503
     assert "사용 중" in response.text
     assert response.headers["content-type"] == "text/html; charset=utf-8"
+
+
+def test_chart_color_follows_project_id_not_week_order(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "a", "첫째")
+    add_project(web_engine, "b", "둘째")
+    add_log(web_engine, minutes=30, note="b만", project="b", day=W40_THURSDAY)
+
+    chart = json_attr(_get(client), "summary", "data-chart")
+
+    assert isinstance(chart, dict)
+    # common이 ID 1, a가 ID 2, b가 ID 3이다. b는 이번 주 첫 프로젝트여도 ID 3의 색이다.
+    assert chart["projects"]["colors"] == [CHART_PALETTE[2]]

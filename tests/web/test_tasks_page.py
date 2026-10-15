@@ -1,6 +1,7 @@
 """태스크 화면 GET /tasks 테스트 (W40 = 09-28 ~ 10-04, 오늘 = 2026-10-01 목요일 09:30 +09:00)."""
 
 import json
+import re
 from datetime import UTC, date, datetime
 from html import unescape
 
@@ -117,6 +118,11 @@ def test_card_shows_actual_and_estimate_and_flags_overrun(
     assert _figures(html, over) == "실적 5h / 예상 4h"
     assert "task-card--over" in str(by_id(html, f"task-{over}").attrs["class"]).split()
     assert [e.text for e in by_class(html, "task-card__over")] == ["예상 초과"]
+    assert str(by_class(html, "task-card__over")[0].attrs["class"]).split() == [
+        "pill",
+        "pill--danger",
+        "task-card__over",
+    ]
     assert _figures(html, within) == "실적 1h / 예상 4h"
     assert "task-card--over" not in str(by_id(html, f"task-{within}").attrs["class"]).split()
 
@@ -149,6 +155,9 @@ def test_card_shows_week_and_tag(client: TestClient, web_engine: Engine) -> None
         "이번 주",
         "다음 주",
     ]  # 계획 주차 순
+    for tag in by_class(html, "task-card__tag"):
+        assert str(tag.attrs["class"]).split() == ["pill", "task-card__tag"]
+    assert not any(week in _card(html, none) for week in ("이번 주", "다음 주", "지난 주"))
 
 
 def test_card_shows_project_and_category(client: TestClient, web_engine: Engine) -> None:
@@ -158,7 +167,16 @@ def test_card_shows_project_and_category(client: TestClient, web_engine: Engine)
     html = client.get("/tasks").text
 
     assert [e.text for e in by_class(html, "task-card__project")] == ["payment"]
+    assert '<svg class="dot" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">' in html
+    assert re.search(r'<circle cx="4" cy="4" r="4" fill="#[0-9a-f]{6}"/></svg>payment', html)
+    assert "style=" not in html
     assert [e.text for e in by_class(html, "task-card__category")] == ["design"]
+    category = by_class(html, "task-card__category")[0]
+    assert str(category.attrs["class"]).split() == [
+        "pill",
+        "pill--cat-design",
+        "task-card__category",
+    ]
     assert f"#{task}" in _card(html, task)
 
 

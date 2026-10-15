@@ -57,8 +57,9 @@ def test_plan_panel_matches_report_section(client: TestClient, web_engine: Engin
     assert "다음 주 계획 2026-W41 (10-05 ~ 10-11)" in text
     assert "common (예상 12h)" in text
     assert f"#{upcoming} 다음 주 일 — 예상 8h" in text
-    assert f"#{current} 이번 주 일 — 예상 4h (이월 후보)" in text
-    assert text.count("(이월 후보)") == 1
+    assert f"#{current} 이번 주 일 — 예상 4h 이월 후보" in text
+    assert text.count("이월 후보") == 1
+    assert html.count('<span class="pill">이월 후보</span>') == 1
     assert inline_code_violations(html) == []
 
 
@@ -130,7 +131,7 @@ def test_carry_moves_tasks_to_next_week(client: TestClient, web_engine: Engine) 
     assert _planned(web_engine, current) == NEXT_WEEK.label
     assert by_id(html, "task-board").attrs["hx-swap-oob"] == "true"
     assert "다음 주" in by_id(html, f"task-{current}").text
-    assert "(이월 후보)" not in _panel(html)
+    assert "이월 후보" not in _panel(html)
 
 
 def test_carry_skips_task_changed_in_between(client: TestClient, web_engine: Engine) -> None:

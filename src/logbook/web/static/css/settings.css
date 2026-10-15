@@ -17,20 +17,20 @@
   color: var(--ink-muted);
 }
 
-.project-form input,
-.grid--projects .is-editing input {
+.project-form input[type="text"],
+.grid--projects .is-editing input[type="text"] {
   min-height: 2rem;
   padding: 0 var(--space-2);
-  border: 1px solid var(--ink-muted);
-  border-radius: var(--radius);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-xs);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
   font-weight: 400;
 }
 
-.project-form input:focus-visible,
-.grid--projects .is-editing input:focus-visible {
+.project-form input[type="text"]:focus-visible,
+.grid--projects .is-editing input[type="text"]:focus-visible {
   border-color: var(--accent);
 }
 
@@ -43,8 +43,12 @@
   min-width: 8rem;
 }
 
-.grid--projects .is-editing input[name="color"] {
-  width: 7rem;
+.project-form .color-field {
+  min-height: 2rem;
+}
+
+.project-form .color-field__auto {
+  color: var(--ink);
 }
 
 .grid--projects .is-archived {
@@ -76,10 +80,22 @@
   overflow-wrap: anywhere;
 }
 
-.info__categories {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.font-preview {
+  margin-left: var(--space-3);
+  font-size: var(--text-md);
+}
+
+.font-preview--heading {
+  font-family: var(--font-heading);
+  font-weight: 700;
+}
+
+.font-preview--document {
+  font-family: var(--font-document);
+}
+
+.font-preview--body {
+  font-family: var(--font-body);
 }
 
 .info__note {
@@ -89,3 +105,27 @@
   font-size: var(--text-sm);
 }
 
+
+/* 카테고리·프로젝트 색 고르기 */
+.color-field {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.color-field input[type="color"] {
+  width: 2.5rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-xs);
+  background: var(--surface);
+}
+
+.color-field__auto {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 400;
+}

@@ -52,8 +52,8 @@
   width: 100%;
   min-height: 2.25rem;
   padding: 0 var(--space-2);
-  border: 1px solid var(--ink-muted);
-  border-radius: var(--radius);
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius-xs);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
@@ -61,7 +61,7 @@
 
 .timer-start input:hover,
 .timer-start select:hover {
-  border-color: var(--ink);
+  border-color: var(--ink-muted);
 }
 
 .timer-start input:focus-visible,
@@ -82,10 +82,38 @@
   animation: timer-pulse 1.6s ease-in-out infinite;
 }
 
-.timer__state {
-  color: var(--ok);
+.pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.25rem;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-full);
+  background: var(--tag-bg);
+  color: var(--ink-muted);
   font-size: var(--text-xs);
-  font-weight: 700;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.project-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.dot {
+  flex: none;
+}
+
+.pill--ok {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.pill--danger {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .timer__what {
@@ -114,13 +142,14 @@
 .btn {
   min-height: 2.25rem;
   padding: 0 var(--space-4);
-  border: 1px solid var(--ink);
-  border-radius: var(--radius);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-sm);
   background: var(--surface);
   color: var(--ink);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: transform 80ms ease-out, background-color 120ms ease-out;
 }
 
 .btn:hover {
@@ -128,7 +157,7 @@
 }
 
 .btn:active {
-  transform: translateY(1px);
+  transform: scale(0.97);
 }
 
 .btn--primary {
@@ -166,6 +195,7 @@ main > p[role="alert"] {
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--rule);
   border-left: 4px solid var(--ink);
+  border-radius: var(--radius-md);
   background: var(--surface);
   box-shadow: var(--shadow-raised);
 }

@@ -251,7 +251,8 @@ def test_export_import_round_trip_on_cp949_console(tmp_path: Path) -> None:
     exported = run_lb(["export", "-o", "b.jsonl"], env=env, cwd=tmp_path)
     assert exported.returncode == 0, exported.stderr
     assert exported.stdout == (
-        "✔ 내보냈습니다: b.jsonl (프로젝트 1 · 태스크 0 · 기록 1 · 타이머 0 · 특이사항 0)\n"
+        "✔ 내보냈습니다: b.jsonl "
+        "(프로젝트 1 · 태스크 0 · 기록 1 · 타이머 0 · 특이사항 0 · 카테고리 색 0)\n"
     )
 
     other_env = {**env, "LOGBOOK_DB": str(tmp_path / "other" / "logbook.db")}
@@ -259,7 +260,8 @@ def test_export_import_round_trip_on_cp949_console(tmp_path: Path) -> None:
     imported = run_lb(["import", "b.jsonl"], env=other_env, cwd=tmp_path)
     assert imported.returncode == 0, imported.stderr
     assert imported.stdout == (
-        "✔ 가져왔습니다: b.jsonl (프로젝트 1 · 태스크 0 · 기록 1 · 타이머 0 · 특이사항 0)\n"
+        "✔ 가져왔습니다: b.jsonl "
+        "(프로젝트 1 · 태스크 0 · 기록 1 · 타이머 0 · 특이사항 0 · 카테고리 색 0)\n"
     )
 
     shown = run_lb(["log"], env=other_env, cwd=tmp_path)

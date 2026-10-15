@@ -13,12 +13,20 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 from starlette.templating import Jinja2Templates
 
+from logbook.core.config import CATEGORY_KEY
 from logbook.core.duration import format_duration
 from logbook.core.errors import LogbookError
 from logbook.core.weeks import week_heading, week_of
-from logbook.web.assets import STATIC_CSS_URL, STYLESHEETS
+from logbook.web.assets import COLORS_CSS_URL, FONTS_CSS_URL, STATIC_CSS_URL, STYLESHEETS
 from logbook.web.context import get_context
 from logbook.web.errors import classify
+
+
+def category_class(key: object) -> str:
+    """카테고리 꼬리표 class. 형식이 틀린 키는 빈 문자열이라 기본 꼬리표가 된다."""
+    if isinstance(key, str) and CATEGORY_KEY.fullmatch(key):
+        return f"pill--cat-{key}"
+    return ""
 
 
 def _environment() -> jinja2.Environment:
@@ -31,6 +39,9 @@ def _environment() -> jinja2.Environment:
     )
     env.globals["STYLESHEETS"] = STYLESHEETS  # base.html이 링크 순서대로 반복한다
     env.globals["STATIC_CSS_URL"] = STATIC_CSS_URL
+    env.globals["FONTS_CSS_URL"] = FONTS_CSS_URL
+    env.globals["COLORS_CSS_URL"] = COLORS_CSS_URL
+    env.filters["category_class"] = category_class  # 형식이 맞는 카테고리 키만 꼬리표 색 class
     env.filters["duration"] = format_duration  # 분 -> '1h 30m' (CLI와 같은 표기)
     return env
 

@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from logbook.core import db, services
 from logbook.core.errors import InvalidInputError
-from logbook.core.models import ActiveTimer, Project, Task, WeekNote, WorkLog
+from logbook.core.models import ActiveTimer, CategoryColor, Project, Task, WeekNote, WorkLog
 from logbook.core.taskstatus import TaskStatus
 
 NOW = datetime(2026, 10, 8, 3, 0, 0, tzinfo=UTC)
@@ -86,6 +86,11 @@ DEFAULT_ROWS: dict[str, dict[str, Any]] = {
         "notes": "특이사항",
         "updated_at": STAMP,
     },
+    "category_colors": {
+        "category": "dev",
+        "color": "#4f46e5",
+        "updated_at": STAMP,
+    },
 }
 
 
@@ -106,12 +111,18 @@ def header(**changes: Any) -> str:
 
 
 def header_v2(**changes: Any) -> str:
-    """형식 2 머리글(현재 스키마)."""
-    return header(**{"format": 2, "schema_version": db.SCHEMA_VERSION, **changes})
+    """형식 2 머리글. 형식 2 파일은 스키마 2에서 만들어졌다."""
+    return header(**{"format": 2, "schema_version": 2, **changes})
+
+
+def header_v3(**changes: Any) -> str:
+    """형식 3 머리글(현재 스키마)."""
+    return header(**{"format": 3, "schema_version": db.SCHEMA_VERSION, **changes})
 
 
 HEADER = header()
 HEADER_V2 = header_v2()
+HEADER_V3 = header_v3()
 
 
 def line(table: str, **changes: Any) -> str:
@@ -125,6 +136,7 @@ TASK = line("tasks")
 WORKLOG = line("worklogs")
 TIMER = line("active_timer")
 WEEK_NOTE = line("week_notes")
+CATEGORY_COLOR = line("category_colors")
 
 # 테이블 줄 앞에 와야 하는 정상 줄(머리글 포함). week_notes는 형식 2 머리글이다.
 PREFIX = {
@@ -133,6 +145,7 @@ PREFIX = {
     "worklogs": [HEADER, COMMON, PAY, TASK],
     "active_timer": [HEADER, COMMON, PAY, TASK, WORKLOG],
     "week_notes": [HEADER_V2, COMMON, PAY, TASK, WORKLOG, TIMER],
+    "category_colors": [HEADER_V3, COMMON, PAY, TASK, WORKLOG, TIMER, WEEK_NOTE],
 }
 
 
@@ -143,7 +156,7 @@ def valid() -> list[str]:
 def assert_unchanged(session: Session) -> None:
     slugs = [p.slug for p in session.scalars(select(Project))]
     assert slugs == ["common"]
-    for model in (Task, WorkLog, ActiveTimer, WeekNote):
+    for model in (Task, WorkLog, ActiveTimer, WeekNote, CategoryColor):
         assert session.scalar(select(func.count()).select_from(model)) == 0
 
 
@@ -237,6 +250,20 @@ def populate(s: Session) -> None:
                 risks="W40 리스크",
                 notes="",
                 updated_at=datetime(2026, 10, 1, 1, 0, 0, tzinfo=UTC),
+            ),
+        ]
+    )
+    s.add_all(
+        [
+            CategoryColor(
+                category="meeting",
+                color="#0f7a3d",
+                updated_at=datetime(2026, 10, 2, 1, 0, 0, tzinfo=UTC),
+            ),
+            CategoryColor(
+                category="dev",
+                color="#4F46E5",
+                updated_at=datetime(2026, 10, 3, 1, 0, 0, tzinfo=UTC),
             ),
         ]
     )

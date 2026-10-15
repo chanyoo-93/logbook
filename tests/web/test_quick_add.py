@@ -155,7 +155,7 @@ def test_post_success(client: TestClient, web_engine: Engine) -> None:
         assert by_id(html, name).attrs["hx-swap-oob"] == "true"
     assert "기록 2건" in by_id(html, "summary").text
     assert "3h 30m" in by_id(html, "summary").text
-    assert "payment/dev 2h 결제 재시도" in by_id(html, "recent").text
+    assert "payment dev 2h 결제 재시도" in by_id(html, "recent").text
     assert "hx-swap-oob" not in by_id(html, "quick-form").attrs
 
 

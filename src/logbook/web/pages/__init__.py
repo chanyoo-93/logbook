@@ -2,10 +2,22 @@
 
 from fastapi import APIRouter
 
-from logbook.web.pages import dashboard, logs, report, report_polish, settings, tasks, timer
+from logbook.web.pages import (
+    colors,
+    dashboard,
+    fonts,
+    logs,
+    report,
+    report_polish,
+    settings,
+    tasks,
+    timer,
+)
 
 router = APIRouter()
+router.include_router(colors.router)
 router.include_router(dashboard.router)
+router.include_router(fonts.router)
 router.include_router(logs.router)
 router.include_router(timer.router)
 router.include_router(tasks.router)

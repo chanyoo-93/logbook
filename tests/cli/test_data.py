@@ -16,7 +16,7 @@ from tests.cli.helpers import OpenDb, assert_rejected, run_ok
 
 # W40(2026-09-28 ~ 10-04) 안, 정오 부근이라 날짜 경계와 멀다
 DONE_AT = datetime(2026, 9, 30, 3, 0, tzinfo=UTC)
-COUNTS = "(프로젝트 2 · 태스크 2 · 기록 2 · 타이머 0 · 특이사항 0)"
+COUNTS = "(프로젝트 2 · 태스크 2 · 기록 2 · 타이머 0 · 특이사항 0 · 카테고리 색 0)"
 SEPARATORS = (chr(0x2028), chr(0x2029), chr(0x85))
 STAMP = "20261001-093000"
 
@@ -212,7 +212,8 @@ def test_export_uses_ascii_mark_without_unicode(
     result = run_ok(lb, "export", "-o", "b.jsonl")
 
     assert result.stdout == (
-        "v 내보냈습니다: b.jsonl (프로젝트 2 - 태스크 2 - 기록 2 - 타이머 0 - 특이사항 0)\n"
+        "v 내보냈습니다: b.jsonl "
+        "(프로젝트 2 - 태스크 2 - 기록 2 - 타이머 0 - 특이사항 0 - 카테고리 색 0)\n"
     )
 
 
@@ -249,7 +250,8 @@ def test_import_uses_ascii_mark_without_unicode(
     result = run_ok(lb, "import", "b.jsonl")
 
     assert result.stdout == (
-        "v 가져왔습니다: b.jsonl (프로젝트 2 - 태스크 2 - 기록 2 - 타이머 0 - 특이사항 0)\n"
+        "v 가져왔습니다: b.jsonl "
+        "(프로젝트 2 - 태스크 2 - 기록 2 - 타이머 0 - 특이사항 0 - 카테고리 색 0)\n"
     )
 
 
@@ -265,7 +267,9 @@ def test_export_and_import_report_week_note_count(
         for label in ("2026-W40", "2026-W41", "2026-W42"):
             week = parse_week(label, today=today, week_start="monday")
             services.save_week_note(s, week, notes="특이사항", risks="")
-    counts = "(프로젝트 2 · 태스크 2 · 기록 2 · 타이머 0 · 특이사항 3)"
+        services.set_category_color(s, "dev", "#4f46e5")
+        services.set_category_color(s, "meeting", "#0f7a3d")
+    counts = "(프로젝트 2 · 태스크 2 · 기록 2 · 타이머 0 · 특이사항 3 · 카테고리 색 2)"
 
     exported = run_ok(lb, "export", "-o", "b.jsonl")
     switch_db("other")

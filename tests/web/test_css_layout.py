@@ -59,7 +59,11 @@ def _declarations(css: str, selector: str) -> set[str]:
         ("dashboard.css", ".chart", "min-width: 0"),
         ("tasks.css", ".plan", "padding: var(--space-3)"),
         ("tasks.css", ".task-edit input, .task-edit select", "min-height: 2.25rem"),
-        ("tasks.css", ".task-edit input, .task-edit select", "border: 1px solid var(--ink-muted)"),
+        (
+            "tasks.css",
+            ".task-edit input, .task-edit select",
+            "border: 1px solid var(--control-border)",
+        ),
         ("report.css", ".report > .form-message:empty", "margin: 0"),
     ],
 )
@@ -78,3 +82,236 @@ def test_task_board_stacks_into_one_column_below_720px() -> None:
     narrow = _media_block(_read("tasks.css"), NARROW_QUERY)
 
     assert "grid-template-columns: 1fr" in _declarations(narrow, ".board__columns")
+
+
+HEAVY_TOP_RULE = "border-top: 2px solid var(--ink)"
+
+
+@pytest.mark.parametrize(
+    ("file_name", "selector"),
+    [
+        ("dashboard.css", ".panel"),
+        ("tasks.css", ".task-form"),
+        ("tasks.css", ".board__col"),
+    ],
+)
+def test_surfaces_use_soft_shadow_instead_of_heavy_top_rule(file_name: str, selector: str) -> None:
+    declarations = _declarations(_read(file_name), selector)
+
+    assert _squash(HEAVY_TOP_RULE) not in declarations
+    assert "box-shadow: var(--shadow-soft)" in declarations
+
+
+def test_quick_bar_has_no_heavy_top_rule_but_keeps_raised_shadow() -> None:
+    declarations = _declarations(_read("app.css"), ".quick")
+
+    assert _squash(HEAVY_TOP_RULE) not in declarations
+    assert "box-shadow: var(--shadow-raised)" in declarations
+
+
+def test_masthead_uses_hairline_bottom_rule() -> None:
+    declarations = _declarations(_read("app.css"), ".masthead")
+
+    assert "border-bottom: 1px solid var(--rule)" in declarations
+
+
+def test_button_border_uses_rule_strong() -> None:
+    assert "border: 1px solid var(--rule-strong)" in _declarations(_read("components.css"), ".btn")
+
+
+@pytest.mark.parametrize(
+    ("file_name", "selector", "declaration"),
+    [
+        ("dashboard.css", ".grid thead th", "border-bottom-color: var(--rule-strong)"),
+        ("logs.css", ".grid tfoot td", "border-top: 1px solid var(--rule-strong)"),
+    ],
+)
+def test_table_head_and_foot_rules_use_rule_strong(
+    file_name: str, selector: str, declaration: str
+) -> None:
+    assert declaration in _declarations(_read(file_name), selector)
+
+
+@pytest.mark.parametrize(
+    ("file_name", "selector"),
+    [
+        ("app.css", ".quick input:hover, .quick select:hover"),
+        ("components.css", ".timer-start input:hover, .timer-start select:hover"),
+        ("report.css", ".report-notes textarea:hover"),
+        ("tasks.css", ".task-form input:hover, .task-form select:hover"),
+        ("tasks.css", ".task-edit input:hover, .task-edit select:hover"),
+    ],
+)
+def test_control_hover_border_is_darker_than_default(file_name: str, selector: str) -> None:
+    assert "border-color: var(--ink-muted)" in _declarations(_read(file_name), selector)
+
+
+_CONTROL_TAG = re.compile(r"(?<![\w-])(input|select|textarea)(?![\w-])")
+MIN_BORDERED_CONTROL_RULES = 7
+
+
+def test_every_bordered_control_rule_uses_the_control_border_token() -> None:
+    bordered: list[tuple[str, str]] = []
+    for path in sorted(CSS_ROOT.glob("*.css")):
+        for match in _RULE.finditer(_read(path.name)):
+            selector = _squash(match.group(1))
+            if not _CONTROL_TAG.search(selector):
+                continue
+            parts = (_squash(part) for part in match.group(2).split(";"))
+            bordered.extend(
+                (f"{path.name}: {selector}", part)
+                for part in parts
+                if part.startswith("border: 1px solid")
+            )
+
+    assert len(bordered) >= MIN_BORDERED_CONTROL_RULES
+    wrong = [(where, part) for where, part in bordered if "var(--control-border)" not in part]
+    assert wrong == []
+
+
+def test_no_control_uses_the_old_muted_border() -> None:
+    css = " ".join(_read(path.name) for path in sorted(CSS_ROOT.glob("*.css")))
+
+    assert "border: 1px solid var(--ink-muted)" not in _squash(css)
+
+
+def _all_css() -> str:
+    return " ".join(_read(path.name) for path in sorted(CSS_ROOT.glob("*.css")))
+
+
+def test_radius_tokens_have_the_planned_values() -> None:
+    declarations = _declarations(_read("app.css"), ":root")
+
+    assert "--radius-xs: 4px" in declarations
+    assert "--radius-sm: 8px" in declarations
+    assert "--radius-md: 12px" in declarations
+    assert "--radius-full: 999px" in declarations
+
+
+def test_old_single_radius_token_is_gone() -> None:
+    css = _all_css()
+
+    assert "var(--radius)" not in css
+    assert "--radius:" not in css
+
+
+@pytest.mark.parametrize(
+    ("file_name", "selector", "radius"),
+    [
+        ("components.css", ".btn", "var(--radius-sm)"),
+        ("tasks.css", ".task-card", "var(--radius-sm)"),
+        ("dashboard.css", ".panel", "var(--radius-md)"),
+        ("app.css", ".quick", "var(--radius-md)"),
+        ("tasks.css", ".task-form", "var(--radius-md)"),
+        ("tasks.css", ".board__col", "var(--radius-md)"),
+        ("app.css", ".config-notice", "var(--radius-md)"),
+        ("report.css", ".report__preview", "var(--radius-md)"),
+        ("report.css", ".report-polish", "var(--radius-md)"),
+        ("app.css", ".quick input, .quick select", "var(--radius-xs)"),
+        ("components.css", ".timer-start input, .timer-start select", "var(--radius-xs)"),
+        (
+            "logs.css",
+            ".filters input, .filters select, .grid .is-editing input, .grid .is-editing select",
+            "var(--radius-xs)",
+        ),
+        ("report.css", ".report-notes textarea", "var(--radius-xs)"),
+        (
+            "settings.css",
+            '.project-form input[type="text"], .grid--projects .is-editing input[type="text"]',
+            "var(--radius-xs)",
+        ),
+        ("tasks.css", ".task-form input, .task-form select", "var(--radius-xs)"),
+        ("tasks.css", ".task-edit input, .task-edit select", "var(--radius-xs)"),
+        ("app.css", ".skip-link", "var(--radius-xs)"),
+    ],
+)
+def test_corner_radius_uses_the_step_for_the_element(
+    file_name: str, selector: str, radius: str
+) -> None:
+    assert f"border-radius: {radius}" in _declarations(_read(file_name), selector)
+
+
+def test_flash_notice_uses_medium_radius() -> None:
+    declarations = _declarations(_read("components.css"), '.flash, main > p[role="alert"]')
+
+    assert "border-radius: var(--radius-md)" in declarations
+
+
+def test_table_buttons_draw_the_focus_ring_inside_so_the_scroll_box_does_not_clip_it() -> None:
+    # .table-wrap(overflow-x: auto)이 마지막 행 버튼의 바깥 윤곽선을 잘랐다(설정 화면 프로젝트 표).
+    declarations = _declarations(_read("dashboard.css"), ".grid .btn:focus-visible")
+
+    assert "outline-offset: -2px" in declarations
+
+
+def test_table_color_inputs_draw_the_focus_ring_inside_too() -> None:
+    # 카테고리 색 표 마지막 행의 색 고르기 칸 윤곽선이 .table-wrap에 0.9px 잘렸다
+    # (Task 8-9 포커스 측정).
+    declarations = _declarations(_read("dashboard.css"), '.grid input[type="color"]:focus-visible')
+
+    assert "outline-offset: -2px" in declarations
+
+
+def test_panel_clips_overflow_so_corners_stay_round() -> None:
+    assert "overflow: clip" in _declarations(_read("dashboard.css"), ".panel")
+
+
+def test_button_press_effect_and_transition() -> None:
+    css = _read("components.css")
+
+    assert "transform: scale(0.97)" in _declarations(css, ".btn:active")
+    assert "transition: transform 80ms ease-out, background-color 120ms ease-out" in _declarations(
+        css, ".btn"
+    )
+
+
+_HEADING_SELECTORS = [
+    ("app.css", ".masthead__brand", "letter-spacing: var(--tracking-display)"),
+    ("dashboard.css", ".panel__title", "letter-spacing: var(--tracking-title)"),
+    ("tasks.css", ".board__title", "letter-spacing: var(--tracking-title)"),
+    ("tasks.css", ".board__col-title", "letter-spacing: var(--tracking-title)"),
+    ("tasks.css", ".plan__title", "letter-spacing: var(--tracking-title)"),
+    ("report.css", ".report__title, .report-notes__title", "letter-spacing: var(--tracking-title)"),
+    ("dashboard.css", ".stat__value", "letter-spacing: var(--tracking-display)"),
+]
+
+
+@pytest.mark.parametrize(("file_name", "selector", "tracking"), _HEADING_SELECTORS)
+def test_headings_and_big_numbers_use_heading_font_and_tracking(
+    file_name: str, selector: str, tracking: str
+) -> None:
+    declarations = _declarations(_read(file_name), selector)
+
+    assert "font-family: var(--font-heading)" in declarations
+    assert tracking in declarations
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [".report__preview", ".report-polish__text"],
+)
+def test_report_text_uses_document_font(selector: str) -> None:
+    assert "font-family: var(--font-document)" in _declarations(_read("report.css"), selector)
+
+
+def test_report_preview_sets_document_font_after_font_inherit() -> None:
+    css = _squash(_read("report.css"))
+    block = css[css.index(".report__preview { padding") :]
+    block = block[: block.index("}")]
+
+    assert block.index("font: inherit") < block.index("font-family: var(--font-document)")
+
+
+def test_report_preview_uses_body_size() -> None:
+    # 보고서 미리보기는 본문 크기(15px)를 쓴다(2026-10-14 사용자 결정).
+    declarations = _declarations(_read("report.css"), ".report__preview")
+
+    assert "font-size: var(--text-base)" in declarations
+    assert "font-size: var(--text-sm)" not in declarations
+
+
+def test_tracking_tokens_are_in_root() -> None:
+    declarations = _declarations(_read("app.css"), ":root")
+
+    assert "--tracking-title: -0.01em" in declarations
+    assert "--tracking-display: -0.035em" in declarations

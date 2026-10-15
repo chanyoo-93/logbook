@@ -234,7 +234,7 @@ def test_session_disposes_engine(tmp_home: Path) -> None:
 
 
 def upgrade_notice(backup: Path | None) -> str:
-    text = f"데이터베이스를 업그레이드했습니다: v1 {render.arrow()} v2."
+    text = f"데이터베이스를 업그레이드했습니다: v1 {render.arrow()} v{db.SCHEMA_VERSION}."
     if backup is not None:
         text += f" 이전 데이터베이스 백업: {backup}"
     return text + "\n"
@@ -245,7 +245,7 @@ def test_announce_upgrade_writes_backup_path_to_stderr(
 ) -> None:
     backup = tmp_path / "logbook.db.v1-20261001-093000.bak"
 
-    runtime.announce_upgrade(db.InitResult(1, 2, backup))
+    runtime.announce_upgrade(db.InitResult(1, db.SCHEMA_VERSION, backup))
 
     captured = capsys.readouterr()
     assert captured.err == upgrade_notice(backup)
@@ -255,7 +255,7 @@ def test_announce_upgrade_writes_backup_path_to_stderr(
 def test_announce_upgrade_without_backup_omits_backup_sentence(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    runtime.announce_upgrade(db.InitResult(1, 2))
+    runtime.announce_upgrade(db.InitResult(1, db.SCHEMA_VERSION))
 
     assert capsys.readouterr().err == upgrade_notice(None)
 
