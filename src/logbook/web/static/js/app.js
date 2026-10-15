@@ -57,8 +57,12 @@
 
   // 등록·수정 화면: Esc는 취소 링크([data-cancel])를 누른다. 설명 칸 안에서도 동작한다.
   // 한글 조합 중의 Esc(조합 취소)는 조합 입력기의 몫이라 건드리지 않는다.
+  // 선택 상자의 Esc는 목록을 닫는 데 쓰므로 화면 취소로 넘기지 않는다(입력이 사라지지 않게).
   document.addEventListener("keydown", function (event) {
     if (event.isComposing || event.keyCode === 229 || event.key !== "Escape") {
+      return;
+    }
+    if (event.target && event.target.tagName === "SELECT") {
       return;
     }
     var cancel = document.querySelector("a[data-cancel]");

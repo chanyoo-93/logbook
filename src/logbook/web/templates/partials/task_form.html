@@ -56,7 +56,8 @@
     <a class="btn" href="{{ form.cancel_url }}" data-cancel>취소</a>
   </div>
 {% if form.message %}
-  <p id="task-form-result" class="form-message{% if form.is_error %} form-message--error{% endif %}" role="{{ 'alert' if form.is_error else 'status' }}">{{ form.message }}{% if form.reopen_url %} <a class="task-form__reopen" href="{{ form.reopen_url }}">최신 내용으로 다시 열기</a>{% endif %}</p>
+  {# 오류 문구는 #flash(role=alert)가 알린다. 여기서도 알리면 화면 낭독기가 두 번 읽는다. #}
+  <p id="task-form-result" class="form-message{% if form.is_error %} form-message--error{% endif %}"{% if not form.is_error %} role="status"{% endif %}>{{ form.message }}{% if form.reopen_url %} <a class="task-form__reopen" href="{{ form.reopen_url }}">최신 내용으로 다시 열기</a>{% endif %}</p>
 {% endif %}
 </form>
 {% if form.message and form.is_error %}

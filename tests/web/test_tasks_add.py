@@ -245,9 +245,11 @@ def test_add_failure_redraws_form_with_input_and_message(
     assert by_id(html, "task-form").tag == "form"
     result = by_id(html, "task-form-result")
     assert unescape(result.text) == message
-    assert result.attrs["role"] == "alert"
+    # 화면 낭독기가 같은 문구를 두 번 읽지 않게 오류는 #flash(role=alert)만 알린다.
+    assert "role" not in result.attrs
     assert by_id(html, "flash").attrs["hx-swap-oob"] == "innerHTML"
     assert unescape(all_by_tag(html, "p")[-1].text) == message
+    assert all_by_tag(html, "p")[-1].attrs["role"] == "alert"
     for name in ("title", "estimate", "week", "due", "external_ref"):
         assert _field(html, name).attrs["value"] == sent[name]
     assert "첫 줄" in _field(html, "description").text

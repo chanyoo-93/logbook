@@ -300,7 +300,8 @@ def test_invalid_input_redraws_form_with_values(client: TestClient, web_engine: 
     assert _field(html, "estimate").attrs["value"] == "abc"
     assert _field(html, "week").attrs["value"] == "2026-W99"
     assert "적던 설명" in _field(html, "description").text
-    assert by_id(html, "task-form-result").attrs["role"] == "alert"
+    # 화면 낭독기가 같은 문구를 두 번 읽지 않게 오류는 #flash(role=alert)만 알린다.
+    assert "role" not in by_id(html, "task-form-result").attrs
     assert by_id(html, "flash").attrs["hx-swap-oob"] == "innerHTML"
     assert _stored(web_engine, task_id).title == "원래"
 
@@ -363,3 +364,5 @@ def test_app_js_handles_cancel_escape_and_composition() -> None:
     assert "[data-cancel]" in script
     assert "isComposing" in script
     assert 'event.key === "Escape"' in script or 'event.key !== "Escape"' in script
+    # 선택 상자의 Esc(목록 닫기)는 화면 취소로 넘기지 않는다(입력이 사라지지 않게).
+    assert 'tagName === "SELECT"' in script
