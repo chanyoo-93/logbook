@@ -3,6 +3,7 @@
 import json
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from html import unescape
 from html.parser import HTMLParser
 
 from sqlalchemy import Engine
@@ -241,3 +242,9 @@ def board_columns(markup: str) -> dict[str, list[int]]:
         ):
             current.append(int(element_id.removeprefix("task-")))
     return columns
+
+
+def flash_text(markup: str) -> str:
+    """#flash OOB 조각이면 그 안의 문구, 알림 조각(<p class="flash">)이면 그 문구."""
+    flash = [e for e in parse_html(markup) if e.tag == "p" and "flash" in str(e.attrs.get("class"))]
+    return unescape(flash[0].text)

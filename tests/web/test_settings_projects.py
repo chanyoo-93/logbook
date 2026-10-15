@@ -23,6 +23,7 @@ from tests.web.helpers import (
     add_project,
     all_by_tag,
     by_id,
+    flash_text,
     inline_code_violations,
     named_input,
     parse_html,
@@ -67,12 +68,6 @@ def _color_inputs(html: str, scope: str) -> dict[str, dict[str, str | None]]:
         elif inside and e.tag == "input" and e.attrs.get("name") in ("color", "color_auto"):
             result[str(e.attrs["name"])] = e.attrs
     return result
-
-
-def _flash_text(html: str) -> str:
-    """#flash OOB 조각이면 그 안의 문구, 알림 조각(<p class="flash">)이면 그 문구."""
-    flash = [e for e in parse_html(html) if e.tag == "p" and "flash" in str(e.attrs.get("class"))]
-    return unescape(flash[0].text)
 
 
 def _result(html: str) -> str:
@@ -330,7 +325,7 @@ def test_patch_with_other_version_is_409(client: TestClient, web_engine: Engine)
     assert response.headers["HX-Reswap"] == "outerHTML"
     assert response.headers["HX-Push-Url"] == "false"
     html = response.text
-    assert _flash_text(html) == PROJECT_CHANGED.format(slug="payment")
+    assert flash_text(html) == PROJECT_CHANGED.format(slug="payment")
     assert by_id(html, "flash").attrs["hx-swap-oob"] == "innerHTML"
     assert named_input(html, "name").attrs["value"] == "입력한 이름"
     assert _stored(web_engine, "payment")[0] == "결제"
@@ -346,7 +341,7 @@ def test_patch_invalid_color_redraws_edit_row_with_values(
     assert response.status_code == 400
     assert response.headers["HX-Retarget"] == "#project-payment"
     html = response.text
-    assert "색상이 올바르지 않습니다" in _flash_text(html)
+    assert "색상이 올바르지 않습니다" in flash_text(html)
     assert named_input(html, "name").attrs["value"] == "입력한 이름"
     assert _color_inputs(html, "project-payment")["color"]["value"] == "#12"
     assert _stored(web_engine, "payment") == ("결제", None, None, False)
@@ -401,7 +396,7 @@ def test_archive_common_is_rejected(client: TestClient, web_engine: Engine) -> N
     )
 
     assert response.status_code == 400
-    assert "common 프로젝트는 보관할 수 없습니다" in _flash_text(response.text)
+    assert "common 프로젝트는 보관할 수 없습니다" in flash_text(response.text)
     assert _stored(web_engine, "common")[3] is False
 
 
@@ -436,7 +431,7 @@ def test_archive_and_unarchive_with_other_version_are_409(
     for response, slug in ((archive, "payment"), (unarchive, "old")):
         assert response.status_code == 409
         assert response.headers["HX-Retarget"] == "#flash"
-        assert PROJECT_CHANGED.format(slug=slug) in _flash_text(response.text)
+        assert PROJECT_CHANGED.format(slug=slug) in flash_text(response.text)
     assert _stored(web_engine, "payment")[3] is False
     assert _stored(web_engine, "old")[3] is True
 

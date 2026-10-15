@@ -1,6 +1,5 @@
 """설정 화면 카테고리 색 표: 표시, 저장, 자동으로 되돌림, 오류, 인라인 코드, 꼬리표·차트 반영."""
 
-from html import unescape
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -22,6 +21,7 @@ from tests.web.helpers import (
     all_by_tag,
     by_class,
     by_id,
+    flash_text,
     inline_code_violations,
     json_attr,
     parse_html,
@@ -44,11 +44,6 @@ def _version(engine: Engine, key: str) -> str:
 def _post(client: TestClient, engine: Engine, key: str, **fields: str):  # type: ignore[no-untyped-def]
     form = {"color": "", "version": _version(engine, key)}
     return client.post(f"/settings/categories/{key}/color", data={**form, **fields}, headers=HTMX)
-
-
-def _flash_text(html: str) -> str:
-    flash = [e for e in parse_html(html) if e.tag == "p" and "flash" in str(e.attrs.get("class"))]
-    return unescape(flash[0].text)
 
 
 def _row_inputs(html: str, key: str) -> dict[str, dict[str, str | None]]:
@@ -187,7 +182,7 @@ def test_other_version_is_409_flash(client: TestClient, web_engine: Engine) -> N
 
     assert response.status_code == 409
     assert response.headers["HX-Retarget"] == "#flash"
-    assert _flash_text(response.text) == CATEGORY_CHANGED.format(key="dev")
+    assert flash_text(response.text) == CATEGORY_CHANGED.format(key="dev")
     assert _stored(web_engine) == {"dev": "#111111"}
 
 
@@ -206,7 +201,7 @@ def test_invalid_color_is_400_flash(client: TestClient, web_engine: Engine) -> N
 
     assert response.status_code == 400
     assert response.headers["HX-Retarget"] == "#flash"
-    assert "색상이 올바르지 않습니다" in _flash_text(response.text)
+    assert "색상이 올바르지 않습니다" in flash_text(response.text)
     assert _stored(web_engine) == {}
 
 
