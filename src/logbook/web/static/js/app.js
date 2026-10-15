@@ -1,4 +1,4 @@
-// 모든 화면 공통: htmx 요청 전후의 알림 영역(#flash) 처리, 교체 뒤 포커스(data-focus), 편집 행·카드 키보드. 인라인 코드를 쓰지 않으므로 이벤트 위임으로 붙인다.
+// 모든 화면 공통: htmx 요청 전후의 알림 영역(#flash) 처리, 교체 뒤 포커스(data-focus), 편집 행 키보드, 등록·수정 화면의 Esc 취소(data-cancel). 인라인 코드를 쓰지 않으므로 이벤트 위임으로 붙인다.
 (function () {
   "use strict";
 
@@ -31,7 +31,8 @@
   // 1. 응답이 2xx이고 대상이 편집 중(is-editing)이면 대상 안의 [data-focus]로 옮긴다.
   // 2. 응답이 2xx이고 요청이 POST·PATCH·DELETE면 대상 안의 [data-focus]로 옮긴다.
   // 3. 응답이 4xx이고 대상이 편집 중이면 대상 안의 [data-focus]로 옮긴다.
-  // 4. 그 밖(GET 필터·주 이동, 타이머 경과 갱신, 그 밖의 오류)은 옮기지 않는다.
+  // 4. 응답이 4xx이고 대상이 data-refocus 폼(등록·수정 화면)이면 대상 안의 [data-focus](제목 칸)로 옮긴다.
+  // 5. 그 밖(GET 필터·주 이동, 타이머 경과 갱신, 그 밖의 오류)은 옮기지 않는다.
   //    1분마다 오는 경과 갱신이 입력 중인 칸의 포커스를 뺏지 않게 한다.
   // afterSwap이 아니라 afterSettle에서 본다. htmx는 id가 같은 요소를 교체하면 settle 전까지
   // 이전 요소의 속성(class 등)을 새 요소에 입혀 둔다. 그래서 표시 행(log-N)이 편집 행으로 바뀐
@@ -48,12 +49,26 @@
     var isEditing = Boolean(target.classList && target.classList.contains("is-editing"));
     var verb = detail.requestConfig && detail.requestConfig.verb;
     var changes = CHANGING_VERBS.indexOf(verb) !== -1;
-    if (isSuccess(xhr.status) ? isEditing || changes : isEditing) {
+    var refocus = Boolean(target.hasAttribute && target.hasAttribute("data-refocus"));
+    if (isSuccess(xhr.status) ? isEditing || changes : isEditing || refocus) {
       focusInside(target, "[data-focus]");
     }
   });
 
-  // 편집 행·편집 카드(.is-editing): Enter는 저장, Esc는 취소. 표 행 안에는 form이 없어서 Enter가 제출되지 않으므로 직접 붙인다.
+  // 등록·수정 화면: Esc는 취소 링크([data-cancel])를 누른다. 설명 칸 안에서도 동작한다.
+  // 한글 조합 중의 Esc(조합 취소)는 조합 입력기의 몫이라 건드리지 않는다.
+  document.addEventListener("keydown", function (event) {
+    if (event.isComposing || event.keyCode === 229 || event.key !== "Escape") {
+      return;
+    }
+    var cancel = document.querySelector("a[data-cancel]");
+    if (cancel) {
+      event.preventDefault();
+      cancel.click();
+    }
+  });
+
+  // 편집 행(.is-editing): Enter는 저장, Esc는 취소. 표 행 안에는 form이 없어서 Enter가 제출되지 않으므로 직접 붙인다.
   // 한글 조합 중의 Enter(조합 확정)·Esc(조합 취소)는 조합 입력기의 몫이라 건드리지 않는다.
   document.addEventListener("keydown", function (event) {
     if (event.isComposing || event.keyCode === 229) {

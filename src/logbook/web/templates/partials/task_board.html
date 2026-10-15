@@ -1,5 +1,8 @@
 <section id="task-board" class="board" aria-labelledby="task-board-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
-  <h2 id="task-board-title" class="board__title" tabindex="-1" data-focus>태스크 보드</h2>
+  <div class="board__head">
+    <h2 id="task-board-title" class="board__title" tabindex="-1" data-focus>태스크 보드</h2>
+    <a class="btn btn--primary" href="/tasks/new{% if board.project %}?project={{ board.project|urlencode }}{% endif %}">새 태스크</a>
+  </div>
 {% if board.message %}
   <p id="task-result" class="form-message{% if board.is_error %} form-message--error{% endif %}" role="{{ 'alert' if board.is_error else 'status' }}">{{ board.message }}</p>
 {% endif %}

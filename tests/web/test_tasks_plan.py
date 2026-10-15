@@ -184,7 +184,7 @@ def test_carry_after_week_changed_conflicts(
     assert f"다음 주 계획 {NEXT_WEEK.label} " not in panel
 
 
-def test_status_change_and_add_return_panel_oob(client: TestClient, web_engine: Engine) -> None:
+def test_status_change_returns_panel_oob(client: TestClient, web_engine: Engine) -> None:
     task_id = add_task(web_engine, title="상태", week=THIS_WEEK)
     with db.session_scope(web_engine) as s:
         current = task_version(services.get_task(s, task_id))
@@ -194,13 +194,8 @@ def test_status_change_and_add_return_panel_oob(client: TestClient, web_engine: 
         data={"status": "doing", "version": current, "project": ""},
         headers=HTMX,
     )
-    added = client.post(
-        "/tasks", data={"title": "새 태스크", "week": "next", "project": ""}, headers=HTMX
-    )
 
     assert by_id(status.text, "task-plan").attrs["hx-swap-oob"] == "true"
-    assert by_id(added.text, "task-plan").attrs["hx-swap-oob"] == "true"
-    assert "새 태스크" in _panel(added.text)
 
 
 def test_carry_from_other_origin_is_forbidden(client: TestClient, web_engine: Engine) -> None:

@@ -71,7 +71,7 @@ def _figures(html: str, task_id: int) -> str:
     raise AssertionError("실적 줄이 없습니다")
 
 
-def test_page_has_menu_columns_form_and_filter(client: TestClient) -> None:
+def test_page_has_menu_columns_and_filter(client: TestClient) -> None:
     response = client.get("/tasks")
 
     assert response.status_code == 200
@@ -79,7 +79,7 @@ def test_page_has_menu_columns_form_and_filter(client: TestClient) -> None:
     assert [e.text for e in parse_html(html) if e.tag == "title"] == ["태스크 · logbook"]
     nav = [e for e in parse_html(html) if e.tag == "a" and e.attrs.get("href") == "/tasks"]
     assert [e.attrs.get("aria-current") for e in nav] == ["page"]
-    assert by_id(html, "task-form").tag == "form"
+    assert [e for e in parse_html(html) if e.attrs.get("id") == "task-form"] == []
     assert by_id(html, "task-filters").tag == "form"
     assert by_id(html, "task-board").tag == "section"
     assert list(board_columns(html)) == ["todo", "doing", "done"]
@@ -403,3 +403,49 @@ def test_progress_percent_handles_zero_estimate_and_caps_at_100() -> None:
     assert progress_percent(10, 0) == 100
     assert progress_percent(30, 120) == 25
     assert progress_percent(999, 120) == 100
+
+
+def _links(html: str, css_class: str) -> list[tuple[str, str]]:
+    return [(str(e.attrs["href"]), e.text) for e in by_class(html, css_class) if e.tag == "a"]
+
+
+def test_board_has_new_task_link(client: TestClient) -> None:
+    html = client.get("/tasks").text
+
+    new = [e for e in parse_html(html) if e.tag == "a" and e.attrs.get("href") == "/tasks/new"]
+    assert [e.text for e in new] == ["새 태스크"]
+    assert "btn--primary" in str(new[0].attrs["class"]).split()
+
+
+def test_new_task_link_follows_the_filter(client: TestClient, web_engine: Engine) -> None:
+    _seed_board(web_engine)
+
+    html = client.get("/tasks?project=payment", headers=HTMX).text
+
+    hrefs = [str(e.attrs["href"]) for e in parse_html(html) if e.tag == "a"]
+    assert "/tasks/new?project=payment" in hrefs
+
+
+def test_card_is_one_link_to_the_edit_page_without_edit_button(
+    client: TestClient, web_engine: Engine
+) -> None:
+    task_id = add_task(web_engine, title="수정 링크")
+
+    html = client.get("/tasks").text
+
+    [(href, text)] = _links(html, "task-card__link")
+    assert href == f"/tasks/{task_id}/edit"
+    assert text.startswith(f"#{task_id} 수정 링크")
+    assert [e for e in parse_html(html) if e.attrs.get("hx-get") == f"/tasks/{task_id}/edit"] == []
+    assert "수정" not in [e.text for e in parse_html(html) if e.tag == "button"]
+
+
+def test_card_link_carries_the_filter_project(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "payment", "결제 서버")
+    task_id = add_task(web_engine, title="결제 건", project="payment")
+
+    html = client.get("/tasks?project=payment").text
+
+    assert [href for href, _ in _links(html, "task-card__link")] == [
+        f"/tasks/{task_id}/edit?project=payment"
+    ]

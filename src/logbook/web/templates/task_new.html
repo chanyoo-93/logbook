@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}새 태스크{% endblock %}
+{% block content %}
+<section class="task-page" aria-labelledby="task-page-title">
+  <h2 id="task-page-title" class="task-page__title">새 태스크</h2>
+{% include "partials/task_form.html" %}
+</section>
+{% endblock %}

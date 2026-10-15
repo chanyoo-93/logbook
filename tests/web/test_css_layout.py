@@ -51,6 +51,9 @@ def _declarations(css: str, selector: str) -> set[str]:
     raise AssertionError(f"{selector} 규칙이 없습니다")
 
 
+TASK_CONTROLS = ".task-form input, .task-form select, .task-form textarea"
+
+
 @pytest.mark.parametrize(
     ("file_name", "selector", "declaration"),
     [
@@ -58,10 +61,10 @@ def _declarations(css: str, selector: str) -> set[str]:
         ("dashboard.css", ".charts", "grid-template-columns: minmax(0, 2fr) minmax(0, 1fr)"),
         ("dashboard.css", ".chart", "min-width: 0"),
         ("tasks.css", ".plan", "padding: var(--space-3)"),
-        ("tasks.css", ".task-edit input, .task-edit select", "min-height: 2.25rem"),
+        ("tasks.css", TASK_CONTROLS, "min-height: 2.25rem"),
         (
             "tasks.css",
-            ".task-edit input, .task-edit select",
+            TASK_CONTROLS,
             "border: 1px solid var(--control-border)",
         ),
         ("report.css", ".report > .form-message:empty", "margin: 0"),
@@ -137,8 +140,10 @@ def test_table_head_and_foot_rules_use_rule_strong(
         ("app.css", ".quick input:hover, .quick select:hover"),
         ("components.css", ".timer-start input:hover, .timer-start select:hover"),
         ("report.css", ".report-notes textarea:hover"),
-        ("tasks.css", ".task-form input:hover, .task-form select:hover"),
-        ("tasks.css", ".task-edit input:hover, .task-edit select:hover"),
+        (
+            "tasks.css",
+            ".task-form input:hover, .task-form select:hover, .task-form textarea:hover",
+        ),
     ],
 )
 def test_control_hover_border_is_darker_than_default(file_name: str, selector: str) -> None:
@@ -219,8 +224,7 @@ def test_old_single_radius_token_is_gone() -> None:
             '.project-form input[type="text"], .grid--projects .is-editing input[type="text"]',
             "var(--radius-xs)",
         ),
-        ("tasks.css", ".task-form input, .task-form select", "var(--radius-xs)"),
-        ("tasks.css", ".task-edit input, .task-edit select", "var(--radius-xs)"),
+        ("tasks.css", TASK_CONTROLS, "var(--radius-xs)"),
         ("app.css", ".skip-link", "var(--radius-xs)"),
     ],
 )
@@ -352,6 +356,7 @@ def test_task_card_over_and_editing_have_no_left_band_rules() -> None:
 
     assert ".task-card--over {" not in css
     assert ".task-card.is-editing {" not in css
+    assert ".task-edit" not in css
 
 
 def test_progress_bar_rules_exist() -> None:
@@ -360,3 +365,19 @@ def test_progress_bar_rules_exist() -> None:
     assert "fill: var(--accent)" in _declarations(css, ".progress__fill")
     assert "fill: var(--rule)" in _declarations(css, ".progress__track")
     assert "fill: var(--danger)" in _declarations(css, ".progress--over .progress__fill")
+
+
+def test_task_card_link_fills_the_card_and_keeps_a_focus_ring() -> None:
+    css = _read("tasks.css")
+
+    assert "display: flex" in _declarations(css, ".task-card__link")
+    assert "text-decoration: none" in _declarations(css, ".task-card__link")
+    assert "outline-offset: -2px" in _declarations(css, ".task-card__link:focus-visible")
+
+
+def test_task_form_fields_wrap_in_a_responsive_grid_with_full_width_title_and_description() -> None:
+    css = _read("tasks.css")
+
+    assert "display: grid" in _declarations(css, ".task-form__fields")
+    full = _declarations(css, ".task-form__field--title, .task-form__field--description")
+    assert "grid-column: 1 / -1" in full
