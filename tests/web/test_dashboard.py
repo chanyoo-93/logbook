@@ -2,7 +2,9 @@
 
 import dataclasses
 from datetime import UTC, date, datetime
+from html.parser import HTMLParser
 
+import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 
@@ -20,6 +22,7 @@ from tests.web.helpers import (
     add_project,
     add_task,
     all_by_tag,
+    by_class,
     by_id,
     inline_code_violations,
     json_attr,
@@ -405,3 +408,126 @@ def test_chart_color_follows_project_id_not_week_order(
     assert isinstance(chart, dict)
     # common이 ID 1, a가 ID 2, b가 ID 3이다. b는 이번 주 첫 프로젝트여도 ID 3의 색이다.
     assert chart["projects"]["colors"] == [CHART_PALETTE[2]]
+
+
+def _summary_progress(html: str) -> tuple[str, int, bool]:
+    """요약의 오늘 막대: (글자, 채움 폭, 달성 꼬리표 유무)."""
+    summary = by_id(html, "summary")
+    goal = next(e for e in by_class(html, "stat__goal"))
+    fill = next(e for e in by_class(html, "progress__fill"))
+    reached = any(e.text == "목표 달성" for e in by_class(html, "pill--ok"))
+    assert summary.tag == "section"
+    return goal.text, int(str(fill.attrs["width"])), reached
+
+
+@pytest.mark.parametrize(
+    ("minutes", "text", "percent", "reached"),
+    [
+        (None, "오늘 0m / 목표 8h", 0, False),
+        (240, "오늘 4h / 목표 8h", 50, False),
+        (480, "오늘 8h / 목표 8h", 100, True),
+        (600, "오늘 10h / 목표 8h", 100, True),
+    ],
+)
+def test_summary_today_progress(
+    client: TestClient,
+    web_engine: Engine,
+    minutes: int | None,
+    text: str,
+    percent: int,
+    reached: bool,
+) -> None:
+    if minutes is not None:
+        add_log(web_engine, minutes=minutes, note="오늘 작업", day=W40_THURSDAY)
+
+    html = _get(client)
+
+    assert _summary_progress(html) == (text, percent, reached)
+
+
+def test_summary_today_progress_shows_without_any_log_this_week(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_log(web_engine, minutes=45, note="지난주 작업", day=W39_THURSDAY)
+
+    html = _get(client)
+
+    assert "이번 주 기록이 없습니다." in by_id(html, "summary").text
+    assert _summary_progress(html) == ("오늘 0m / 목표 8h", 0, False)
+
+
+def test_summary_today_progress_ignores_other_days(client: TestClient, web_engine: Engine) -> None:
+    add_log(web_engine, minutes=120, note="월요일", day=W40_MONDAY)
+
+    assert _summary_progress(_get(client))[:2] == ("오늘 0m / 목표 8h", 0)
+
+
+def test_summary_progress_markup_has_no_inline_style_and_keeps_dl_structure(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_log(web_engine, minutes=240, note="오늘 작업", day=W40_THURSDAY)
+
+    html = _get(client)
+
+    assert not inline_code_violations(html)
+    assert "style=" not in html[html.index('id="summary"') : html.index('id="timer"')]
+    svg = next(e for e in all_by_tag(html, "svg") if "progress" in str(e.attrs.get("class")))
+    assert svg.attrs["viewbox"] == "0 0 100 4"
+    assert svg.attrs["aria-hidden"] == "true"
+    assert _dl_children(html) == [
+        ("div", ["dt", "dd", "dd"]),
+        ("div", ["dt", "dd"]),
+        ("div", ["dt", "dd"]),
+    ]
+
+
+def test_quick_add_refreshes_today_progress(client: TestClient, web_engine: Engine) -> None:
+    add_log(web_engine, minutes=120, note="앞선 기록", day=W40_THURSDAY)
+
+    html = client.post(
+        "/logs",
+        data={"duration": "2h", "note": "추가 기록", "category": "dev"},
+        headers={"HX-Request": "true"},
+    ).text
+
+    assert by_id(html, "summary").attrs["hx-swap-oob"] == "true"
+    assert _summary_progress(html) == ("오늘 4h / 목표 8h", 50, False)
+
+
+class _DlChildren(HTMLParser):
+    """`dl.stats`의 직계 자식 요소와 그 안의 dt·dd 이름."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.children: list[tuple[str, list[str]]] = []
+        self._depth = 0
+        self._in_dl = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "dl":
+            self._in_dl = True
+            self._depth = 0
+            return
+        if not self._in_dl:
+            return
+        if self._depth == 0:
+            self.children.append((tag, []))
+        elif self._depth == 1 and tag in {"dt", "dd"}:
+            self.children[-1][1].append(tag)
+        self._depth += 1
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self._in_dl and self._depth == 0:
+            self.children.append((tag, []))
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "dl":
+            self._in_dl = False
+        elif self._in_dl:
+            self._depth -= 1
+
+
+def _dl_children(html: str) -> list[tuple[str, list[str]]]:
+    parser = _DlChildren()
+    parser.feed(html)
+    return parser.children

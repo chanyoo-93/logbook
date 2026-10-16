@@ -76,8 +76,8 @@ def table_shape(engine: Engine) -> list[tuple[object, ...]]:
         return [tuple(r) for r in conn.execute(text("PRAGMA table_info(category_colors)"))]
 
 
-def test_schema_version_is_three() -> None:
-    assert db.SCHEMA_VERSION == 3
+def test_schema_version_includes_category_colors_step() -> None:
+    assert db.SCHEMA_VERSION >= 3
     assert 3 in db.MIGRATIONS
 
 
@@ -92,14 +92,14 @@ def test_upgrade_v2_to_v3_keeps_rows_and_adds_table(
 
     result = db.init_db(make_engine(path), now=NOW)
 
-    assert result == db.InitResult(2, 3, tmp_path / BACKUP_V2)
+    assert result == db.InitResult(2, db.SCHEMA_VERSION, tmp_path / BACKUP_V2)
     assert counts(path, (*tables, "category_colors")) == {**before, "category_colors": 0}
-    assert stored_version(path) == 3
+    assert stored_version(path) == db.SCHEMA_VERSION
     assert [p.name for p in tmp_path.glob("*.bak")] == [BACKUP_V2]
     assert stored_version(tmp_path / BACKUP_V2) == 2
 
 
-def test_upgrade_v1_to_v3_applies_both_steps_with_one_backup(
+def test_upgrade_v1_applies_both_steps_with_one_backup(
     tmp_path: Path, make_engine: MakeEngine
 ) -> None:
     path = tmp_path / "logbook.db"
@@ -107,7 +107,7 @@ def test_upgrade_v1_to_v3_applies_both_steps_with_one_backup(
 
     result = db.init_db(make_engine(path), now=NOW)
 
-    assert result == db.InitResult(1, 3, tmp_path / BACKUP_V1)
+    assert result == db.InitResult(1, db.SCHEMA_VERSION, tmp_path / BACKUP_V1)
     assert [p.name for p in tmp_path.glob("*.bak")] == [BACKUP_V1]
     assert counts(path, ("week_notes", "category_colors")) == {
         "week_notes": 0,

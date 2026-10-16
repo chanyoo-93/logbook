@@ -1,4 +1,4 @@
-"""태스크 화면이 쓰는 뷰 데이터: 칸반 보드, 카드, 추가 폼, 태스크 버전.
+"""태스크 화면이 쓰는 뷰 데이터: 칸반 보드, 카드, 등록·수정 폼, 태스크 버전.
 
 서비스가 돌려준 ORM 객체는 세션 안에서 이 모듈의 불변 값으로 바꾼다. 템플릿은 세션을 닫은 뒤 그린다.
 """
@@ -10,6 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC
 from types import MappingProxyType
 from typing import TYPE_CHECKING
+from urllib.parse import urlencode
 
 from logbook.core import services
 from logbook.core.duration import format_duration
@@ -39,39 +40,17 @@ STATUS_LABELS: Mapping[TaskStatus, str] = MappingProxyType(
         TaskStatus.DROPPED: "중단",
     }
 )
-DROP_CONFIRM = (
-    "중단할 태스크: #{id} {project} · {title}\n"
-    "중단할까요? 중단한 태스크는 이 화면에 보이지 않습니다."
-)
 CARRY_CONFIRM = "이번 주의 할 일·진행 태스크를 다음 주로 옮길까요?\n{this} → {next}, {count}건"
-COLUMN_TITLES = (("todo", "할 일"), ("doing", "진행 중"), ("done", "이번 주 완료"))
+STATUS_CHOICES = (
+    Choice(TaskStatus.TODO.value, "할 일"),
+    Choice(TaskStatus.DOING.value, "진행 중"),
+    Choice(TaskStatus.DONE.value, "완료"),
+    Choice(TaskStatus.DROPPED.value, "중단"),
+)
+COLUMN_TITLES = (("todo", "할 일"), ("doing", "진행 중"), ("done", "완료"), ("dropped", "중단"))
 THIS_WEEK_TAG = "이번 주"
 NEXT_WEEK_TAG = "다음 주"
 LAST_WEEK_TAG = "지난 주"
-# 상태 -> (버튼 글, 바꿀 상태, 확인 창이 필요한가)
-_ACTIONS: Mapping[TaskStatus, tuple[tuple[str, TaskStatus, bool], ...]] = MappingProxyType(
-    {
-        TaskStatus.TODO: (
-            ("시작", TaskStatus.DOING, False),
-            ("완료", TaskStatus.DONE, False),
-            ("중단", TaskStatus.DROPPED, True),
-        ),
-        TaskStatus.DOING: (
-            ("완료", TaskStatus.DONE, False),
-            ("할 일로", TaskStatus.TODO, False),
-            ("중단", TaskStatus.DROPPED, True),
-        ),
-        TaskStatus.DONE: (("다시 열기", TaskStatus.DOING, False),),
-        TaskStatus.DROPPED: (),
-    }
-)
-
-
-@dataclass(frozen=True)
-class StatusAction:
-    status: str  # 'doing'
-    label: str  # '시작'
-    confirm: str  # 확인 창 문구, 없으면 ''
 
 
 @dataclass(frozen=True)
@@ -86,14 +65,14 @@ class TaskCardView:
     actual: str  # 연결 기록 합계 '3h'(없으면 '0m')
     estimate: str  # '4h' 또는 ''
     over: bool  # 실적이 예상보다 많음
+    percent: int  # 진행 막대 채움 0~100(예상이 없으면 0, 막대도 그리지 않는다)
     version: str
-    actions: tuple[StatusAction, ...]
 
 
 @dataclass(frozen=True)
 class TaskColumnView:
-    key: str  # 'todo' | 'doing' | 'done'
-    title: str  # '할 일' | '진행 중' | '이번 주 완료'
+    key: str  # 'todo' | 'doing' | 'done' | 'dropped'(data-status와 같다)
+    title: str  # '할 일' | '진행 중' | '완료' | '중단'(완료·중단은 이번 주에 바뀐 것)
     cards: tuple[TaskCardView, ...]
 
 
@@ -107,45 +86,42 @@ class TaskBoardView:
 
 @dataclass(frozen=True)
 class TaskFormValues:
-    """추가 폼에 채워 둘 값(입력 문자열 그대로)."""
+    """등록·수정 화면에 채워 둘 값(입력 문자열 그대로, 오류 뒤에도 유지)."""
 
     title: str = ""
-    task_project: str = ""
-    task_category: str = ""
-    estimate: str = ""
-    week: str = ""
+    task_project: str = ""  # 등록만
+    task_category: str = ""  # key 또는 ''
+    estimate: str = ""  # '4h' 또는 ''
+    week: str = ""  # '2026-W42' 또는 ''
+    due: str = ""  # '2026-10-20' 또는 ''
+    external_ref: str = ""
+    description: str = ""
+    status: str = ""  # 수정만: 'todo' | 'doing' | 'done' | 'dropped'
+    version: str = ""  # 수정만
 
 
 @dataclass(frozen=True)
 class TaskFormView:
-    """추가 폼: 채워 둘 값, 선택지, 결과 줄."""
+    """등록·수정 화면의 폼: 채워 둘 값, 선택지, 결과 줄. task_id가 있으면 수정 화면이다."""
 
     values: TaskFormValues
-    projects: tuple[Choice, ...]  # 보관하지 않은 프로젝트
+    filter_project: str  # 보드 필터('' = 전체). 취소 링크와 숨은 칸이 싣는다
+    projects: tuple[Choice, ...]  # 보관하지 않은 프로젝트(등록만 쓴다)
     categories: tuple[Choice, ...]
     default_project: str
+    task_id: int | None = None
+    project_slug: str = ""  # 수정 화면에 글자로 보일 프로젝트
     message: str = ""
     is_error: bool = False
+    reopen_url: str = ""  # 버전 충돌 때 "최신 내용으로 다시 열기" 링크
 
+    @property
+    def cancel_url(self) -> str:
+        return board_url(self.filter_project)
 
-@dataclass(frozen=True)
-class TaskEditValues:
-    """편집 카드에 채워 둘 값(입력 문자열 그대로, 오류 뒤에도 유지)."""
-
-    title: str
-    task_category: str  # key 또는 ''
-    estimate: str  # '4h' 또는 ''
-    week: str  # '2026-W42' 또는 ''
-    version: str
-
-
-@dataclass(frozen=True)
-class TaskEditView:
-    id: int
-    project: str
-    values: TaskEditValues
-    categories: tuple[Choice, ...]  # 설정 카테고리 + 현재 값
-    error: str = ""
+    @property
+    def statuses(self) -> tuple[Choice, ...]:
+        return STATUS_CHOICES
 
 
 @dataclass(frozen=True)
@@ -183,22 +159,22 @@ def task_version(task: Task) -> str:
         task.external_ref,
         task.created_at.isoformat(),
         None if task.done_at is None else task.done_at.isoformat(),
+        None if task.dropped_at is None else task.dropped_at.isoformat(),
     )
 
 
-def _actions(task: Task) -> tuple[StatusAction, ...]:
-    return tuple(
-        StatusAction(
-            status=status.value,
-            label=label,
-            confirm=(
-                DROP_CONFIRM.format(id=task.id, project=task.project.slug, title=task.title)
-                if needs_confirm
-                else ""
-            ),
-        )
-        for label, status, needs_confirm in _ACTIONS[task.status]
-    )
+def board_url(project: str, **marks: int) -> str:
+    """보드 주소. marks(added=ID, updated=ID)와 필터 프로젝트를 주소에 싣는다."""
+    query: dict[str, str] = {name: str(value) for name, value in marks.items()}
+    if project:
+        query["project"] = project
+    return f"/tasks?{urlencode(query)}" if query else "/tasks"
+
+
+def edit_url(task_id: int, project: str) -> str:
+    """수정 화면 주소. 필터 프로젝트가 있으면 싣는다."""
+    base = f"/tasks/{task_id}/edit"
+    return f"{base}?{urlencode({'project': project})}" if project else base
 
 
 def _week_tag(label: str | None, this_week: Week) -> str:
@@ -210,6 +186,13 @@ def _week_tag(label: str | None, this_week: Week) -> str:
     if label == this_week.prev().label:
         return LAST_WEEK_TAG
     return ""
+
+
+def progress_percent(actual_minutes: int, estimate_minutes: int) -> int:
+    """실적/예상 비율을 0~100 정수로. 예상이 0이면 실적이 있을 때만 100."""
+    if estimate_minutes <= 0:
+        return 100 if actual_minutes > 0 else 0
+    return min(100, round(actual_minutes / estimate_minutes * 100))
 
 
 def task_card(task: Task, actual_minutes: int, this_week: Week) -> TaskCardView:
@@ -225,8 +208,8 @@ def task_card(task: Task, actual_minutes: int, this_week: Week) -> TaskCardView:
         actual=format_duration(actual_minutes),
         estimate="" if estimate is None else format_duration(estimate),
         over=estimate is not None and actual_minutes > estimate,
+        percent=0 if estimate is None else progress_percent(actual_minutes, estimate),
         version=task_version(task),
-        actions=_actions(task),
     )
 
 
@@ -242,7 +225,7 @@ def task_board(
 ) -> TaskBoardView:
     """칸반 보드. project가 ''면 전체, 없는 프로젝트는 NotFoundError다.
 
-    할 일·진행 중은 열린 태스크, 완료 열은 이번 주에 완료한 태스크다. 중단한 태스크는 없다.
+    할 일·진행 중은 열린 태스크, 완료·중단 열은 이번 주에 완료·중단한 태스크다.
     """
     now = ctx.now()
     this_week = week_of(now.date(), ctx.cfg.week_start)
@@ -251,12 +234,16 @@ def task_board(
         s, project_slug=slug, statuses=(TaskStatus.TODO, TaskStatus.DOING)
     )
     done_tasks = services.done_tasks_in_week(s, this_week, tz=now.tzinfo or UTC, project_slug=slug)
-    shown = [*open_tasks, *done_tasks]
+    dropped_tasks = services.dropped_tasks_in_week(
+        s, this_week, tz=now.tzinfo or UTC, project_slug=slug
+    )
+    shown = [*open_tasks, *done_tasks, *dropped_tasks]
     actual = services.actual_minutes_by_task(s, [task.id for task in shown])
     by_key = {
         "todo": [t for t in open_tasks if t.status == TaskStatus.TODO],
         "doing": [t for t in open_tasks if t.status == TaskStatus.DOING],
         "done": done_tasks,
+        "dropped": dropped_tasks,
     }
     columns = tuple(
         _column(key, title, by_key[key], actual, this_week) for key, title in COLUMN_TITLES
@@ -269,17 +256,24 @@ def task_form_view(
     ctx: WebContext,
     values: TaskFormValues,
     *,
+    filter_project: str = "",
+    task: Task | None = None,
     message: str = "",
     is_error: bool = False,
+    reopen_url: str = "",
 ) -> TaskFormView:
-    """추가 폼. 프로젝트 선택지는 보관 프로젝트를 뺀다."""
+    """등록(task가 None)·수정 폼. 프로젝트 선택지는 보관 프로젝트를 뺀다."""
     return TaskFormView(
         values=values,
+        filter_project=filter_project,
         projects=project_choices(s, archived=False),
         categories=category_choices(ctx.cfg, values.task_category),
         default_project=ctx.cfg.default_project,
+        task_id=None if task is None else task.id,
+        project_slug="" if task is None else task.project.slug,
         message=message,
         is_error=is_error,
+        reopen_url=reopen_url,
     )
 
 
@@ -287,26 +281,19 @@ def task_filter_view(s: Session, project: str) -> TaskFilterView:
     return TaskFilterView(project=project, projects=project_choices(s))
 
 
-def edit_values(task: Task) -> TaskEditValues:
+def edit_values(task: Task) -> TaskFormValues:
     estimate = task.estimate_minutes
-    return TaskEditValues(
+    due = task.due_date
+    return TaskFormValues(
         title=task.title,
         task_category=task.category or "",
         estimate="" if estimate is None else format_duration(estimate),
         week=task.planned_week or "",
+        due="" if due is None else due.isoformat(),
+        external_ref=task.external_ref or "",
+        description=task.description or "",
+        status=task.status.value,
         version=task_version(task),
-    )
-
-
-def task_edit_view(
-    ctx: WebContext, task: Task, values: TaskEditValues, *, error: str = ""
-) -> TaskEditView:
-    return TaskEditView(
-        id=task.id,
-        project=task.project.slug,
-        values=values,
-        categories=category_choices(ctx.cfg, task.category or ""),
-        error=error,
     )
 
 

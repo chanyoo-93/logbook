@@ -291,10 +291,11 @@ def test_flush_operational_error_is_not_translated(
 
 def test_validation_kind_tables_are_consistent() -> None:
     assert tuple(backup_import._KINDS) == backup.TABLE_ORDER
-    assert backup_import.SUPPORTED_FORMATS == (1, 2, 3)
+    assert backup_import.SUPPORTED_FORMATS == (1, 2, 3, 4)
     assert backup_import.FORMAT_TABLES[1] == backup.TABLE_ORDER[:4]
     assert backup_import.FORMAT_TABLES[2] == backup.TABLE_ORDER[:5]
     assert backup_import.FORMAT_TABLES[3] == backup.TABLE_ORDER
+    assert backup_import.FORMAT_TABLES[4] == backup.TABLE_ORDER
     assert set(backup_import._REFERENCES) == set(backup.TABLE_ORDER)
     used_kinds = set()
     for table, fields in backup.FIELDS.items():

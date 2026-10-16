@@ -44,7 +44,7 @@ def create_task(
         planned_week=_week_label(planned_week),
         due_date=_checked_due_date(due_date),
         external_ref=strip_or_none(external_ref),
-        description=strip_or_none(description),
+        description=_clean_description(description),
         status=TaskStatus.TODO,
     )
     s.add(task)
@@ -128,12 +128,19 @@ def update_task(
 
 
 def set_task_status(s: Session, task_id: int, status: TaskStatus) -> Task:
-    """상태를 바꾼다. DONE이 되면 완료 시각을 기록하고 (이미 DONE이면 유지), 그 밖에는 지운다."""
+    """상태를 바꾼다. DONE이면 완료 시각, DROPPED이면 중단 시각을 기록한다.
+
+    이미 그 상태이고 시각이 있으면 유지하고, 그 상태가 아니면 해당 시각을 지운다.
+    """
     task = load_task(s, task_id)
     if status != TaskStatus.DONE:
         task.done_at = None
     elif task.status != TaskStatus.DONE or task.done_at is None:
         task.done_at = utcnow()
+    if status != TaskStatus.DROPPED:
+        task.dropped_at = None
+    elif task.status != TaskStatus.DROPPED or task.dropped_at is None:
+        task.dropped_at = utcnow()
     task.status = status
     # 상태가 같아도 바꾼 시각을 남긴다 (onupdate는 실제 변경이 있을 때만 동작).
     task.updated_at = utcnow()
@@ -206,8 +213,15 @@ def _field_validators(
         "planned_week": _week_label,
         "due_date": _checked_due_date,
         "external_ref": strip_or_none,
-        "description": strip_or_none,
+        "description": _clean_description,
     }
+
+
+def _clean_description(description: str | None) -> str | None:
+    """앞뒤 공백을 지우고 줄바꿈(CRLF, CR)을 LF로 바꾼다. 비면 None."""
+    if description is None:
+        return None
+    return strip_or_none(description.replace("\r\n", "\n").replace("\r", "\n"))
 
 
 def _clean_title(title: str | None) -> str:
@@ -291,6 +305,32 @@ def done_tasks_in_week(
         .options(joinedload(Task.project))
         .where(Task.status == TaskStatus.DONE, Task.done_at >= first, Task.done_at < after)
         .order_by(Task.done_at.desc(), Task.id)
+    )
+    if project_slug is not None:
+        query = query.where(Task.project_id == get_project(s, project_slug).id)
+    else:
+        query = query.where(Task.project.has(Project.archived.is_(False)))
+    return list(s.scalars(query))
+
+
+def dropped_tasks_in_week(
+    s: Session, week: Week, *, tz: tzinfo, project_slug: str | None = None
+) -> list[Task]:
+    """중단 시각의 로컬 날짜(tz 기준)가 week 안인 중단 태스크(project 함께 로드).
+
+    최근 중단이 먼저, 같으면 id 순이다.
+    project_slug가 없으면 보관 프로젝트는 뺀다(list_tasks와 같다).
+    """
+    first, after = _done_range(week, tz)
+    query = (
+        select(Task)
+        .options(joinedload(Task.project))
+        .where(
+            Task.status == TaskStatus.DROPPED,
+            Task.dropped_at >= first,
+            Task.dropped_at < after,
+        )
+        .order_by(Task.dropped_at.desc(), Task.id)
     )
     if project_slug is not None:
         query = query.where(Task.project_id == get_project(s, project_slug).id)

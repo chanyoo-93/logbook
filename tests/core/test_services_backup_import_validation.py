@@ -45,7 +45,8 @@ def _header_cases() -> Iterator[Any]:
     empty = "logbook 내보내기 파일이 아닙니다 (내용이 없습니다)."
     no_type = "logbook 내보내기 파일이 아닙니다 (첫 줄에 type 값이 없습니다)."
     version = (
-        "지원하지 않는 내보내기 형식 버전입니다: {}. 이 버전의 logbook이 읽을 수 있는 형식: 1, 2, 3"
+        "지원하지 않는 내보내기 형식 버전입니다: {}. "
+        "이 버전의 logbook이 읽을 수 있는 형식: 1, 2, 3, 4"
     )
     schema = "내보내기 파일의 스키마 버전이 올바르지 않습니다: {}"
     yield pytest.param([], empty, id="빈 입력")
@@ -64,7 +65,7 @@ def _header_cases() -> Iterator[Any]:
         ("1.0", 1.0, "1.0"),
         ("문자열", "1", '"1"'),
         ("없음", "<missing>", "null"),
-        ("4", 4, "4"),
+        ("5", 5, "5"),
     ):
         yield pytest.param([header(format=value)], version.format(shown), id=f"format {label}")
     for label, value, shown in (

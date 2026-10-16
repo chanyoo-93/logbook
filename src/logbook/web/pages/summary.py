@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, TypedDict
 from logbook.core import services
 from logbook.core.duration import format_duration
 from logbook.core.weeks import Week, day_label, week_heading
+from logbook.web.pages.task_views import progress_percent
 from logbook.web.pages.views import category_color_map, project_color
 
 if TYPE_CHECKING:
@@ -56,11 +57,16 @@ class SummaryView:
     done_count: int
     chart: ChartData
     has_logs: bool
+    today_total: str  # 오늘 공수(format_duration)
+    today_target: str  # 하루 목표(format_duration)
+    today_percent: int  # 목표 대비 0~100
+    today_reached: bool  # 오늘 >= 목표
 
 
 def build_summary(s: Session, ctx: WebContext, week: Week, now: datetime) -> SummaryView:
     """week의 요약. 세션 안에서 불러 모든 값을 일반 값으로 바꿔 돌려준다."""
     cfg = ctx.cfg
+    today_minutes = services.day_total_minutes(s, now.date())
     daily = services.daily_project_minutes(s, week)
     by_project = services.stats_by(s, week, "project")
     by_category = services.stats_by(s, week, "category", category_labels=cfg.categories)
@@ -106,4 +112,8 @@ def build_summary(s: Session, ctx: WebContext, week: Week, now: datetime) -> Sum
         done_count=done_count,
         chart=chart,
         has_logs=by_project.count > 0,
+        today_total=format_duration(today_minutes),
+        today_target=format_duration(cfg.daily_target_minutes),
+        today_percent=progress_percent(today_minutes, cfg.daily_target_minutes),
+        today_reached=today_minutes >= cfg.daily_target_minutes,
     )

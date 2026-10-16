@@ -1,24 +1,28 @@
 <section id="task-board" class="board" aria-labelledby="task-board-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
-  <h2 id="task-board-title" class="board__title" tabindex="-1" data-focus>태스크 보드</h2>
+  <div class="board__head">
+    <h2 id="task-board-title" class="board__title" tabindex="-1" data-focus>태스크 보드</h2>
+    <a class="btn btn--primary" href="/tasks/new{% if board.project %}?project={{ board.project|urlencode }}{% endif %}">새 태스크</a>
+  </div>
 {% if board.message %}
   <p id="task-result" class="form-message{% if board.is_error %} form-message--error{% endif %}" role="{{ 'alert' if board.is_error else 'status' }}">{{ board.message }}</p>
 {% endif %}
   <div class="board__columns">
 {% for column in board.columns %}
     <section id="task-col-{{ column.key }}" class="board__col" aria-labelledby="task-heading-{{ column.key }}">
-      <div class="board__col-head">
+      <div class="board__col-head board__col-head--{{ column.key }}">
+        <span class="board__dot" aria-hidden="true"></span>
         <h3 id="task-heading-{{ column.key }}" class="board__col-title">{{ column.title }}</h3>
         <span class="board__count">{{ column.cards|length }}</span>
       </div>
-{% if column.cards %}
-      <ul class="board__cards">
+      <ul class="board__cards" data-status="{{ column.key }}">
+{% if not column.cards %}
+        {# 안내도 목록 안에 둬야 "없습니다." 위에 놓아도 이 열로 들어간다(끌 수 있는 것은 .task-card뿐) #}
+        <li class="empty board__empty">없습니다.</li>
+{% endif %}
 {% for card in column.cards %}
 {% include "partials/task_card.html" %}
 {% endfor %}
       </ul>
-{% else %}
-      <p class="empty">없습니다.</p>
-{% endif %}
     </section>
 {% endfor %}
   </div>

@@ -30,7 +30,7 @@ from logbook.core.config import default_db_path as default_db_path
 from logbook.core.errors import DatabaseBusyError, DatabaseNotInitializedError, LogbookError
 from logbook.core.models import Base, SchemaVersion
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 # 다른 연결이 잠금을 잡고 있을 때 기다리는 시간(초). sqlite3 기본값과 같다.
 # monkeypatch가 먹도록 create_engine_for가 호출 시점에 읽는다.
@@ -57,10 +57,18 @@ def _upgrade_to_3(conn: Connection) -> None:
     )
 
 
-# 버전 v-1 스키마를 v로 올리는 함수. 2는 week_notes 추가, 3은 category_colors 추가
+def _upgrade_to_4(conn: Connection) -> None:
+    """v4: tasks.dropped_at(중단 시각). 고정 DDL이다."""
+    conn.exec_driver_sql("ALTER TABLE tasks ADD COLUMN dropped_at DATETIME")
+    # 이미 중단한 태스크는 중단 시각을 모르므로 마지막 수정 시각으로 채운다.
+    conn.exec_driver_sql("UPDATE tasks SET dropped_at = updated_at WHERE status = 'dropped'")
+
+
+# 버전 v-1 스키마를 v로 올리는 함수. 2는 week_notes 추가, 3은 category_colors 추가,
+# 4는 tasks.dropped_at 추가
 # 주의: 마이그레이션은 트랜잭션 안에서 foreign_keys=ON 상태로 실행된다. SQLite는 트랜잭션 안의
 # PRAGMA foreign_keys 변경을 무시하므로, 테이블 재생성이 필요하면 이 실행 방식부터 바꿔야 한다.
-MIGRATIONS: dict[int, Migration] = {2: _upgrade_to_2, 3: _upgrade_to_3}
+MIGRATIONS: dict[int, Migration] = {2: _upgrade_to_2, 3: _upgrade_to_3, 4: _upgrade_to_4}
 
 BACKUP_FAILED = (
     "마이그레이션 전에 데이터베이스를 백업하지 못했습니다: {target} ({detail}). "

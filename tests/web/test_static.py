@@ -38,8 +38,10 @@ HTMX_CONFIG = {
 VENDOR_FILES = (
     "htmx-2.0.11.min.js",
     "chart-4.5.1.umd.min.js",
+    "sortable-1.15.7.min.js",
     "LICENSE-htmx.txt",
     "LICENSE-chartjs.md",
+    "LICENSE-sortablejs.txt",
 )
 _README_ROW = re.compile(r"^\|\s*`(?P<name>[^`]+)`.*`(?P<sha>[0-9a-f]{64})`\s*\|\s*$", re.MULTILINE)
 
@@ -58,6 +60,7 @@ def _readme_hashes() -> dict[str, str]:
         ("/static/js/report.js", JS),
         ("/static/vendor/htmx-2.0.11.min.js", JS),
         ("/static/vendor/chart-4.5.1.umd.min.js", JS),
+        ("/static/vendor/sortable-1.15.7.min.js", JS),
     ],
 )
 def test_static_files_are_served_with_type_and_security_headers(
@@ -144,7 +147,8 @@ def test_vendor_directory_has_nothing_unlisted() -> None:
 def test_vendor_readme_names_versions_licenses_and_sources() -> None:
     text = (VENDOR_ROOT / "README.md").read_text(encoding="utf-8")
 
-    for expected in ("2.0.11", "4.5.1", "0BSD", "MIT", "registry.npmjs.org"):
+    words = ("2.0.11", "4.5.1", "1.15.7", "0BSD", "MIT", "registry.npmjs.org", "tasks.html")
+    for expected in words:
         assert expected in text
 
 
@@ -213,8 +217,75 @@ def test_static_text_files_are_utf8_without_carriage_returns() -> None:
         STATIC_ROOT / "js" / "app.js",
         STATIC_ROOT / "js" / "dashboard.js",
         STATIC_ROOT / "js" / "report.js",
+        STATIC_ROOT / "js" / "board.js",
         STATIC_ROOT / "favicon.svg",
     ):
         data = path.read_bytes()
         data.decode("utf-8")
         assert b"\r" not in data
+
+
+BOARD_JS = STATIC_ROOT / "js" / "board.js"
+
+
+def test_tasks_page_loads_sortable_and_board_scripts_in_order(client: TestClient) -> None:
+    scripts = all_by_tag(client.get("/tasks").text, "script")
+
+    assert [s.attrs["src"] for s in scripts] == [
+        "/static/vendor/htmx-2.0.11.min.js",
+        "/static/js/app.js",
+        "/static/vendor/sortable-1.15.7.min.js",
+        "/static/js/board.js",
+    ]
+    assert all("defer" in s.attrs for s in scripts)
+
+
+@pytest.mark.parametrize("path", ["/tasks/new", "/", "/report"])
+def test_other_pages_do_not_load_sortable(client: TestClient, path: str) -> None:
+    html = client.get(path).text
+
+    sources = [str(s.attrs.get("src")) for s in all_by_tag(html, "script")]
+    assert "/static/js/board.js" not in sources
+    assert not any("sortable" in source for source in sources)
+
+
+def test_board_js_is_served_as_javascript(client: TestClient) -> None:
+    response = client.get("/static/js/board.js")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == JS
+
+
+@pytest.mark.parametrize(
+    "needle",
+    [
+        "new Sortable",
+        "Sortable.get",
+        "htmx.ajax",
+        "sort: false",
+        'group: "tasks"',
+        "isConnected",
+        "oldIndex",
+        "htmx:afterSettle",
+        "/status",
+        # 열 밖(머리, 열 사이 틈 등)에 놓으면 원래 자리로 되돌린다(2026-10-15 사용자 결정)
+        "revertOnSpill: true",
+        # 카드를 누르는 순간 목록 높이를 고정하고 놓으면 푼다.
+        # 원래 열이 줄어 아래 행이 올라오지 않게 한다(2026-10-15 QA).
+        "onChoose: freezeHeights",
+        "onUnchoose: releaseHeights",
+        "style.minHeight",
+    ],
+)
+def test_board_js_contains(needle: str) -> None:
+    assert needle in BOARD_JS.read_text(encoding="utf-8")
+
+
+def test_board_js_never_reloads_the_board_with_get() -> None:
+    text = BOARD_JS.read_text(encoding="utf-8")
+
+    assert 'htmx.ajax("GET"' not in text
+    assert "htmx.ajax('GET'" not in text
+    assert "eval(" not in text
+    assert "new Function" not in text
+    assert ".innerHTML" not in text

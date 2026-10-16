@@ -1,6 +1,6 @@
 """전체 데이터 JSONL 내보내기.
 
-형식(버전 3)은 공개 계약이다. 필드 목록은 모델 컬럼에서 만들지 않고 아래 튜플로 고정한다.
+형식(버전 4)은 공개 계약이다. 필드 목록은 모델 컬럼에서 만들지 않고 아래 튜플로 고정한다.
 컬럼이 늘면 형식을 의도적으로 바꾸고 FORMAT_VERSION을 올린다.
 """
 
@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from logbook.core import db
 from logbook.core.models import ActiveTimer, CategoryColor, Project, Task, WeekNote, WorkLog
 
-FORMAT_VERSION = 3
+FORMAT_VERSION = 4
 EXPORT_TYPE = "logbook-export"
 TABLE_ORDER = (
     "projects",
@@ -30,7 +30,8 @@ TABLE_ORDER = (
 )
 
 PROJECT_FIELDS = ("id", "slug", "name", "description", "color", "archived", "created_at")
-TASK_FIELDS = (
+# 형식 1~3 파일의 태스크 필드(dropped_at이 생기기 전). 가져오기가 옛 파일을 읽는 데 쓴다.
+TASK_FIELDS_BEFORE_4 = (
     "id",
     "project_id",
     "title",
@@ -45,6 +46,7 @@ TASK_FIELDS = (
     "updated_at",
     "done_at",
 )
+TASK_FIELDS = (*TASK_FIELDS_BEFORE_4, "dropped_at")
 WORKLOG_FIELDS = (
     "id",
     "project_id",
@@ -71,6 +73,14 @@ FIELDS: Mapping[str, tuple[str, ...]] = MappingProxyType(
         "category_colors": CATEGORY_COLOR_FIELDS,
     }
 )
+
+
+def fields_for(table: str, fmt: int) -> tuple[str, ...]:
+    """내보내기 형식 fmt 파일에서 table 행이 가지는 필드. 형식 4부터 tasks에 dropped_at이 있다."""
+    if table == "tasks" and fmt < 4:
+        return TASK_FIELDS_BEFORE_4
+    return FIELDS[table]
+
 
 # 행을 가리는 키. 내보내기 순서도 이 키 순이다.
 KEY_FIELDS: Mapping[str, str] = MappingProxyType(

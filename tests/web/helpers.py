@@ -67,8 +67,9 @@ def add_task(
     estimate: int | None = None,
     status: TaskStatus = TaskStatus.TODO,
     done_at: datetime | None = None,
+    dropped_at: datetime | None = None,
 ) -> int:
-    """태스크를 추가하고 ID를 돌려준다. done_at을 주면 완료 시각을 그 값으로 고정한다."""
+    """태스크를 추가하고 ID를 돌려준다. done_at·dropped_at을 주면 그 시각으로 고정한다."""
     with db.session_scope(engine) as s:
         task = services.create_task(
             s,
@@ -82,6 +83,8 @@ def add_task(
             services.set_task_status(s, task.id, status)
         if done_at is not None:
             task.done_at = done_at
+        if dropped_at is not None:
+            task.dropped_at = dropped_at
         s.flush()
         return task.id
 

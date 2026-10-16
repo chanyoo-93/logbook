@@ -1,7 +1,20 @@
-/* 태스크 화면: 추가 폼, 칸반 보드, 카드, 다음 주 계획 패널 */
+/* 태스크 화면: 등록·수정 화면, 칸반 보드, 카드, 다음 주 계획 패널 */
+.task-page {
+  max-width: 48rem;
+  margin-top: var(--space-5);
+}
+
+.task-page__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-md);
+  font-weight: 700;
+  letter-spacing: var(--tracking-title);
+  line-height: 1.3;
+}
+
 .task-form {
-  margin-top: var(--space-4);
-  padding: var(--space-3) var(--space-4);
+  margin-top: var(--space-3);
+  padding: var(--space-4);
   background: var(--surface);
   border: 1px solid var(--rule);
   border-radius: var(--radius-md);
@@ -9,10 +22,9 @@
 }
 
 .task-form__fields {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-2) var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: var(--space-3) var(--space-4);
 }
 
 .task-form__field {
@@ -25,25 +37,23 @@
   font-weight: 700;
 }
 
-.task-form__field--title {
-  flex: 1 1 16rem;
+.task-form__field--title,
+.task-form__field--description {
+  grid-column: 1 / -1;
 }
 
-.task-form__field--task_project,
-.task-form__field--task_category {
-  flex: 0 1 11rem;
-}
-
-.task-form__field--estimate {
-  flex: 0 1 7rem;
-}
-
-.task-form__field--week {
-  flex: 0 1 10rem;
+.task-form__static {
+  display: flex;
+  align-items: center;
+  min-height: 2.25rem;
+  color: var(--ink);
+  font-size: var(--text-base);
+  font-weight: 600;
 }
 
 .task-form input,
-.task-form select {
+.task-form select,
+.task-form textarea {
   width: 100%;
   min-height: 2.25rem;
   padding: 0 var(--space-2);
@@ -55,18 +65,53 @@
   font-weight: 400;
 }
 
+.task-form textarea {
+  min-height: 8rem;
+  padding: var(--space-2);
+  line-height: 1.5;
+  resize: vertical;
+}
+
 .task-form input:hover,
-.task-form select:hover {
+.task-form select:hover,
+.task-form textarea:hover {
   border-color: var(--ink-muted);
 }
 
 .task-form input:focus-visible,
-.task-form select:focus-visible {
+.task-form select:focus-visible,
+.task-form textarea:focus-visible {
   border-color: var(--accent);
+}
+
+.task-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.task-form__actions .btn,
+.board__head .btn {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.task-form__reopen {
+  font-weight: 600;
 }
 
 .board {
   margin-top: var(--space-5);
+}
+
+.board__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
 }
 
 .board__title {
@@ -83,29 +128,55 @@
 
 .board__columns {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
   margin-top: var(--space-3);
 }
 
 .board__col {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  padding: var(--space-3);
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
 }
 
 .board__col-head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+}
+
+.board__col-head--todo {
+  background: var(--tag-bg);
+  color: var(--ink-muted);
+}
+
+.board__col-head--doing {
+  background: var(--accent-soft);
+  color: var(--accent-hover);
+}
+
+.board__col-head--done {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.board__col-head--dropped {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.board__dot {
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+  background: currentcolor;
 }
 
 .board__col-title {
+  flex: 1;
   margin: 0;
   font-family: var(--font-heading);
   font-size: var(--text-base);
@@ -114,16 +185,20 @@
 }
 
 .board__count {
-  color: var(--ink-muted);
+  color: inherit;
   font-size: var(--text-sm);
+  font-weight: 600;
 }
 
 .board__cards {
   display: flex;
+  flex: 1 0 auto; /* 열 끝까지 늘려 짧은 열의 카드 아래 빈 곳에도 놓을 수 있게 한다 */
+  min-height: 3rem; /* 카드가 없는 열에도 놓을 자리를 둔다 */
   flex-direction: column;
   gap: var(--space-2);
   margin: 0;
   padding: 0;
+  padding-top: var(--space-2); /* 열 머리 아래 틈도 놓을 자리(머리의 아래 여백 대신) */
   list-style: none;
 }
 
@@ -131,15 +206,48 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  background: var(--bg);
+  padding: 0;
+  background: var(--surface);
   border: 1px solid var(--rule);
-  border-left: 3px solid var(--ink-muted);
   border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-soft);
 }
 
-.task-card--over {
-  border-left-color: var(--danger);
+.progress {
+  display: block;
+  width: 100%;
+  height: 4px;
+  border-radius: var(--radius-full);
+}
+
+.progress__track {
+  fill: var(--rule);
+}
+
+.progress__fill {
+  fill: var(--accent);
+}
+
+.progress--over .progress__fill {
+  fill: var(--danger);
+}
+
+.task-card__link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.task-card__link:hover {
+  background: var(--row-hover);
+}
+
+.task-card__link:focus-visible {
+  outline-offset: -2px;
 }
 
 .task-card p {
@@ -169,49 +277,18 @@
   font-weight: 600;
 }
 
-.task-card__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-2);
-  margin-top: var(--space-1);
+/* 빈 열 안내: 끄는 카드가 목록에 들어오면 감춘다 */
+.board__empty:not(:only-child) {
+  display: none;
 }
 
-.task-edit {
-  display: grid;
-  gap: var(--space-1);
+/* 끌어 놓기(SortableJS): 놓을 자리와 끄는 중인 카드 */
+.task-card--ghost {
+  opacity: 0.4;
 }
 
-.task-edit label {
-  color: var(--ink-muted);
-  font-size: var(--text-sm);
-}
-
-.task-edit input,
-.task-edit select {
-  width: 100%;
-  min-width: 0;
-  min-height: 2.25rem;
-  padding: 0 var(--space-2);
-  border: 1px solid var(--control-border);
-  border-radius: var(--radius-xs);
-  background: var(--surface);
-  color: var(--ink);
-  font: inherit;
-  font-weight: 400;
-}
-
-.task-edit input:hover,
-.task-edit select:hover {
-  border-color: var(--ink-muted);
-}
-
-.task-edit input:focus-visible,
-.task-edit select:focus-visible {
-  border-color: var(--accent);
-}
-
-.task-card.is-editing {
-  border-left-color: var(--accent);
+.task-card--chosen {
+  box-shadow: var(--shadow-raised);
 }
 
 .plan {
@@ -254,10 +331,16 @@
   margin-top: var(--space-3);
 }
 
+/* 중간 화면: 칸반을 2×2로 놓는다 */
+@media (min-width: 720px) and (max-width: 1099.98px) {
+  .board__columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* 좁은 화면: 칸반을 한 열로 쌓는다 */
-@media (max-width: 719px) {
+@media (max-width: 719.98px) {
   .board__columns {
     grid-template-columns: 1fr;
   }
 }
-

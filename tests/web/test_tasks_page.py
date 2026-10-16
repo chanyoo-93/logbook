@@ -1,6 +1,5 @@
 """태스크 화면 GET /tasks 테스트 (W40 = 09-28 ~ 10-04, 오늘 = 2026-10-01 목요일 09:30 +09:00)."""
 
-import json
 import re
 from datetime import UTC, date, datetime
 from html import unescape
@@ -12,7 +11,7 @@ from logbook.core import db, services
 from logbook.core.errors import NotFoundError
 from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import Week, parse_week
-from logbook.web.pages.task_views import DROP_CONFIRM, STATUS_LABELS, task_version
+from logbook.web.pages.task_views import STATUS_LABELS, task_version
 from tests.web.helpers import (
     add_log,
     add_project,
@@ -29,6 +28,8 @@ from tests.web.helpers import (
 HTMX = {"HX-Request": "true"}
 THIS_WEEK_DONE = datetime(2026, 9, 30, 3, 0, tzinfo=UTC)  # 로컬 09-30 12:00, W40
 LAST_WEEK_DONE = datetime(2026, 9, 24, 3, 0, tzinfo=UTC)  # 로컬 09-24 12:00, W39
+THIS_WEEK_DROPPED = datetime(2026, 9, 30, 5, 0, tzinfo=UTC)  # 로컬 09-30 14:00, W40
+LAST_WEEK_DROPPED = datetime(2026, 9, 24, 5, 0, tzinfo=UTC)  # 로컬 09-24 14:00, W39
 
 
 def _week(text: str) -> Week:
@@ -48,7 +49,12 @@ def _seed_board(engine: Engine) -> dict[str, int]:
         "done_old": add_task(
             engine, title="지난주 끝", status=TaskStatus.DONE, done_at=LAST_WEEK_DONE
         ),
-        "dropped": add_task(engine, title="중단한 일", status=TaskStatus.DROPPED),
+        "dropped": add_task(
+            engine, title="중단한 일", status=TaskStatus.DROPPED, dropped_at=THIS_WEEK_DROPPED
+        ),
+        "dropped_old": add_task(
+            engine, title="지난주 중단", status=TaskStatus.DROPPED, dropped_at=LAST_WEEK_DROPPED
+        ),
         "archived": add_task(engine, title="보관 프로젝트의 일", project="old"),
     }
     with db.session_scope(engine) as s:
@@ -71,7 +77,7 @@ def _figures(html: str, task_id: int) -> str:
     raise AssertionError("실적 줄이 없습니다")
 
 
-def test_page_has_menu_columns_form_and_filter(client: TestClient) -> None:
+def test_page_has_menu_columns_and_filter(client: TestClient) -> None:
     response = client.get("/tasks")
 
     assert response.status_code == 200
@@ -79,12 +85,12 @@ def test_page_has_menu_columns_form_and_filter(client: TestClient) -> None:
     assert [e.text for e in parse_html(html) if e.tag == "title"] == ["태스크 · logbook"]
     nav = [e for e in parse_html(html) if e.tag == "a" and e.attrs.get("href") == "/tasks"]
     assert [e.attrs.get("aria-current") for e in nav] == ["page"]
-    assert by_id(html, "task-form").tag == "form"
+    assert [e for e in parse_html(html) if e.attrs.get("id") == "task-form"] == []
     assert by_id(html, "task-filters").tag == "form"
     assert by_id(html, "task-board").tag == "section"
-    assert list(board_columns(html)) == ["todo", "doing", "done"]
+    assert list(board_columns(html)) == ["todo", "doing", "done", "dropped"]
     headings = [e.text for e in all_by_tag(html, "h3")]
-    assert headings == ["할 일", "진행 중", "이번 주 완료"]
+    assert headings == ["할 일", "진행 중", "완료", "중단"]
     assert inline_code_violations(html) == []
 
 
@@ -99,8 +105,9 @@ def test_columns_hold_open_tasks_and_this_weeks_done(
         "todo": [ids["todo_a"], ids["todo_b"]],  # 계획 주차가 있는 것이 먼저
         "doing": [ids["doing"]],
         "done": [ids["done_now"]],
+        "dropped": [ids["dropped"]],
     }
-    for hidden in ("done_old", "dropped", "archived"):
+    for hidden in ("done_old", "dropped_old", "archived"):
         assert f'id="task-{ids[hidden]}"' not in html
 
 
@@ -116,7 +123,7 @@ def test_card_shows_actual_and_estimate_and_flags_overrun(
     html = client.get("/tasks").text
 
     assert _figures(html, over) == "실적 5h / 예상 4h"
-    assert "task-card--over" in str(by_id(html, f"task-{over}").attrs["class"]).split()
+    assert len(by_class(html, "progress--over")) == 1
     assert [e.text for e in by_class(html, "task-card__over")] == ["예상 초과"]
     assert str(by_class(html, "task-card__over")[0].attrs["class"]).split() == [
         "pill",
@@ -124,7 +131,6 @@ def test_card_shows_actual_and_estimate_and_flags_overrun(
         "task-card__over",
     ]
     assert _figures(html, within) == "실적 1h / 예상 4h"
-    assert "task-card--over" not in str(by_id(html, f"task-{within}").attrs["class"]).split()
 
 
 def test_card_without_estimate_shows_actual_only(client: TestClient, web_engine: Engine) -> None:
@@ -185,7 +191,12 @@ def test_filter_shows_one_project_only(client: TestClient, web_engine: Engine) -
 
     html = client.get("/tasks?project=payment").text
 
-    assert board_columns(html) == {"todo": [ids["todo_a"]], "doing": [], "done": []}
+    assert board_columns(html) == {
+        "todo": [ids["todo_a"]],
+        "doing": [],
+        "done": [],
+        "dropped": [],
+    }
     projects = select_options(html, "project")
     assert [value for value, _, selected in projects if selected] == ["payment"]
 
@@ -259,58 +270,56 @@ def test_archived_project_is_selectable_and_shows_its_tasks(
     assert labels["old"].endswith("(보관)")
 
 
-def test_status_buttons_by_state(client: TestClient, web_engine: Engine) -> None:
-    add_project(web_engine, "payment", "결제 서버")
-    todo = add_task(web_engine, title="할 일", project="payment")
+def test_cards_have_no_buttons_and_carry_drag_data(client: TestClient, web_engine: Engine) -> None:
+    todo = add_task(web_engine, title="할 일")
     doing = add_task(web_engine, title="진행", status=TaskStatus.DOING)
-    done = add_task(web_engine, title="완료", status=TaskStatus.DONE, done_at=THIS_WEEK_DONE)
-
-    html = client.get("/tasks").text
-
-    def buttons(task_id: int) -> list[tuple[str, str, str | None]]:
-        card = f"task-{task_id}"
-        elements = parse_html(html)
-        start = next(i for i, e in enumerate(elements) if e.attrs.get("id") == card)
-        result = []
-        for element in elements[start + 1 :]:
-            if element.tag == "li":
-                break
-            if element.tag == "button" and "hx-post" in element.attrs:
-                vals = json.loads(str(element.attrs["hx-vals"]))
-                result.append((element.text, vals["status"], element.attrs.get("hx-confirm")))
-        return result
-
-    drop_confirm = DROP_CONFIRM.format(id=todo, project="payment", title="할 일")
-    assert buttons(todo) == [
-        ("시작", "doing", None),
-        ("완료", "done", None),
-        ("중단", "dropped", drop_confirm),
-    ]
-    assert [b[:2] for b in buttons(doing)] == [
-        ("완료", "done"),
-        ("할 일로", "todo"),
-        ("중단", "dropped"),
-    ]
-    assert buttons(doing)[2][2] is not None
-    assert buttons(done) == [("다시 열기", "doing", None)]
-
-
-def test_status_button_attributes_and_version(client: TestClient, web_engine: Engine) -> None:
-    task_id = add_task(web_engine, title="할 일")
     with db.session_scope(web_engine) as s:
-        version = task_version(services.get_task(s, task_id))
+        version = task_version(services.get_task(s, todo))
 
     html = client.get("/tasks").text
 
-    button = next(
-        e for e in parse_html(html) if e.attrs.get("hx-post") == f"/tasks/{task_id}/status"
-    )
-    assert json.loads(str(button.attrs["hx-vals"])) == {"status": "doing", "version": version}
-    assert button.attrs["hx-include"] == "#task-filters"
-    assert button.attrs["hx-target"] == "#task-board"
-    assert button.attrs["hx-swap"] == "outerHTML"
-    assert button.attrs["hx-sync"] == "this:drop"
-    assert button.attrs["hx-disabled-elt"] == "this"
+    cards = by_id(html, f"task-{todo}")
+    assert cards.attrs["data-task-id"] == str(todo)
+    assert cards.attrs["data-version"] == version
+    assert by_id(html, f"task-{doing}").attrs["data-task-id"] == str(doing)
+    assert [e for e in parse_html(html) if e.tag == "button" and "hx-post" in e.attrs] == []
+    assert by_class(html, "task-card__actions") == []
+
+
+def test_lists_carry_status_even_when_empty(client: TestClient) -> None:
+    html = client.get("/tasks").text
+
+    lists = [e for e in all_by_tag(html, "ul") if "board__cards" in str(e.attrs.get("class"))]
+    assert [e.attrs["data-status"] for e in lists] == ["todo", "doing", "done", "dropped"]
+    assert [e.text for e in by_class(html, "empty")][:4] == ["없습니다."] * 4
+
+
+def test_empty_notice_is_the_first_item_inside_the_list(client: TestClient) -> None:
+    # 빈 안내도 놓을 자리(목록) 안에 있어야 "없습니다." 위에 놓아도 그 열로 들어간다(2026-10-15 QA).
+    html = client.get("/tasks").text
+
+    for key in ("todo", "doing", "done", "dropped"):
+        column = html[html.index(f'id="task-col-{key}"') :]
+        start = column.index('class="board__cards"')
+        notice = column.index('<li class="empty board__empty">')
+        assert start < notice < column.index("</ul>")
+
+
+def test_column_counts_match_cards(client: TestClient, web_engine: Engine) -> None:
+    _seed_board(web_engine)
+
+    html = client.get("/tasks").text
+
+    assert [e.text for e in by_class(html, "board__count")] == ["2", "1", "1", "1"]
+
+
+def test_dropped_column_shows_only_this_weeks_drops(client: TestClient, web_engine: Engine) -> None:
+    ids = _seed_board(web_engine)
+
+    html = client.get("/tasks").text
+
+    assert board_columns(html)["dropped"] == [ids["dropped"]]
+    assert f'id="task-{ids["dropped_old"]}"' not in html
 
 
 def test_status_labels_are_korean() -> None:
@@ -338,3 +347,114 @@ def test_board_title_can_take_focus(client: TestClient) -> None:
     title = by_id(html, "task-board-title")
     assert title.attrs["tabindex"] == "-1"
     assert "data-focus" in title.attrs
+
+
+def _progress(html: str, task_id: int) -> tuple[list[str], str | None]:
+    """카드 안 진행 막대 svg의 class 목록과 채움 막대 width(막대가 없으면 [], None)."""
+    elements = parse_html(html)
+    start = next(i for i, e in enumerate(elements) if e.attrs.get("id") == f"task-{task_id}")
+    svg: list[str] = []
+    width: str | None = None
+    for element in elements[start + 1 :]:
+        if element.tag == "li":
+            break
+        classes = str(element.attrs.get("class") or "").split()
+        if element.tag == "svg" and "progress" in classes:
+            svg = classes
+        if element.tag == "rect" and "progress__fill" in classes:
+            width = str(element.attrs.get("width"))
+    return svg, width
+
+
+def test_card_has_no_progress_bar_without_estimate(client: TestClient, web_engine: Engine) -> None:
+    task = add_task(web_engine, title="예상 없음")
+    add_log(web_engine, minutes=60, note="가", task_id=task)
+
+    html = client.get("/tasks").text
+
+    assert _progress(html, task) == ([], None)
+
+
+def test_card_progress_bar_shows_zero_half_and_capped_over(
+    client: TestClient, web_engine: Engine
+) -> None:
+    zero = add_task(web_engine, title="0", estimate=120)
+    half = add_task(web_engine, title="절반", estimate=120)
+    add_log(web_engine, minutes=60, note="가", task_id=half)
+    over = add_task(web_engine, title="초과", estimate=120)
+    add_log(web_engine, minutes=300, note="나", task_id=over)
+
+    html = client.get("/tasks").text
+
+    assert _progress(html, zero) == (["progress"], "0")
+    assert _progress(html, half) == (["progress"], "50")
+    assert _progress(html, over) == (["progress", "progress--over"], "100")
+
+
+def test_card_progress_bar_is_decorative_svg_without_inline_style(
+    client: TestClient, web_engine: Engine
+) -> None:
+    task = add_task(web_engine, title="막대", estimate=120)
+
+    html = client.get("/tasks").text
+
+    svg = next(e for e in by_class(html, "progress") if e.tag == "svg")
+    assert svg.attrs["aria-hidden"] == "true"
+    assert svg.attrs["viewbox"] == "0 0 100 4"
+    assert "style=" not in html
+    assert _progress(html, task)[1] == "0"
+
+
+def test_progress_percent_handles_zero_estimate_and_caps_at_100() -> None:
+    from logbook.web.pages.task_views import progress_percent
+
+    assert progress_percent(0, 0) == 0
+    assert progress_percent(10, 0) == 100
+    assert progress_percent(30, 120) == 25
+    assert progress_percent(999, 120) == 100
+
+
+def _links(html: str, css_class: str) -> list[tuple[str, str]]:
+    return [(str(e.attrs["href"]), e.text) for e in by_class(html, css_class) if e.tag == "a"]
+
+
+def test_board_has_new_task_link(client: TestClient) -> None:
+    html = client.get("/tasks").text
+
+    new = [e for e in parse_html(html) if e.tag == "a" and e.attrs.get("href") == "/tasks/new"]
+    assert [e.text for e in new] == ["새 태스크"]
+    assert "btn--primary" in str(new[0].attrs["class"]).split()
+
+
+def test_new_task_link_follows_the_filter(client: TestClient, web_engine: Engine) -> None:
+    _seed_board(web_engine)
+
+    html = client.get("/tasks?project=payment", headers=HTMX).text
+
+    hrefs = [str(e.attrs["href"]) for e in parse_html(html) if e.tag == "a"]
+    assert "/tasks/new?project=payment" in hrefs
+
+
+def test_card_is_one_link_to_the_edit_page_without_edit_button(
+    client: TestClient, web_engine: Engine
+) -> None:
+    task_id = add_task(web_engine, title="수정 링크")
+
+    html = client.get("/tasks").text
+
+    [(href, text)] = _links(html, "task-card__link")
+    assert href == f"/tasks/{task_id}/edit"
+    assert text.startswith(f"#{task_id} 수정 링크")
+    assert [e for e in parse_html(html) if e.attrs.get("hx-get") == f"/tasks/{task_id}/edit"] == []
+    assert "수정" not in [e.text for e in parse_html(html) if e.tag == "button"]
+
+
+def test_card_link_carries_the_filter_project(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "payment", "결제 서버")
+    task_id = add_task(web_engine, title="결제 건", project="payment")
+
+    html = client.get("/tasks?project=payment").text
+
+    assert [href for href, _ in _links(html, "task-card__link")] == [
+        f"/tasks/{task_id}/edit?project=payment"
+    ]

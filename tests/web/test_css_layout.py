@@ -13,6 +13,8 @@ import logbook.web
 
 CSS_ROOT = Path(logbook.web.__file__).parent / "static" / "css"
 NARROW_QUERY = "@media (max-width: 719px)"
+BOARD_NARROW_QUERY = "@media (max-width: 719.98px)"
+MIDDLE_QUERY = "@media (min-width: 720px) and (max-width: 1099.98px)"
 
 _COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
 _RULE = re.compile(r"([^{}]+)\{([^{}]*)\}")
@@ -51,6 +53,9 @@ def _declarations(css: str, selector: str) -> set[str]:
     raise AssertionError(f"{selector} 규칙이 없습니다")
 
 
+TASK_CONTROLS = ".task-form input, .task-form select, .task-form textarea"
+
+
 @pytest.mark.parametrize(
     ("file_name", "selector", "declaration"),
     [
@@ -58,10 +63,10 @@ def _declarations(css: str, selector: str) -> set[str]:
         ("dashboard.css", ".charts", "grid-template-columns: minmax(0, 2fr) minmax(0, 1fr)"),
         ("dashboard.css", ".chart", "min-width: 0"),
         ("tasks.css", ".plan", "padding: var(--space-3)"),
-        ("tasks.css", ".task-edit input, .task-edit select", "min-height: 2.25rem"),
+        ("tasks.css", TASK_CONTROLS, "min-height: 2.25rem"),
         (
             "tasks.css",
-            ".task-edit input, .task-edit select",
+            TASK_CONTROLS,
             "border: 1px solid var(--control-border)",
         ),
         ("report.css", ".report > .form-message:empty", "margin: 0"),
@@ -79,9 +84,60 @@ def test_dashboard_charts_become_a_single_shrinkable_column_below_720px() -> Non
 
 
 def test_task_board_stacks_into_one_column_below_720px() -> None:
-    narrow = _media_block(_read("tasks.css"), NARROW_QUERY)
+    narrow = _media_block(_read("tasks.css"), BOARD_NARROW_QUERY)
 
     assert "grid-template-columns: 1fr" in _declarations(narrow, ".board__columns")
+
+
+def test_task_board_has_four_columns_by_default() -> None:
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in _declarations(
+        _read("tasks.css"), ".board__columns"
+    )
+
+
+def test_task_board_is_two_by_two_between_720_and_1099px() -> None:
+    middle = _media_block(_read("tasks.css"), MIDDLE_QUERY)
+
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in _declarations(
+        middle, ".board__columns"
+    )
+
+
+@pytest.mark.parametrize(
+    "selector",
+    [".board__col-head--dropped", ".task-card--ghost", ".task-card--chosen"],
+)
+def test_board_drag_and_dropped_rules_exist(selector: str) -> None:
+    assert _declarations(_read("tasks.css"), selector)
+
+
+def test_board_card_lists_keep_a_min_height_to_receive_drops() -> None:
+    declarations = _declarations(_read("tasks.css"), ".board__cards")
+
+    assert any(d.startswith("min-height: ") for d in declarations)
+
+
+def test_board_gap_under_the_column_head_belongs_to_the_list() -> None:
+    # 열 머리와 목록 사이 틈이 "열 밖"이면 거기 놓을 때 되돌아간다. 틈을 목록의 위쪽 여백으로 둔다.
+    css = _read("tasks.css")
+
+    assert not any(d.startswith("margin-bottom") for d in _declarations(css, ".board__col-head"))
+    assert "padding-top: var(--space-2)" in _declarations(css, ".board__cards")
+
+
+def test_board_empty_notice_hides_when_a_card_enters_the_list() -> None:
+    # 끄는 카드가 빈 열에 들어오면 "없습니다."를 감춘다(안내는 목록의 유일한 항목일 때만 보인다).
+    declarations = _declarations(_read("tasks.css"), ".board__empty:not(:only-child)")
+
+    assert "display: none" in declarations
+
+
+def test_board_card_lists_fill_the_column_to_receive_drops_below_cards() -> None:
+    # 짧은 열의 카드 아래 빈 곳에 놓아도 그 열로 들어가게 목록이 열 끝까지 늘어난다.
+    css = _read("tasks.css")
+
+    assert {"display: flex", "flex-direction: column"} <= _declarations(css, ".board__col")
+    assert "flex: 1 0 auto" in _declarations(css, ".board__cards")
 
 
 HEAVY_TOP_RULE = "border-top: 2px solid var(--ink)"
@@ -92,7 +148,6 @@ HEAVY_TOP_RULE = "border-top: 2px solid var(--ink)"
     [
         ("dashboard.css", ".panel"),
         ("tasks.css", ".task-form"),
-        ("tasks.css", ".board__col"),
     ],
 )
 def test_surfaces_use_soft_shadow_instead_of_heavy_top_rule(file_name: str, selector: str) -> None:
@@ -138,8 +193,10 @@ def test_table_head_and_foot_rules_use_rule_strong(
         ("app.css", ".quick input:hover, .quick select:hover"),
         ("components.css", ".timer-start input:hover, .timer-start select:hover"),
         ("report.css", ".report-notes textarea:hover"),
-        ("tasks.css", ".task-form input:hover, .task-form select:hover"),
-        ("tasks.css", ".task-edit input:hover, .task-edit select:hover"),
+        (
+            "tasks.css",
+            ".task-form input:hover, .task-form select:hover, .task-form textarea:hover",
+        ),
     ],
 )
 def test_control_hover_border_is_darker_than_default(file_name: str, selector: str) -> None:
@@ -203,7 +260,7 @@ def test_old_single_radius_token_is_gone() -> None:
         ("dashboard.css", ".panel", "var(--radius-md)"),
         ("app.css", ".quick", "var(--radius-md)"),
         ("tasks.css", ".task-form", "var(--radius-md)"),
-        ("tasks.css", ".board__col", "var(--radius-md)"),
+        ("tasks.css", ".board__col-head", "var(--radius-md)"),
         ("app.css", ".config-notice", "var(--radius-md)"),
         ("report.css", ".report__preview", "var(--radius-md)"),
         ("report.css", ".report-polish", "var(--radius-md)"),
@@ -220,8 +277,7 @@ def test_old_single_radius_token_is_gone() -> None:
             '.project-form input[type="text"], .grid--projects .is-editing input[type="text"]',
             "var(--radius-xs)",
         ),
-        ("tasks.css", ".task-form input, .task-form select", "var(--radius-xs)"),
-        ("tasks.css", ".task-edit input, .task-edit select", "var(--radius-xs)"),
+        ("tasks.css", TASK_CONTROLS, "var(--radius-xs)"),
         ("app.css", ".skip-link", "var(--radius-xs)"),
     ],
 )
@@ -315,3 +371,89 @@ def test_tracking_tokens_are_in_root() -> None:
 
     assert "--tracking-title: -0.01em" in declarations
     assert "--tracking-display: -0.035em" in declarations
+
+
+@pytest.mark.parametrize(
+    ("column", "background", "ink"),
+    [
+        ("todo", "--tag-bg", "--ink-muted"),
+        ("doing", "--accent-soft", "--accent-hover"),
+        ("done", "--ok-soft", "--ok"),
+        ("dropped", "--danger-soft", "--danger"),
+    ],
+)
+def test_board_column_head_uses_state_color(column: str, background: str, ink: str) -> None:
+    declarations = _declarations(_read("tasks.css"), f".board__col-head--{column}")
+
+    assert f"background: var({background})" in declarations
+    assert f"color: var({ink})" in declarations
+
+
+def test_board_column_has_no_surface_of_its_own() -> None:
+    declarations = _declarations(_read("tasks.css"), ".board__col")
+
+    assert not any(d.startswith(("background", "border", "box-shadow")) for d in declarations)
+
+
+def test_task_card_is_a_white_card_without_a_left_band() -> None:
+    css = _read("tasks.css")
+    declarations = _declarations(css, ".task-card")
+
+    assert "background: var(--surface)" in declarations
+    assert "box-shadow: var(--shadow-soft)" in declarations
+    assert "border: 1px solid var(--rule)" in declarations
+    assert "border-left" not in css
+
+
+def test_task_card_over_and_editing_have_no_left_band_rules() -> None:
+    css = _read("tasks.css")
+
+    assert ".task-card--over {" not in css
+    assert ".task-card.is-editing {" not in css
+    assert ".task-edit" not in css
+
+
+def test_progress_bar_rules_exist() -> None:
+    css = _read("tasks.css")
+
+    assert "fill: var(--accent)" in _declarations(css, ".progress__fill")
+    assert "fill: var(--rule)" in _declarations(css, ".progress__track")
+    assert "fill: var(--danger)" in _declarations(css, ".progress--over .progress__fill")
+
+
+def test_task_card_link_fills_the_card_and_keeps_a_focus_ring() -> None:
+    css = _read("tasks.css")
+
+    assert "display: flex" in _declarations(css, ".task-card__link")
+    assert "text-decoration: none" in _declarations(css, ".task-card__link")
+    assert "outline-offset: -2px" in _declarations(css, ".task-card__link:focus-visible")
+
+
+def test_task_form_fields_wrap_in_a_responsive_grid_with_full_width_title_and_description() -> None:
+    css = _read("tasks.css")
+
+    assert "display: grid" in _declarations(css, ".task-form__fields")
+    full = _declarations(css, ".task-form__field--title, .task-form__field--description")
+    assert "grid-column: 1 / -1" in full
+
+
+def test_running_timer_keeps_panel_colors_with_an_ok_left_line() -> None:
+    # 사용자 결정(2026-10-15): 색을 뒤집은 띠는 취소했다. 다른 패널과 같은 색에 왼쪽 초록 선.
+    band = _declarations(_read("components.css"), ".timer--running")
+
+    assert band == {"border-left: 4px solid var(--ok)", "color: var(--ink)"}
+
+
+def test_running_timer_has_no_band_overrides() -> None:
+    css = "\n".join(_read(name) for name in ("app.css", "components.css", "dashboard.css"))
+
+    assert "--band-" not in css
+    assert ".timer--running ." not in css
+    assert ".timer--running :" not in css
+
+
+def test_today_progress_done_fill_uses_ok_color() -> None:
+    css = _read("dashboard.css")
+
+    assert "fill: var(--ok)" in _declarations(css, ".progress--done .progress__fill")
+    assert "display: flex" in _declarations(css, ".stat__progress")
