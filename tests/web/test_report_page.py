@@ -84,6 +84,17 @@ def test_report_page_bad_week_for_htmx_is_flash_fragment(client: TestClient) -> 
     assert "<html" not in response.text
 
 
+def test_report_history_restore_returns_full_page_of_that_week(client: TestClient) -> None:
+    url = "/report?week=2026-W39"
+
+    restored = client.get(url, headers={**HTMX, "HX-History-Restore-Request": "true"}).text
+    fragment = client.get(url, headers=HTMX).text
+
+    assert "<html" in restored
+    assert "2026-W39 (09-21 ~ 09-27)" in by_id(restored, "report-body").text
+    assert "<html" not in fragment
+
+
 def test_report_htmx_returns_body_and_oob_nav(client: TestClient) -> None:
     response = client.get("/report", params={"week": "last"}, headers=HTMX)
 

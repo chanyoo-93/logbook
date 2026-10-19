@@ -220,6 +220,23 @@ def test_history_restore_returns_full_page(client: TestClient) -> None:
     assert "<html" in response.text
 
 
+def test_history_restore_draws_project_filter_from_the_url(
+    client: TestClient, web_engine: Engine
+) -> None:
+    ids = _seed_board(web_engine)
+
+    restored = client.get(
+        "/tasks?project=payment", headers={**HTMX, "HX-History-Restore-Request": "true"}
+    ).text
+    fragment = client.get("/tasks?project=payment", headers=HTMX).text
+
+    assert "<html" in restored
+    projects = select_options(restored, "project")
+    assert [value for value, _, selected in projects if selected] == ["payment"]
+    assert board_columns(restored)["todo"] == [ids["todo_a"]]
+    assert "<html" not in fragment
+
+
 def test_filter_form_attributes(client: TestClient) -> None:
     html = client.get("/tasks").text
 
