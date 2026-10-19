@@ -1,14 +1,17 @@
 """타이머 시작·취소 화면과 시작 폼 테스트 (시각 = 2026-10-01 09:30 +09:00)."""
 
 import json
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 
 from logbook.core import db, services
+from logbook.core.models import ActiveTimer
 from logbook.core.services.timer import NO_TIMER_MESSAGE
 from logbook.core.taskstatus import TaskStatus
+from logbook.web.pages.views import timer_version
 from tests.helpers import FIXED_NOW, Clock
 from tests.web.helpers import (
     add_log,
@@ -176,6 +179,48 @@ def test_cancel_with_same_version(client: TestClient, web_engine: Engine, clock:
     assert by_id(html, "timer-start").tag == "form"
     assert not _has_timer(web_engine)
     assert _log_count(web_engine) == 0
+
+
+def test_cancel_right_after_web_start_with_start_response_version(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "payment", "결제 서버")
+    started = client.post("/timer/start", data=START_FORM, headers=HTMX)
+    version = _cancel_version(started.text)
+
+    response = client.post("/timer/cancel", data={"version": version}, headers=HTMX)
+
+    assert response.status_code == 200
+    assert not _has_timer(web_engine)
+    assert _log_count(web_engine) == 0
+
+
+def test_cancel_after_elapsed_refresh_with_start_response_version(
+    client: TestClient, web_engine: Engine, clock: Clock
+) -> None:
+    add_project(web_engine, "payment", "결제 서버")
+    version = _cancel_version(client.post("/timer/start", data=START_FORM, headers=HTMX).text)
+    clock.advance(seconds=61)
+    assert client.get("/timer/elapsed", headers=HTMX).status_code == 200
+
+    response = client.post("/timer/cancel", data={"version": version}, headers=HTMX)
+
+    assert response.status_code == 200
+    assert not _has_timer(web_engine)
+
+
+def test_timer_version_is_the_same_for_the_same_instant_in_any_offset() -> None:
+    utc_start = datetime(2026, 10, 1, 0, 30, tzinfo=UTC)
+    kst_start = utc_start.astimezone(timezone(timedelta(hours=9)))
+    assert kst_start.isoformat() != utc_start.isoformat()
+
+    def make(started_at: datetime) -> ActiveTimer:
+        return ActiveTimer(
+            started_at=started_at, project_id=1, category="dev", note="메모", task_id=None
+        )
+
+    assert timer_version(make(utc_start)) == timer_version(make(kst_start))
+    assert timer_version(make(utc_start)) != timer_version(make(utc_start + timedelta(seconds=1)))
 
 
 def test_cancel_with_other_version_conflicts(client: TestClient, web_engine: Engine) -> None:

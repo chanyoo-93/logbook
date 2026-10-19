@@ -8,7 +8,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
@@ -146,9 +146,13 @@ def worklog_version(log: WorkLog) -> str:
 
 
 def timer_version(timer: ActiveTimer) -> str:
-    """화면이 본 타이머가 그사이 바뀌었는지 가리는 값(취소 요청이 확인한다)."""
+    """화면이 본 타이머가 그사이 바뀌었는지 가리는 값(취소 요청이 확인한다).
+
+    시작 시각은 UTC로 맞춰 쓴다. 같은 순간이 현지 시간대(시작 응답)와 UTC(DB에서 읽은 값)로
+    다르게 적혀도 같은 버전이어야 한다.
+    """
     return content_version(
-        timer.started_at.isoformat(),
+        timer.started_at.astimezone(UTC).isoformat(),
         timer.project_id,
         timer.category,
         timer.note,
