@@ -28,6 +28,8 @@ HTMX_CONFIG = {
     "allowEval": False,
     "allowScriptTags": False,
     "selfRequestsOnly": True,
+    "historyCacheSize": 0,
+    "attributesToSettle": ["class", "width", "height"],
     "responseHandling": [
         {"code": "204", "swap": False},
         {"code": "[23]..", "swap": True},

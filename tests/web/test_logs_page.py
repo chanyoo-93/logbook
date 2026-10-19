@@ -197,6 +197,26 @@ def test_history_restore_returns_full_page(client: TestClient) -> None:
     assert by_id(response.text, "log-filters").tag == "form"
 
 
+def test_history_restore_draws_filters_from_the_url(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "payment", "결제 서버")
+    kept = add_log(
+        web_engine, minutes=60, note="리뷰", project="payment", category="review", day=W39_THURSDAY
+    )
+    add_log(web_engine, minutes=30, note="다른 카테고리", project="payment", day=W39_THURSDAY)
+    add_log(web_engine, minutes=45, note="다른 프로젝트", category="review", day=W39_THURSDAY)
+    url = "/logs?week=2026-W39&project=payment&category=review"
+
+    restored = client.get(url, headers={**HTMX, "HX-History-Restore-Request": "true"}).text
+    fragment = client.get(url, headers=HTMX).text
+
+    assert "<html" in restored
+    assert _week_input_values(restored) == ["2026-W39"]
+    assert [v for v, _, sel in select_options(restored, "project") if sel] == ["payment"]
+    assert [v for v, _, sel in select_options(restored, "category") if sel] == ["review"]
+    assert row_ids(restored) == [f"log-{kept}"]
+    assert "<html" not in fragment
+
+
 def _bad_week_message() -> str:
     with pytest.raises(InvalidInputError) as caught:
         parse_week("x")
