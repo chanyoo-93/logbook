@@ -1,4 +1,5 @@
 {% from "partials/marks.html" import pill %}
+{% from "partials/menu.html" import row_menu %}
         <tr id="project-{{ row.slug }}"{% if row.archived %} class="is-archived"{% endif %}>
           <td class="nowrap">{{ row.slug }}</td>
           <td class="nowrap">{{ row.name }}</td>
@@ -8,12 +9,17 @@
           </td>
           <td class="grid__note">{{ row.description }}</td>
           <td class="nowrap">{{ pill("보관") if row.archived else pill("사용 중", "ok") }}</td>
-          <td class="nowrap grid__actions">
-            <button type="button" class="btn btn--small" hx-get="/settings/projects/{{ row.slug }}/edit" hx-target="closest tr" hx-swap="outerHTML">수정</button>
+          <td class="grid__menu-cell">
+{% call row_menu("프로젝트 " ~ row.slug ~ " 동작") %}
+            <button type="button" role="menuitem" class="menu__item" hx-get="/settings/projects/{{ row.slug }}/edit" hx-target="closest tr" hx-swap="outerHTML">수정</button>
 {% if row.archived %}
-            <button type="button" class="btn btn--small" hx-post="/settings/projects/{{ row.slug }}/unarchive" hx-vals='{{ {"version": row.version}|tojson }}' hx-target="#project-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">보관 해제</button>
-{% elif not row.is_common %}
-            <button type="button" class="btn btn--small btn--danger" hx-post="/settings/projects/{{ row.slug }}/archive" hx-vals='{{ {"version": row.version}|tojson }}' hx-target="#project-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this" hx-confirm="{{ row.archive_confirm }}">보관</button>
+            <button type="button" role="menuitem" class="menu__item" hx-post="/settings/projects/{{ row.slug }}/unarchive" hx-vals='{{ {"version": row.version}|tojson }}' hx-target="#project-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">보관 해제</button>
+{% elif row.is_common %}
+            {# common은 보관할 수 없다(core archive_project가 거부). 메뉴에는 비활성으로 보여 준다 #}
+            <button type="button" role="menuitem" class="menu__item" disabled title="common 프로젝트는 보관할 수 없습니다">보관</button>
+{% else %}
+            <button type="button" role="menuitem" class="menu__item menu__item--danger" hx-post="/settings/projects/{{ row.slug }}/archive" hx-vals='{{ {"version": row.version}|tojson }}' hx-target="#project-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this" hx-confirm="{{ row.archive_confirm }}">보관</button>
 {% endif %}
+{% endcall %}
           </td>
         </tr>
