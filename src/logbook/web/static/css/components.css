@@ -212,3 +212,98 @@ main > p[role="alert"] {
   border-left-color: var(--ok);
 }
 
+
+/* 아이콘과 아이콘 버튼: 글자 없이 아이콘만 있는 버튼(뜻은 aria-label·title). 색은 글자색(currentColor)을 따른다. */
+.icon {
+  display: block;
+  flex: none;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+
+.icon-button:hover,
+.icon-button[aria-expanded="true"] {
+  border-color: var(--rule);
+  background: var(--row-hover);
+  color: var(--ink);
+}
+
+.icon-button:active {
+  transform: scale(0.97);
+}
+
+/* 컨텍스트 메뉴: ⋮ 아래 오른쪽 정렬. 좁은 화면에서도 화면 밖으로 나가지 않게 폭을 제한한다. */
+.menu {
+  position: relative;
+  display: inline-block;
+}
+
+.menu__button {
+  flex: none;
+}
+
+.menu__list {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 8rem;
+  max-width: calc(100vw - 2 * var(--gutter));
+  margin-top: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+}
+
+.menu__list[hidden] {
+  display: none;
+}
+
+.menu__item {
+  display: block;
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+  background: var(--row-hover);
+}
+
+.menu__item--danger {
+  color: var(--danger);
+}
+
+.menu__item[disabled] {
+  color: var(--ink-muted);
+  opacity: 0.55;
+  cursor: not-allowed;
+}

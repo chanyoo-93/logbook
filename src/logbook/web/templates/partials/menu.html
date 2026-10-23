@@ -1,0 +1,11 @@
+{# 공용 부품: ⋮ 버튼과 컨텍스트 메뉴 틀. 항목(<button role="menuitem" class="menu__item" ...>)은 call 블록으로 넘긴다.
+   열기·닫기·키보드는 static/js/app.js가 이벤트 위임으로 맡는다. 메뉴는 처음엔 hidden이다. #}
+{% from "partials/icons.html" import icon_more %}
+{% macro row_menu(label="동작") -%}
+<div class="menu">
+  <button type="button" class="menu__button icon-button" aria-haspopup="menu" aria-expanded="false" aria-label="{{ label }}" title="{{ label }}">{{ icon_more() }}</button>
+  <div class="menu__list" role="menu" aria-label="{{ label }}" hidden>
+    {{ caller() }}
+  </div>
+</div>
+{%- endmacro %}

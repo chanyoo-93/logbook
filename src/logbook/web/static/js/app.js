@@ -120,6 +120,123 @@
     }
   });
 
+  // 컨텍스트 메뉴(.menu): ⋮ 버튼(.menu__button)이 메뉴(.menu__list, role="menu")를 연다. 이벤트 위임이라 HTMX로 다시 그린 행에도 동작한다.
+  // 열기: 클릭, Enter, Space(첫 항목에 포커스), 위·아래 화살표. 이동: 위·아래 화살표(가장자리에서 돌아감), Home·End.
+  // 닫기: Esc(⋮로 포커스 복귀), 바깥 클릭, Tab(포커스는 브라우저 순서대로), 항목 선택. 한 번에 하나만 열린다.
+  var MENU_ITEMS = '[role="menuitem"]:not([disabled])';
+
+  function menuButton(menu) {
+    return menu.querySelector(".menu__button");
+  }
+
+  function menuList(menu) {
+    return menu.querySelector(".menu__list");
+  }
+
+  function closeMenus(except) {
+    document.querySelectorAll(".menu").forEach(function (menu) {
+      var list = menuList(menu);
+      if (menu === except || !list || list.hidden) {
+        return;
+      }
+      list.hidden = true;
+      menuButton(menu).setAttribute("aria-expanded", "false");
+    });
+  }
+
+  function openMenu(menu, focusIndex) {
+    closeMenus(menu);
+    menuList(menu).hidden = false;
+    menuButton(menu).setAttribute("aria-expanded", "true");
+    var items = menuList(menu).querySelectorAll(MENU_ITEMS);
+    if (items.length) {
+      items[focusIndex < 0 ? items.length - 1 : focusIndex].focus();
+    }
+  }
+
+  function closeMenu(menu, returnFocus) {
+    closeMenus(null);
+    if (returnFocus) {
+      menuButton(menu).focus();
+    }
+  }
+
+  document.addEventListener("click", function (event) {
+    var target = event.target;
+    if (!target || !target.closest) {
+      return;
+    }
+    var button = target.closest(".menu__button");
+    if (button) {
+      var menu = button.closest(".menu");
+      if (menuList(menu).hidden) {
+        openMenu(menu, 0);
+      } else {
+        closeMenu(menu, false);
+      }
+      return;
+    }
+    var item = target.closest('.menu__list [role="menuitem"]');
+    if (item) {
+      // 항목의 동작(htmx)은 이 클릭에서 그대로 시작된다. 메뉴만 닫는다.
+      closeMenus(null);
+      return;
+    }
+    closeMenus(null);
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (event.isComposing || event.keyCode === 229) {
+      return;
+    }
+    var target = event.target;
+    var menu = target && target.closest ? target.closest(".menu") : null;
+    if (!menu) {
+      return;
+    }
+    var onButton = target.classList.contains("menu__button");
+    var key = event.key;
+    if (key === "Tab") {
+      closeMenus(null);
+      return;
+    }
+    if (onButton) {
+      // Enter·Space는 브라우저가 click을 만들므로 여기서는 화살표만 연다.
+      if (key === "ArrowDown" || key === "ArrowUp") {
+        event.preventDefault();
+        openMenu(menu, key === "ArrowDown" ? 0 : -1);
+      } else if (key === "Escape" && !menuList(menu).hidden) {
+        event.preventDefault();
+        closeMenu(menu, true);
+      }
+      return;
+    }
+    if (key === "Escape") {
+      event.preventDefault();
+      closeMenu(menu, true);
+      return;
+    }
+    var items = Array.prototype.slice.call(menuList(menu).querySelectorAll(MENU_ITEMS));
+    var index = items.indexOf(target);
+    if (index === -1) {
+      return;
+    }
+    var next = null;
+    if (key === "ArrowDown") {
+      next = items[(index + 1) % items.length];
+    } else if (key === "ArrowUp") {
+      next = items[(index - 1 + items.length) % items.length];
+    } else if (key === "Home") {
+      next = items[0];
+    } else if (key === "End") {
+      next = items[items.length - 1];
+    }
+    if (next) {
+      event.preventDefault();
+      next.focus();
+    }
+  });
+
   // 서버에 닿지 못한 요청: 서버가 만든 오류 조각이 없으므로 여기서 직접 알린다.
   document.addEventListener("htmx:sendError", function () {
     var area = flashArea();
