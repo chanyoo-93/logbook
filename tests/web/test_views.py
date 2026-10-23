@@ -5,10 +5,11 @@ from datetime import UTC, date, datetime, timedelta, timezone
 
 import pytest
 
+from logbook.core.config import DEFAULT_CATEGORIES
 from logbook.core.models import ActiveTimer, Project, WorkLog
 from logbook.web.pages.views import (
-    CHART_PALETTE,
     RECENT_LIMIT,
+    category_color_map,
     content_version,
     log_row,
     project_color,
@@ -96,22 +97,30 @@ def test_project_color_uses_explicit_color() -> None:
 @pytest.mark.parametrize(
     ("project_id", "expected"),
     [
-        (1, CHART_PALETTE[0]),
-        (2, CHART_PALETTE[1]),
-        (len(CHART_PALETTE) + 1, CHART_PALETTE[0]),
+        (1, "#495057"),
+        (2, "#a61e4d"),
+        (3, "#5c940d"),
+        (10, "#2f6fde"),
+        (11, "#495057"),
     ],
 )
-def test_project_color_falls_back_to_palette_by_id(project_id: int, expected: str) -> None:
+def test_project_color_falls_back_to_palette_from_the_end(project_id: int, expected: str) -> None:
     assert project_color(Project(id=project_id, slug="a", name="a")) == expected
 
 
 @pytest.mark.parametrize("color", ["red", "#12345", "#12345g"])
 def test_project_color_ignores_invalid_color(color: str) -> None:
-    assert project_color(Project(id=2, slug="a", name="a", color=color)) == CHART_PALETTE[1]
+    assert project_color(Project(id=2, slug="a", name="a", color=color)) == "#a61e4d"
+
+
+def test_first_project_color_differs_from_every_default_category_color() -> None:
+    colors = category_color_map(tuple(DEFAULT_CATEGORIES), {}).values()
+
+    assert project_color(Project(id=1, slug="common", name="공통")) not in colors
 
 
 def test_log_row_has_project_color() -> None:
-    assert log_row(_log()).project_color == CHART_PALETTE[0]
+    assert log_row(_log()).project_color == "#495057"
 
 
 def test_timer_view_converts_started_at_to_local_time() -> None:

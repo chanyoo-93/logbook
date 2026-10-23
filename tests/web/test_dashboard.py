@@ -35,6 +35,7 @@ W39_THURSDAY = date(2026, 9, 24)
 INDIGO = "#4f46e5"
 PALETTE_BLUE = "#2f6fde"
 PALETTE_ORANGE = "#e8590c"
+PALETTE_GRAY = "#495057"
 PALETTE_GREEN = "#2b8a3e"
 
 EXPECTED_CHART = {
@@ -52,12 +53,12 @@ EXPECTED_CHART = {
         "totals": [60, 0, 30, 120, 0, 0, 0],
         "datasets": [
             {"label": "payment", "color": INDIGO, "data": [60, 0, 0, 120, 0, 0, 0]},
-            {"label": "common", "color": PALETTE_BLUE, "data": [0, 0, 30, 0, 0, 0, 0]},
+            {"label": "common", "color": PALETTE_GRAY, "data": [0, 0, 30, 0, 0, 0, 0]},
         ],
     },
     "projects": {
         "labels": ["payment", "common"],
-        "colors": [INDIGO, PALETTE_BLUE],
+        "colors": [INDIGO, PALETTE_GRAY],
         "data": [180, 30],
     },
     "categories": {
@@ -230,7 +231,7 @@ def test_recent_logs_table_columns_and_cells(client: TestClient, web_engine: Eng
     row = next(e for e in all_by_tag(html, "tr") if e.attrs.get("id") == f"log-{log_id}")
     assert '<span class="pill pill--cat-dev">dev</span>' in html
     assert row.text == f"{log_id} 10-01 (목) payment dev 1h 30m 재시도 로직 #{task_id}"
-    assert f'<circle cx="4" cy="4" r="4" fill="{CHART_PALETTE[1]}"/></svg>payment' in html
+    assert f'<circle cx="4" cy="4" r="4" fill="{CHART_PALETTE[8]}"/></svg>payment' in html
     assert 'class="dot" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true"' in html
     assert not inline_code_violations(html)
 
@@ -407,7 +408,7 @@ def test_chart_color_follows_project_id_not_week_order(
 
     assert isinstance(chart, dict)
     # common이 ID 1, a가 ID 2, b가 ID 3이다. b는 이번 주 첫 프로젝트여도 ID 3의 색이다.
-    assert chart["projects"]["colors"] == [CHART_PALETTE[2]]
+    assert chart["projects"]["colors"] == [CHART_PALETTE[7]]
 
 
 def _summary_progress(html: str) -> tuple[str, int, bool]:
