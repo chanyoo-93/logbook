@@ -10,7 +10,6 @@
 {% for column in board.columns %}
     <section id="task-col-{{ column.key }}" class="board__col" aria-labelledby="task-heading-{{ column.key }}">
       <div class="board__col-head board__col-head--{{ column.key }}">
-        <span class="board__dot" aria-hidden="true"></span>
         <h3 id="task-heading-{{ column.key }}" class="board__col-title">{{ column.title }}</h3>
         <span class="board__count">{{ column.cards|length }}</span>
       </div>

@@ -391,6 +391,10 @@ def test_board_column_head_uses_state_color(column: str, background: str, ink: s
     assert f"color: var({ink})" in declarations
 
 
+def test_board_column_head_has_no_dot_rule() -> None:
+    assert ".board__dot" not in _read("tasks.css")
+
+
 def test_board_column_has_no_surface_of_its_own() -> None:
     declarations = _declarations(_read("tasks.css"), ".board__col")
 
