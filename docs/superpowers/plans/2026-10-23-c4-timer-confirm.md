@@ -128,10 +128,10 @@
 
 ## Task 5: 검증, PR, 기록
 
-- [ ] 전체 검증: ruff, format, mypy(core strict, 전체), pytest
-- [ ] PR: develop 대상, `Refs #21`, CI
-- [ ] #21 댓글: C4·취소 확인 창 수정 결과(Windows), 본문 C4 항목 갱신은 사용자 macOS 확인 뒤
-- [ ] 사용자 macOS 확인: 색(common 회색, dev 파랑), 어두운 테마 점 테두리, 61초 뒤 취소 확인 문구
+- [x] 전체 검증: ruff, format, mypy(core strict, 전체), pytest
+- [x] PR: develop 대상, `Refs #21`, CI — PR #23, CI 통과(b5f71fd: Windows 3109 passed·2 skipped, macOS 3106 passed·5 skipped)
+- [x] #21 댓글: C4·취소 확인 창 수정 결과(Windows), 본문 C4 항목 갱신은 사용자 macOS 확인 뒤
+- [x] 사용자 macOS 확인(2026-10-23, Safari·Chrome 모두 통과, PR #23 댓글 issuecomment-6355900140): 색(common 회색, dev 파랑), 어두운 테마 점 테두리, 61초 뒤 취소 확인 문구
 
 ---
 
