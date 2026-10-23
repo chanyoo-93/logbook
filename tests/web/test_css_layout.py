@@ -439,11 +439,12 @@ def test_task_form_fields_wrap_in_a_responsive_grid_with_full_width_title_and_de
     assert "grid-column: 1 / -1" in full
 
 
-def test_running_timer_keeps_panel_colors_with_an_ok_left_line() -> None:
-    # 사용자 결정(2026-10-15): 색을 뒤집은 띠는 취소했다. 다른 패널과 같은 색에 왼쪽 초록 선.
+def test_running_timer_keeps_panel_colors_without_a_left_line() -> None:
+    # 사용자 결정(2026-10-23): 왼쪽 초록 선도 없앴다. 다른 패널과 같은 모양이다.
     band = _declarations(_read("components.css"), ".timer--running")
 
-    assert band == {"border-left: 4px solid var(--ok)", "color: var(--ink)"}
+    assert band == {"color: var(--ink)"}
+    assert not any(d.startswith("border") for d in band)
 
 
 def test_running_timer_has_no_band_overrides() -> None:

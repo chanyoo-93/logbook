@@ -154,6 +154,12 @@ def test_summary_numbers(client: TestClient, web_engine: Engine) -> None:
     assert "완료 태스크 1건" in summary
 
 
+def test_summary_panel_title_is_weekly_summary(client: TestClient) -> None:
+    title = by_id(_get(client), "summary-title")
+
+    assert title.text == "주간 요약"
+
+
 def test_summary_chart_data(client: TestClient, web_engine: Engine) -> None:
     _seed_week(web_engine)
 
