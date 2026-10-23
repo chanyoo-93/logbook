@@ -478,8 +478,15 @@ def test_today_progress_done_fill_uses_ok_color() -> None:
     assert "display: flex" in _declarations(css, ".stat__progress")
 
 
+def test_menu_button_in_a_table_draws_its_focus_ring_inside() -> None:
+    # 표 스크롤 상자가 첫 행 위·마지막 행 아래의 바깥 윤곽선을 자르지 않게 안쪽에 그린다
+    declarations = _declarations(_read("dashboard.css"), ".grid .icon-button:focus-visible")
+
+    assert "outline-offset: -2px" in declarations
+
+
 def test_log_actions_column_shrinks_to_the_menu_button() -> None:
-    declarations = _declarations(_read("logs.css"), ".grid .grid__menu-cell")
+    declarations = _declarations(_read("dashboard.css"), ".grid .grid__menu-cell")
 
     assert "width: 1%" in declarations
     assert "text-align: right" in declarations

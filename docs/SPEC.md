@@ -418,6 +418,7 @@ Phase 5에서 대시보드(`/`)와 기록(`/logs`) 화면, JSON API를 구현했
 - **표 머리와 행 메뉴(Phase 9 보완, 2026-10-23):** 기록 표, 설정의 프로젝트 표·카테고리 색 표는 컬럼명(표 머리)을 화면에서 숨긴다. 표 머리는 남겨 화면 낭독기가 읽는다(`visually-hidden`). 대시보드 최근 기록 표는 그대로다. 기록·프로젝트 행의 동작은 ⋮ 버튼 하나(`aria-label` 예: `기록 5 동작`, `프로젝트 payment 동작`)와 그 아래 메뉴(`role="menu"`, 항목 `role="menuitem"`, 공용 부품 `partials/menu.html`)에 있다.
   - 키보드: ⋮에서 Enter·Space·아래 화살표로 열면 첫 항목, 위 화살표로 열면 마지막 항목에 포커스가 간다. 위·아래 화살표(끝에서 돌아감)와 Home·End로 이동하고 비활성 항목은 건너뛴다. Esc는 닫고 ⋮로 포커스를 돌린다. 바깥을 누르거나 Tab으로 나가면 닫힌다. 한 번에 메뉴 하나만 열린다. 항목을 누르면 메뉴가 닫히고 포커스는 ⋮로 돌아간다(행을 다시 그리면 기존 포커스 규칙이 옮긴다).
   - 위치: 표 스크롤 상자에 잘리지 않게 메뉴는 화면 기준(`position: fixed`)으로 ⋮ 아래 오른쪽 정렬로 뜨고, 화면 좌우 안으로 맞추며 아래 공간이 모자라면 위로 연다(`app.js`가 `element.style`로 정한다, CSP 허용). 스크롤하거나 창 크기를 바꾸면 닫힌다.
+  - 한계: 비활성 항목(`common`의 `보관`)은 `disabled`라 키보드 이동에서 빠지고, 사유 설명(`title`)은 마우스를 올릴 때만 보인다(키보드·터치·화면 낭독기에는 사유가 전해지지 않는다). 단일 사용자 도구라 이대로 둔다(후속 항목).
   - 아이콘(`partials/icons.html`)은 인라인 SVG(`aria-hidden`, `currentColor`)이고 뜻은 버튼의 `aria-label`·`title`이 맡는다.
 - **의존성(SortableJS):** `static/vendor/sortable-1.15.7.min.js`(SortableJS 1.15.7, MIT, 출처·sha256은 `static/vendor/README.md`)이고 `tasks.html`만 싣는다(대시보드와 다른 화면은 싣지 않는다). 스타일은 CSSOM으로만 바꾸므로 CSP는 바뀌지 않았다.
 
