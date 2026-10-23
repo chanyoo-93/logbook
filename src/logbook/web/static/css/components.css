@@ -105,6 +105,8 @@
 
 .dot {
   flex: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--dot-ring);
 }
 
 .pill--ok {

@@ -55,6 +55,20 @@
     }
   });
 
+  // 타이머 경과를 갱신(#timer-elapsed 교체)하면 취소 버튼의 확인 문구도 최신 경과로 바꾼다.
+  // 버튼을 다시 그리면 포커스가 사라지므로 hx-confirm 속성만 바꾼다. htmx는 요청을 보낼 때 속성을 읽는다.
+  document.addEventListener("htmx:afterSettle", function (event) {
+    var target = event.target;
+    if (!target || target.id !== "timer-elapsed" || !target.getAttribute) {
+      return;
+    }
+    var message = target.getAttribute("data-cancel-confirm");
+    var button = document.querySelector('#timer [hx-post="/timer/cancel"]');
+    if (message && button) {
+      button.setAttribute("hx-confirm", message);
+    }
+  });
+
   // 등록·수정 화면: Esc는 취소 링크([data-cancel])를 누른다. 설명 칸 안에서도 동작한다.
   // 한글 조합 중의 Esc(조합 취소)는 조합 입력기의 몫이라 건드리지 않는다.
   // 선택 상자의 Esc는 목록을 닫는 데 쓰므로 화면 취소로 넘기지 않는다(입력이 사라지지 않게).

@@ -227,6 +227,15 @@ def test_static_text_files_are_utf8_without_carriage_returns() -> None:
         assert b"\r" not in data
 
 
+@pytest.mark.parametrize(
+    "needle", ["timer-elapsed", "data-cancel-confirm", "hx-confirm", "/timer/cancel"]
+)
+def test_app_js_refreshes_the_cancel_confirm_after_the_elapsed_swap(needle: str) -> None:
+    script = (STATIC_ROOT / "js" / "app.js").read_text(encoding="utf-8")
+
+    assert needle in script
+
+
 BOARD_JS = STATIC_ROOT / "js" / "board.js"
 
 

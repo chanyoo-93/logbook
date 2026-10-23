@@ -55,12 +55,15 @@ _VERSION_LENGTH = 16
 def project_color(project: Project) -> str:
     """지정한 색(검증된 #rrggbb)이 있으면 그 색, 없으면 프로젝트 ID로 고른 CHART_PALETTE 색.
 
+    자동 색은 팔레트를 끝에서부터 거꾸로 쓴다. 카테고리는 앞에서부터 쓰므로
+    기본 프로젝트(common)와 기본 카테고리가 같은 색이 되지 않는다.
     ID는 바뀌지 않으므로 같은 프로젝트는 어느 화면·어느 주에서도 같은 색이다.
     """
     color = project.color or ""
     if services.is_valid_color(color):
         return color
-    return CHART_PALETTE[(project.id - 1) % len(CHART_PALETTE)]
+    count = len(CHART_PALETTE)
+    return CHART_PALETTE[(count - 1 - (project.id - 1)) % count]
 
 
 def _palette_color(position: int) -> str:
