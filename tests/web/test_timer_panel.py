@@ -98,6 +98,33 @@ def test_elapsed_fragment(client: TestClient, web_engine: Engine, clock: Clock) 
     assert "timer" not in _ids(response.text)
 
 
+def test_elapsed_fragment_carries_the_latest_cancel_confirm(
+    client: TestClient, web_engine: Engine, clock: Clock
+) -> None:
+    _start(web_engine)
+    clock.advance(seconds=61)
+
+    response = client.get("/timer/elapsed", headers=HTMX)
+
+    confirm = str(by_id(response.text, "timer-elapsed").attrs["data-cancel-confirm"])
+    assert "경과 1m" in confirm
+    assert "환불 API 설계" in confirm
+
+
+def test_panel_cancel_confirm_matches_the_elapsed_span(
+    client: TestClient, web_engine: Engine, clock: Clock
+) -> None:
+    _start(web_engine)
+    clock.advance(minutes=85)
+
+    html = client.get("/timer", headers=HTMX).text
+
+    cancel = next(e for e in all_by_tag(html, "button") if e.text == "취소")
+    elapsed = by_id(html, "timer-elapsed")
+    assert elapsed.attrs["data-cancel-confirm"] == cancel.attrs["hx-confirm"]
+    assert "경과 1h 25m" in str(cancel.attrs["hx-confirm"])
+
+
 def test_elapsed_without_timer_returns_empty_panel(client: TestClient) -> None:
     response = client.get("/timer/elapsed", headers=HTMX)
 
