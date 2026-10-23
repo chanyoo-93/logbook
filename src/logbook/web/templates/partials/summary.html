@@ -5,7 +5,7 @@
 {% set categories = chart["categories"] %}
 <section id="summary" class="panel summary" aria-labelledby="summary-title" data-chart='{{ chart|tojson }}'{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
   <div class="panel__head">
-    <h2 id="summary-title" class="panel__title">이번 주 요약</h2>
+    <h2 id="summary-title" class="panel__title">주간 요약</h2>
     <p class="panel__meta">{{ summary.heading }}</p>
   </div>
   <dl class="stats">

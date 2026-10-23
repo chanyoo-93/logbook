@@ -1,0 +1,10 @@
+{# 공용 부품: 아이콘(인라인 SVG). 장식이라 aria-hidden이고, 색은 currentColor(글자색)를 따른다. 뜻은 감싸는 버튼의 aria-label이 맡는다. #}
+{% macro icon_copy() -%}
+<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+{%- endmacro %}
+{% macro icon_download() -%}
+<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 4v11"/><path d="m7 11 5 5 5-5"/><path d="M5 20h14"/></svg>
+{%- endmacro %}
+{% macro icon_more() -%}
+<svg class="icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+{%- endmacro %}

@@ -15,6 +15,7 @@
 .report__actions {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--space-2);
 }
 
@@ -25,8 +26,20 @@ a.btn {
 }
 
 .report > .form-message,
-.report__preview {
+.report__preview-box {
   margin: var(--space-3) var(--space-4);
+}
+
+/* Markdown 상자: 복사 아이콘을 오른쪽 위에 겹쳐 둔다(GitHub 코드 블록처럼). 글이 아이콘 밑으로 들어가지 않게 오른쪽을 비운다. */
+.report__preview-box {
+  position: relative;
+}
+
+.report__copy {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  background: var(--bg);
 }
 
 .report__warnings {
@@ -38,7 +51,8 @@ a.btn {
 }
 
 .report__preview {
-  padding: var(--space-3);
+  margin: 0;
+  padding: var(--space-3) calc(2.25rem + var(--space-3)) var(--space-3) var(--space-3);
   border: 1px solid var(--rule);
   border-radius: var(--radius-md);
   background: var(--bg);

@@ -15,6 +15,7 @@ from logbook.web.context import WebContext
 from logbook.web.pages.settings import CATEGORY_NOTE, FONT_NOTE
 from tests.web.conftest import LOCAL_BASE_URL
 from tests.web.helpers import (
+    Element,
     add_project,
     all_by_tag,
     by_class,
@@ -70,6 +71,66 @@ def test_common_row_has_no_archive_button(client: TestClient, web_engine: Engine
     ]
     assert "/settings/projects/payment/archive" in archive_urls
     assert "/settings/projects/common/archive" not in archive_urls
+
+
+def _row(html: str, row_id: str) -> str:
+    start = html.index(f'id="{row_id}"')
+    return html[start : html.index("</tr>", start)]
+
+
+def _menu_items(row_html: str) -> list[Element]:
+    return [e for e in parse_html(row_html) if e.attrs.get("role") == "menuitem"]
+
+
+def test_project_rows_put_actions_in_a_context_menu(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "payment", "결제")
+
+    row = _row(client.get("/settings").text, "project-payment")
+
+    buttons = [e for e in parse_html(row) if e.tag == "button"]
+    menu_button = buttons[0]
+    assert "menu__button" in str(menu_button.attrs.get("class")).split()
+    assert menu_button.attrs.get("aria-haspopup") == "menu"
+    assert menu_button.attrs.get("aria-label") == "프로젝트 payment 동작"
+    assert [e.attrs.get("role") for e in parse_html(row) if e.tag == "div"].count("menu") == 1
+    items = _menu_items(row)
+    assert [e.text for e in items] == ["수정", "보관"]
+    assert items[0].attrs.get("hx-get") == "/settings/projects/payment/edit"
+    assert items[1].attrs.get("hx-post") == "/settings/projects/payment/archive"
+    assert "menu__item--danger" in str(items[1].attrs.get("class")).split()
+    assert not [e for e in buttons if "btn" in str(e.attrs.get("class")).split()]
+
+
+def test_common_menu_has_a_disabled_archive_item(client: TestClient) -> None:
+    row = _row(client.get("/settings").text, "project-common")
+
+    items = _menu_items(row)
+    assert [e.text for e in items] == ["수정", "보관"]
+    archive = items[1]
+    assert "disabled" in archive.attrs
+    assert "hx-post" not in archive.attrs
+    assert archive.attrs.get("title") == "common 프로젝트는 보관할 수 없습니다"
+
+
+def test_archived_project_menu_offers_unarchive(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "old", "옛 프로젝트")
+    with db.session_scope(web_engine) as s:
+        services.archive_project(s, "old")
+
+    items = _menu_items(_row(client.get("/settings").text, "project-old"))
+
+    assert [e.text for e in items] == ["수정", "보관 해제"]
+    assert items[1].attrs.get("hx-post") == "/settings/projects/old/unarchive"
+    assert "disabled" not in items[1].attrs
+
+
+def test_project_and_category_table_heads_are_hidden_on_screen(client: TestClient) -> None:
+    html = client.get("/settings").text
+
+    heads = [e for e in parse_html(html) if e.tag == "thead"]
+    assert len(heads) == 2
+    assert all("visually-hidden" in str(e.attrs.get("class")).split() for e in heads)
+    assert "동작" in [e.text for e in parse_html(html) if e.tag == "th"]
 
 
 def test_invalid_color_from_import_is_shown_as_auto(client: TestClient, web_engine: Engine) -> None:

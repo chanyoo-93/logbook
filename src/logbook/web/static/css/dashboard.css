@@ -217,6 +217,18 @@
   outline-offset: -2px;
 }
 
+/* 행 ⋮ 버튼도 같은 이유로 안쪽에 그린다(표 머리를 숨겨 첫 행 위가 곧 상자 끝이다). */
+.grid .icon-button:focus-visible {
+  outline-offset: -2px;
+}
+
+/* 행 동작 칸(기록 표·설정 프로젝트 표): ⋮ 버튼 하나에 맞춰 줄이고 오른쪽 끝에 붙인다. */
+.grid .grid__menu-cell {
+  width: 1%;
+  padding-inline: var(--space-2);
+  text-align: right;
+}
+
 /* 표 안 색 고르기 칸(카테고리 색 표)도 같은 이유로 안쪽에 그린다. */
 .grid input[type="color"]:focus-visible {
   outline-offset: -2px;
