@@ -34,6 +34,7 @@ COLOR_TOKENS = (
     "--accent-soft",
     "--shadow-soft",
     "--shadow-raised",
+    "--dot-ring",
 )
 CONTRAST_PAIRS = (
     ("--ink", "--bg"),
@@ -53,6 +54,9 @@ NON_TEXT_PAIRS = (
     ("--control-border", "--surface"),
     ("--control-border", "--bg"),
 )
+# 색 점 테두리: 밝은 테마는 투명(점 모양 그대로), 어두운 테마만 바탕과 3:1 이상 대비를 본다.
+DOT_RING_LIGHT = "transparent"
+DOT_RING_BACKGROUNDS = ("--surface", "--bg")
 MIN_CONTRAST = 4.5
 MIN_NON_TEXT_CONTRAST = 3.0
 
@@ -155,6 +159,21 @@ def test_control_border_meets_non_text_contrast(
     ratio = _contrast(colors[foreground], colors[background])
 
     assert ratio >= MIN_NON_TEXT_CONTRAST, f"{theme} {foreground}/{background}: {ratio:.2f}"
+
+
+def test_dot_ring_is_transparent_in_light_theme(themes: dict[str, dict[str, str]]) -> None:
+    assert themes["light"]["--dot-ring"] == DOT_RING_LIGHT
+
+
+@pytest.mark.parametrize("background", DOT_RING_BACKGROUNDS)
+def test_dark_dot_ring_meets_non_text_contrast(
+    themes: dict[str, dict[str, str]], background: str
+) -> None:
+    dark = themes["dark"]
+
+    ratio = _contrast(dark["--dot-ring"], dark[background])
+
+    assert ratio >= MIN_NON_TEXT_CONTRAST, f"dark --dot-ring/{background}: {ratio:.2f}"
 
 
 def test_colors_are_literals_only_inside_the_two_root_blocks(css: str, other_css: str) -> None:

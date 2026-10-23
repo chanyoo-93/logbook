@@ -70,6 +70,8 @@ TASK_CONTROLS = ".task-form input, .task-form select, .task-form textarea"
             "border: 1px solid var(--control-border)",
         ),
         ("report.css", ".report > .form-message:empty", "margin: 0"),
+        ("components.css", ".dot", "border-radius: 50%"),
+        ("components.css", ".dot", "box-shadow: 0 0 0 1px var(--dot-ring)"),
     ],
 )
 def test_layout_rule_is_declared(file_name: str, selector: str, declaration: str) -> None:
