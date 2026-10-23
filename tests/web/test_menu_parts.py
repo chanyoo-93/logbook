@@ -77,6 +77,10 @@ def test_menu_macro_button_contains_the_more_icon() -> None:
         "menu__list",
         "hidden",
         "closeMenus",
+        # 항목을 누르면 ⋮로 포커스를 돌린다(삭제 확인 창 취소 뒤에도 포커스가 남는다)
+        'closeMenu(item.closest(".menu"), true)',
+        # 크기를 재기 전에 이전 자리를 지운다
+        'list.style.left = "0px"',
     ],
 )
 def test_app_js_handles_the_context_menu(needle: str) -> None:

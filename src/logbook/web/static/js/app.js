@@ -161,6 +161,9 @@
 
   function placeMenu(menu) {
     var list = menuList(menu);
+    // 이전에 연 자리가 폭 계산(shrink-to-fit)에 끼어들지 않게 먼저 왼쪽 위로 옮기고 잰다.
+    list.style.left = "0px";
+    list.style.top = "0px";
     var rect = menuButton(menu).getBoundingClientRect();
     var root = document.documentElement;
     var left = Math.min(rect.right - list.offsetWidth, root.clientWidth - list.offsetWidth - MENU_GAP);
@@ -200,8 +203,9 @@
     }
     var item = target.closest('.menu__list [role="menuitem"]');
     if (item) {
-      // 항목의 동작(htmx)은 이 클릭에서 그대로 시작된다. 메뉴만 닫는다.
-      closeMenus(null);
+      // 항목의 동작(htmx)은 이 클릭에서 그대로 시작된다. 메뉴를 닫고 포커스를 ⋮로 돌린다
+      // (삭제 확인 창에서 취소해도 포커스가 사라지지 않는다. 다시 그리면 data-focus 규칙이 옮긴다).
+      closeMenu(item.closest(".menu"), true);
       return;
     }
     closeMenus(null);
