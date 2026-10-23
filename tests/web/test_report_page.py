@@ -20,6 +20,53 @@ from tests.web.helpers import (
 HTMX = {"HX-Request": "true"}
 
 
+def _report_with_one_log(client: TestClient, web_engine: Engine) -> str:
+    add_project(web_engine, "payment", "결제")
+    add_log(web_engine, minutes=90, note="결제 재시도", project="payment", day=FIXED_NOW.date())
+    return client.get("/report").text
+
+
+def test_copy_is_an_icon_button_on_the_markdown_box(client: TestClient, web_engine: Engine) -> None:
+    html = _report_with_one_log(client, web_engine)
+
+    copy = [e for e in parse_html(html) if e.attrs.get("data-copy-target") == "report-markdown"]
+    assert len(copy) == 1
+    button = copy[0]
+    assert button.tag == "button"
+    assert button.attrs.get("type") == "button"
+    assert "icon-button" in str(button.attrs.get("class")).split()
+    assert button.attrs.get("aria-label") == "Markdown 복사"
+    assert button.attrs.get("title") == "Markdown 복사"
+    assert button.text.strip() == ""
+    # 복사 아이콘은 Markdown 상자 안(미리보기 위 오른쪽)에 겹쳐 둔다
+    box = html[html.index('class="report__preview-box"') :]
+    assert box.index('data-copy-target="report-markdown"') < box.index('id="report-markdown"')
+    assert box.index('id="report-markdown"') < box.index("</div>")
+    actions = html[html.index('class="report__actions"') : html.index('id="copy-status"')]
+    assert "data-copy-target" not in actions
+
+
+def test_download_is_an_icon_link(client: TestClient, web_engine: Engine) -> None:
+    html = _report_with_one_log(client, web_engine)
+
+    links = [
+        e
+        for e in parse_html(html)
+        if e.tag == "a" and str(e.attrs.get("href", "")).startswith("/report/download")
+    ]
+    assert len(links) == 1
+    link = links[0]
+    assert "download" in link.attrs
+    assert "icon-button" in str(link.attrs.get("class")).split()
+    assert link.attrs.get("aria-label") == "Markdown 내려받기"
+    assert link.attrs.get("title") == "Markdown 내려받기"
+    assert link.text.strip() == ""
+    actions = html[html.index('class="report__actions"') : html.index('id="copy-status"')]
+    assert "/report/download" in actions
+    assert ">복사<" not in html
+    assert ">내려받기<" not in html
+
+
 def test_report_page_shows_preview_copy_download_and_notes_form(
     client: TestClient, web_engine: Engine
 ) -> None:

@@ -352,9 +352,21 @@ def test_report_text_uses_document_font(selector: str) -> None:
     assert "font-family: var(--font-document)" in _declarations(_read("report.css"), selector)
 
 
+def test_report_copy_icon_sits_on_the_top_right_of_the_markdown_box() -> None:
+    css = _read("report.css")
+
+    assert "position: relative" in _declarations(css, ".report__preview-box")
+    copy = _declarations(css, ".report__copy")
+    assert {"position: absolute", "top: var(--space-2)", "right: var(--space-2)"} <= copy
+    # 글이 아이콘 밑으로 들어가지 않게 오른쪽을 비운다
+    preview = _declarations(css, ".report__preview")
+    padding = "var(--space-3) calc(2.25rem + var(--space-3)) var(--space-3) var(--space-3)"
+    assert f"padding: {padding}" in preview
+
+
 def test_report_preview_sets_document_font_after_font_inherit() -> None:
     css = _squash(_read("report.css"))
-    block = css[css.index(".report__preview { padding") :]
+    block = css[css.index(".report__preview { margin") :]
     block = block[: block.index("}")]
 
     assert block.index("font: inherit") < block.index("font-family: var(--font-document)")
