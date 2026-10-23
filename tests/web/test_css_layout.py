@@ -460,3 +460,24 @@ def test_today_progress_done_fill_uses_ok_color() -> None:
 
     assert "fill: var(--ok)" in _declarations(css, ".progress--done .progress__fill")
     assert "display: flex" in _declarations(css, ".stat__progress")
+
+
+def test_log_actions_column_shrinks_to_the_menu_button() -> None:
+    declarations = _declarations(_read("logs.css"), ".grid .grid__menu-cell")
+
+    assert "width: 1%" in declarations
+    assert "text-align: right" in declarations
+
+
+def test_context_menu_floats_above_scroll_boxes_instead_of_being_clipped() -> None:
+    # .table-wrap(overflow-x: auto)과 .panel(overflow: clip)이 absolute 메뉴를 잘랐다.
+    # fixed로 띄우고 app.js가 위치를 정한다.
+    declarations = _declarations(_read("components.css"), ".menu__list")
+    script = (Path(logbook.web.__file__).parent / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "position: fixed" in declarations
+    assert "function placeMenu" in script
+    assert "getBoundingClientRect" in script
+    assert 'addEventListener("scroll"' in script

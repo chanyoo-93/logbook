@@ -148,11 +148,33 @@
     closeMenus(menu);
     menuList(menu).hidden = false;
     menuButton(menu).setAttribute("aria-expanded", "true");
+    placeMenu(menu);
     var items = menuList(menu).querySelectorAll(MENU_ITEMS);
     if (items.length) {
-      items[focusIndex < 0 ? items.length - 1 : focusIndex].focus();
+      items[focusIndex < 0 ? items.length - 1 : focusIndex].focus({ preventScroll: true });
     }
   }
+
+  // 메뉴는 position: fixed라 표 스크롤 상자·구역에 잘리지 않는다. ⋮ 버튼 아래 오른쪽 정렬로 두되,
+  // 화면 가장자리 안으로 맞추고 아래 공간이 모자라면 버튼 위로 연다.
+  var MENU_GAP = 4;
+
+  function placeMenu(menu) {
+    var list = menuList(menu);
+    var rect = menuButton(menu).getBoundingClientRect();
+    var root = document.documentElement;
+    var left = Math.min(rect.right - list.offsetWidth, root.clientWidth - list.offsetWidth - MENU_GAP);
+    var top = rect.bottom + MENU_GAP;
+    if (top + list.offsetHeight > root.clientHeight - MENU_GAP && rect.top - MENU_GAP - list.offsetHeight >= MENU_GAP) {
+      top = rect.top - MENU_GAP - list.offsetHeight;
+    }
+    list.style.left = Math.max(left, MENU_GAP) + "px";
+    list.style.top = top + "px";
+  }
+
+  // 스크롤·창 크기 변경으로 ⋮ 버튼이 움직이면 메뉴가 떠 있지 않게 닫는다(스크롤은 상자 안 스크롤도 잡도록 capture).
+  document.addEventListener("scroll", function () { closeMenus(null); }, true);
+  window.addEventListener("resize", function () { closeMenus(null); });
 
   function closeMenu(menu, returnFocus) {
     closeMenus(null);

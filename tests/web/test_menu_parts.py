@@ -117,13 +117,12 @@ def test_components_css_has_menu_and_icon_rules(selector: str) -> None:
     assert _declarations(selector).strip()
 
 
-def test_menu_list_is_positioned_under_the_button_and_kept_on_screen() -> None:
+def test_menu_list_floats_above_scroll_boxes_and_is_kept_on_screen() -> None:
     menu = _declarations(".menu")
     lst = _declarations(".menu__list")
 
     assert "position: relative" in menu
-    assert "position: absolute" in lst
-    assert "right: 0" in lst
+    assert "position: fixed" in lst  # 표 스크롤 상자에 잘리지 않게. 위치는 app.js가 정한다
     assert "max-width: calc(100vw" in lst
     assert "z-index" in lst
     assert "display: none" in _declarations(".menu__list[hidden]")

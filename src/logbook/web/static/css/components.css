@@ -246,7 +246,7 @@ main > p[role="alert"] {
   transform: scale(0.97);
 }
 
-/* 컨텍스트 메뉴: ⋮ 아래 오른쪽 정렬. 좁은 화면에서도 화면 밖으로 나가지 않게 폭을 제한한다. */
+/* 컨텍스트 메뉴: 표 스크롤 상자(.table-wrap)와 구역(.panel)의 overflow에 잘리지 않도록 fixed로 띄우고, 위치(top·left)는 app.js가 ⋮ 버튼 기준으로 정한다. 폭은 화면 안으로 제한한다. */
 .menu {
   position: relative;
   display: inline-block;
@@ -257,15 +257,15 @@ main > p[role="alert"] {
 }
 
 .menu__list {
-  position: absolute;
-  top: 100%;
-  right: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
   z-index: 20;
   display: flex;
   flex-direction: column;
   min-width: 8rem;
   max-width: calc(100vw - 2 * var(--gutter));
-  margin-top: var(--space-1);
+  margin: 0;
   padding: var(--space-1);
   border: 1px solid var(--rule-strong);
   border-radius: var(--radius-md);

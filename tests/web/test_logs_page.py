@@ -17,6 +17,7 @@ from tests.web.helpers import (
     add_log,
     add_project,
     all_by_tag,
+    by_class,
     by_id,
     named_input,
     parse_html,
@@ -274,7 +275,9 @@ def test_unknown_project_htmx_writes_to_flash(client: TestClient, web_engine: En
     assert "<html" not in response.text
 
 
-def test_row_buttons_carry_confirm_text_and_version(client: TestClient, web_engine: Engine) -> None:
+def test_row_menu_items_carry_confirm_text_and_version(
+    client: TestClient, web_engine: Engine
+) -> None:
     log_id = add_log(web_engine, minutes=120, note="결제 재시도", day=W40_THURSDAY)
     with db.session_scope(web_engine) as s:
         version = worklog_version(services.get_worklog(s, log_id))
@@ -298,6 +301,48 @@ def test_row_buttons_carry_confirm_text_and_version(client: TestClient, web_engi
     assert len(edits) == 1
     assert edits[0].attrs["hx-target"] == "closest tr"
     assert edits[0].attrs["hx-swap"] == "outerHTML"
+    assert button.attrs["role"] == "menuitem"
+    assert edits[0].attrs["role"] == "menuitem"
+    assert "menu__item--danger" in str(button.attrs["class"]).split()
+    assert "menu__item" in str(edits[0].attrs["class"]).split()
+
+
+def test_table_head_stays_for_screen_readers_but_is_hidden_on_screen(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_log(web_engine, minutes=30, note="머리 확인", day=W40_THURSDAY)
+
+    html = client.get("/logs").text
+
+    head = all_by_tag(html, "thead")[0]
+    assert "visually-hidden" in str(head.attrs["class"]).split()
+    labels = [th.text.strip() for th in all_by_tag(html, "th")]
+    assert labels[0] == "ID"
+    assert labels[-1] == "동작"
+
+
+def test_row_actions_are_one_labelled_menu_per_row_not_buttons(
+    client: TestClient, web_engine: Engine
+) -> None:
+    first = add_log(web_engine, minutes=30, note="가", day=W40_THURSDAY)
+    second = add_log(web_engine, minutes=40, note="나", day=W40_THURSDAY)
+
+    html = client.get("/logs").text
+
+    buttons = by_class(html, "menu__button")
+    assert len(buttons) == 2
+    labels = [str(b.attrs["aria-label"]) for b in buttons]
+    assert sorted(labels) == sorted([f"기록 {first} 동작", f"기록 {second} 동작"])
+    for button in buttons:
+        assert button.attrs["aria-haspopup"] == "menu"
+        assert button.attrs["aria-expanded"] == "false"
+    lists = by_class(html, "menu__list")
+    assert [e.attrs["role"] for e in lists] == ["menu", "menu"]
+    assert all("hidden" in e.attrs for e in lists)
+    old_buttons = [
+        e for e in all_by_tag(html, "button") if "btn" in str(e.attrs.get("class") or "").split()
+    ]
+    assert not [e for e in old_buttons if e.text.strip() in ("수정", "삭제")]
 
 
 HOSTILE_NOTE = "\"><script>alert(1)</script>'<img src=x onerror=alert(2)>"
