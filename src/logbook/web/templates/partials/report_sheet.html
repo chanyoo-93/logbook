@@ -2,7 +2,7 @@
    data-copy-skip이 붙은 자리표시 문구와 복사 버튼은 화면에만 보이고 복사본에서 빠진다(report.js의 [data-copy-rich]). #}
 {% from "partials/icons.html" import icon_copy %}
 {% macro copy_button(target, name, done) -%}
-<button type="button" class="btn btn--small sheet__copy" data-copy-rich="{{ target }}" data-copy-done="{{ done }}" aria-label="{{ name }} 복사" data-copy-skip>복사</button>
+<button type="button" class="btn btn--small sheet__copy" data-copy-rich="{{ target }}" data-copy-done="{{ done }}" aria-label="{{ name }} 복사"{% if target == "sheet-notes" %} data-copy-warn-unsaved{% endif %} data-copy-skip>복사</button>
 {%- endmacro %}
 {% macro section_head(target, number, name, done) -%}
 <div class="sheet__section-head">
@@ -18,7 +18,7 @@
       <h3 id="sheet-title" class="sheet__title">{{ data.title }}</h3>
       <p id="sheet-meta" class="sheet__meta">{% if data.author %}작성자 {{ data.author }} · {% endif %}{{ data.week_label }} · {{ data.start }} ~ {{ data.end }}</p>
     </div>
-    <button type="button" class="btn btn--small sheet__copy-all" data-copy-rich="report-sheet" data-copy-done="보고서 전체를 복사했습니다." aria-label="보고서 전체 복사" data-copy-skip>{{ icon_copy() }}전체 복사</button>
+    <button type="button" class="btn btn--small sheet__copy-all" data-copy-rich="report-sheet" data-copy-done="보고서 전체를 복사했습니다." aria-label="보고서 전체 복사" data-copy-warn-unsaved data-copy-skip>{{ icon_copy() }}전체 복사</button>
   </header>
 
   <section id="sheet-hours" class="sheet__section" aria-labelledby="sheet-hours-title">

@@ -2,11 +2,35 @@
 // - [data-copy-target]: 대상 요소의 글자를 그대로 복사한다(원문 Markdown).
 // - [data-copy-rich]: 표 보기의 절이나 보고서 전체를 서식 있는 HTML과 글(표는 탭 구분) 두 형식으로 함께 넣는다.
 //   엑셀·한글은 HTML 표를 셀로 받는다. 자리표시 문구와 버튼([data-copy-skip])은 복사본에서 뺀다.
+// - 특이사항·리스크 칸에 저장하지 않은 내용이 있으면 폼에 안내를 보이고,
+//   특이사항이 들어가는 복사([data-copy-warn-unsaved])의 결과 줄에 경고를 덧붙인다.
 (function () {
   "use strict";
 
   var COPIED = "보고서를 클립보드에 복사했습니다.";
   var COPY_FAILED = "복사하지 못했습니다. 화면에서 직접 선택해 복사하세요.";
+  var UNSAVED_WARNING = " 저장하지 않은 특이사항·리스크는 들어가지 않았습니다.";
+
+  // 서버가 그린 값(defaultValue)과 지금 값이 다르면 저장하지 않은 것이다. 저장하면 폼이 다시 그려져 안내도 사라진다.
+  function hasUnsavedNotes() {
+    var form = document.getElementById("report-notes");
+    if (!form) {
+      return false;
+    }
+    return Array.prototype.some.call(form.querySelectorAll("textarea"), function (field) {
+      return field.value !== field.defaultValue;
+    });
+  }
+
+  document.addEventListener("input", function (event) {
+    if (!event.target.closest || !event.target.closest("#report-notes")) {
+      return;
+    }
+    var notice = document.getElementById("report-notes-dirty");
+    if (notice) {
+      notice.textContent = hasUnsavedNotes() ? notice.getAttribute("data-dirty-text") : "";
+    }
+  });
 
   function showStatus(text) {
     var status = document.getElementById("copy-status");
@@ -144,7 +168,12 @@
       return;
     }
     (rich ? copyRich(target) : copyText(target)).then(function (done) {
-      showStatus(done ? button.getAttribute("data-copy-done") || COPIED : COPY_FAILED);
+      if (!done) {
+        showStatus(COPY_FAILED);
+        return;
+      }
+      var warn = button.hasAttribute("data-copy-warn-unsaved") && hasUnsavedNotes();
+      showStatus((button.getAttribute("data-copy-done") || COPIED) + (warn ? UNSAVED_WARNING : ""));
     });
   });
 })();

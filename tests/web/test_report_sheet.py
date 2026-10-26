@@ -233,3 +233,31 @@ def test_commit_appendix_has_its_own_copy_button(
     assert ("sheet-commits", "복사", "커밋 내역 복사", "커밋 내역을 복사했습니다.") in (
         _rich_copy_buttons(html)
     )
+
+
+def test_notes_form_has_empty_unsaved_notice(client: TestClient) -> None:
+    html = client.get("/report").text
+
+    notice = by_id(html, "report-notes-dirty")
+    assert notice.attrs.get("role") == "status"
+    assert notice.text == ""  # report.js가 저장 안 한 내용이 있을 때 문구를 채운다
+    assert notice.attrs.get("data-dirty-text") == (
+        "저장하지 않은 내용이 있습니다. 표 보기와 복사에는 저장한 내용만 들어갑니다."
+    )
+    start = html.index('id="report-notes"')
+    form = html[start : html.index("</form>", start)]
+    assert 'id="report-notes-dirty"' in form
+
+
+def test_notes_copy_buttons_carry_unsaved_warning(client: TestClient, web_engine: Engine) -> None:
+    _seed(web_engine)
+
+    html = client.get("/report").text
+
+    warned = {
+        str(e.attrs.get("data-copy-rich") or e.attrs.get("data-copy-target"))
+        for e in parse_html(html)
+        if "data-copy-warn-unsaved" in e.attrs
+    }
+    # 특이사항이 들어가는 복사만 경고한다
+    assert warned == {"report-sheet", "sheet-notes", "report-markdown"}

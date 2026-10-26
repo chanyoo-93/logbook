@@ -10,7 +10,10 @@
     <label for="report-risks-text">리스크</label>
     <textarea id="report-risks-text" name="risks" rows="4">{{ body.notes.risks }}</textarea>
   </div>
-  <button type="submit" class="btn btn--primary">저장</button>
+  <div class="report-notes__actions">
+    <button type="submit" class="btn btn--primary">저장</button>
+    <p id="report-notes-dirty" class="report-notes__dirty" role="status" data-dirty-text="저장하지 않은 내용이 있습니다. 표 보기와 복사에는 저장한 내용만 들어갑니다."></p>
+  </div>
 {% if body.message %}
   <p id="report-notes-result" class="form-message{% if body.is_error %} form-message--error{% endif %}" role="{{ 'alert' if body.is_error else 'status' }}">{{ body.message }}</p>
 {% endif %}
