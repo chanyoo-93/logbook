@@ -28,13 +28,31 @@
 {% endfor %}
   </ul>
 {% endif %}
-{% if body.preview_error %}
-  <p class="form-message form-message--error" role="alert">{{ body.preview_error }}</p>
-{% else %}
-  <div class="report__preview-box">
-    <button type="button" class="icon-button report__copy" data-copy-target="report-markdown" aria-label="Markdown 복사" title="Markdown 복사">{{ icon_copy() }}</button>
-    <pre id="report-markdown" class="report__preview">{{ body.markdown }}</pre>
-  </div>
+{# 표 보기가 기본이고 원문은 탭으로 전환한다. JS가 없으면 탭은 숨은 채 표 보기 아래에 접힌 원문이 보인다(report.js가 탭을 켠다). #}
+  <div class="report__views" data-report-views>
+    <div id="report-tabs" class="report__tabs" role="tablist" aria-label="보고서 보기" hidden>
+      <button type="button" id="tab-sheet" class="report__tab" role="tab" aria-selected="true" aria-controls="panel-sheet">표 보기</button>
+      <button type="button" id="tab-raw" class="report__tab" role="tab" aria-selected="false" aria-controls="panel-raw" tabindex="-1">원문</button>
+    </div>
+    <div id="panel-sheet" class="report__panel" role="tabpanel" aria-labelledby="tab-sheet">
+{% if body.sheet %}
+{% include "partials/report_sheet.html" %}
 {% endif %}
+    </div>
+    <div id="panel-raw" class="report__panel" role="tabpanel" aria-labelledby="tab-raw">
+      <details class="report__raw">
+        <summary>원문(Markdown)</summary>
+        <p class="report__raw-note">내려받기·lb report와 같은 Markdown입니다(보고서 템플릿 적용).</p>
+{% if body.preview_error %}
+        <p class="form-message form-message--error" role="alert">{{ body.preview_error }}</p>
+{% else %}
+        <div class="report__preview-box">
+          <button type="button" class="icon-button report__copy" data-copy-target="report-markdown" aria-label="Markdown 복사" title="Markdown 복사">{{ icon_copy() }}</button>
+          <pre id="report-markdown" class="report__preview">{{ body.markdown }}</pre>
+        </div>
+{% endif %}
+      </details>
+    </div>
+  </div>
 {% include "partials/report_notes_form.html" %}
 </section>

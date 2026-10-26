@@ -6,6 +6,7 @@ Markdown 렌더링(jinja2)은 세션을 닫은 뒤에 한다.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 from urllib.parse import urlencode
@@ -15,7 +16,9 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse, Response
 
 from logbook.core import polish, services
+from logbook.core.duration import format_duration, parse_duration
 from logbook.core.errors import InvalidInputError
+from logbook.core.report import NO_VALUE
 from logbook.core.weeks import Week, parse_week, week_heading
 from logbook.web.context import Ctx, WebContext
 from logbook.web.errors import NOTES_CHANGED, ConflictError
@@ -69,6 +72,14 @@ class NotesValues:
 
 
 @dataclass(frozen=True)
+class ReportSheetView:
+    """표 보기: 보고서 데이터에 공수 표의 카테고리별 합계 행을 더한 것(Markdown에는 없다)."""
+
+    data: ReportData
+    category_totals: tuple[str, ...]  # data.categories 순서, 0이면 "-"
+
+
+@dataclass(frozen=True)
 class ReportBodyView:
     week: str  # '2026-W42'
     heading: str  # week_heading
@@ -81,6 +92,7 @@ class ReportBodyView:
     warnings: tuple[str, ...] = ()  # 커밋 수집 경고(미리보기 위에 보여 준다)
     polish: tuple[PolishButton, ...] = ()  # 문장 다듬기 버튼(없으면 영역을 숨긴다)
     polish_confirm: str = ""  # 버튼을 누를 때 보여 줄 확인 문구
+    sheet: ReportSheetView | None = None  # 표 보기(사용자 템플릿 오류여도 있다)
 
 
 @dataclass(frozen=True)
@@ -88,6 +100,18 @@ class ReportNavView:
     week: str  # 주차 입력칸에 채울 값
     prev_url: str | None
     next_url: str | None
+
+
+def category_totals(rows: Sequence[Sequence[str]]) -> tuple[str, ...]:
+    """공수 표 셀(시간 표기, 0이면 "-")을 열마다 더한 합계 표기. 행이 없으면 ()."""
+    if not rows:
+        return ()
+    sums = [0] * len(rows[0])
+    for row in rows:
+        for index, cell in enumerate(row):
+            if cell != NO_VALUE:
+                sums[index] += parse_duration(cell, max_minutes=None)
+    return tuple(format_duration(total) if total else NO_VALUE for total in sums)
 
 
 def notes_version(note: WeekNote | None) -> str:
@@ -151,6 +175,7 @@ def _body_view(
         warnings=warnings,
         polish=_polish_buttons(),
         polish_confirm=POLISH_CONFIRM.format(week=week.label),
+        sheet=ReportSheetView(data, category_totals([row.cells for row in data.matrix])),
     )
 
 

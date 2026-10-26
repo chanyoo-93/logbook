@@ -150,3 +150,201 @@ a.btn {
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
+
+/* 표 보기·원문 탭: 머리 메뉴처럼 아래 굵은 선이 지금 보기다. 탭은 report.js가 켠다(JS가 없으면 숨김). */
+.report__views {
+  margin: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.report__tabs {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-3);
+  border-bottom: 1px solid var(--rule);
+}
+
+.report__tab {
+  margin-bottom: -1px;
+  padding: var(--space-2) 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--ink-muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.report__tab:hover {
+  color: var(--ink);
+  border-bottom-color: var(--ink-muted);
+}
+
+.report__tab[aria-selected="true"] {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+  font-weight: 700;
+}
+
+.report__raw > summary {
+  width: fit-content;
+  margin-top: var(--space-4);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.report__raw > summary:hover {
+  color: var(--accent-hover);
+}
+
+/* 탭이 켜지면 원문은 탭이 고르므로 접기 머리는 감춘다(상자는 늘 열어 둔다). */
+.report__views--tabs .report__raw > summary {
+  display: none;
+}
+
+.report__raw-note {
+  margin: var(--space-2) 0;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.report__raw .report__preview-box {
+  margin: 0;
+}
+
+/* 표 보기: 장부. 숫자는 오른쪽·고른 폭, 가는 괘선, 합계 행은 위 실선과 아래 겹줄. 글꼴은 보고서 글꼴이다. */
+.sheet {
+  font-family: var(--font-document);
+}
+
+.sheet__head {
+  padding-bottom: var(--space-3);
+  border-bottom: 2px solid var(--ink);
+}
+
+.sheet__title {
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: var(--tracking-title);
+  line-height: 1.3;
+}
+
+.sheet__meta {
+  margin-top: var(--space-1);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.sheet__section {
+  margin-top: var(--space-6);
+}
+
+.sheet__heading {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.sheet__subheading {
+  margin: var(--space-3) 0 var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.sheet__summary {
+  margin-bottom: var(--space-3);
+}
+
+.sheet__text {
+  max-width: 70ch;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.sheet__empty {
+  color: var(--ink-muted);
+}
+
+.sheet__scroll {
+  overflow-x: auto;
+}
+
+.sheet__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.sheet__table th,
+.sheet__table td {
+  padding: var(--space-1) var(--space-3);
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+/* 제목·내용 칸만 줄바꿈한다. 좁은 화면에서는 이 칸이 최소 폭을 지키고 표 전체가 옆으로 스크롤된다(한 글자씩 꺾이지 않게). */
+.sheet__table .sheet__wrap {
+  min-width: 12rem;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.sheet__table th:first-child,
+.sheet__table td:first-child {
+  padding-left: 0;
+}
+
+.sheet__table th:last-child,
+.sheet__table td:last-child {
+  padding-right: 0;
+}
+
+.sheet__table thead th {
+  border-bottom-color: var(--rule-strong);
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+
+.sheet__table tbody th {
+  font-weight: 600;
+}
+
+.sheet__table .num {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.sheet__group th,
+.sheet__group td {
+  padding-top: var(--space-3);
+  font-weight: 700;
+}
+
+.sheet__table tfoot th,
+.sheet__table tfoot td {
+  border-top: 1px solid var(--ink);
+  border-bottom: 3px double var(--ink);
+  font-weight: 700;
+}
+
+.sheet__strong {
+  font-weight: 600;
+}
+
+.sheet__nil,
+.sheet__label {
+  color: var(--ink-muted);
+}
+
+.sheet__label {
+  font-size: var(--text-xs);
+}
+
+.sheet__hash {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+  font-size: var(--text-xs);
+}

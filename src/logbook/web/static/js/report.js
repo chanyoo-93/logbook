@@ -58,3 +58,100 @@
     });
   });
 })();
+
+// 보고서 보기 탭: 표 보기(기본)와 원문. JS가 있을 때만 탭을 켜고, 마지막에 고른 보기를 브라우저에 기억한다.
+// htmx가 보고서 본문을 바꿔 그리면(주 이동, 특이사항 저장) 다시 켠다.
+(function () {
+  "use strict";
+
+  var STORAGE_KEY = "logbook.report.view";
+  var VIEWS = ["sheet", "raw"];
+
+  function remembered() {
+    try {
+      var value = window.localStorage.getItem(STORAGE_KEY);
+      return VIEWS.indexOf(value) >= 0 ? value : "sheet";
+    } catch (error) {
+      return "sheet";
+    }
+  }
+
+  function remember(view) {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, view);
+    } catch (error) {
+      // 저장하지 못해도 이번 화면에서는 고른 보기가 그대로다.
+    }
+  }
+
+  function select(view, focus) {
+    VIEWS.forEach(function (name) {
+      var tab = document.getElementById("tab-" + name);
+      var panel = document.getElementById("panel-" + name);
+      if (!tab || !panel) {
+        return;
+      }
+      var chosen = name === view;
+      tab.setAttribute("aria-selected", chosen ? "true" : "false");
+      tab.tabIndex = chosen ? 0 : -1;
+      panel.hidden = !chosen;
+      if (chosen && focus) {
+        tab.focus();
+      }
+    });
+  }
+
+  function setup() {
+    var views = document.querySelector("[data-report-views]");
+    var tabs = document.getElementById("report-tabs");
+    if (!views || !tabs || views.classList.contains("report__views--tabs")) {
+      return;
+    }
+    views.classList.add("report__views--tabs");
+    tabs.hidden = false;
+    var raw = views.querySelector(".report__raw");
+    if (raw) {
+      raw.open = true;
+    }
+    select(remembered(), false);
+  }
+
+  document.addEventListener("click", function (event) {
+    var tab = event.target.closest && event.target.closest("#report-tabs [role=tab]");
+    if (!tab) {
+      return;
+    }
+    var view = tab.id.replace("tab-", "");
+    select(view, false);
+    remember(view);
+  });
+
+  document.addEventListener("keydown", function (event) {
+    var tab = event.target.closest && event.target.closest("#report-tabs [role=tab]");
+    if (!tab) {
+      return;
+    }
+    var index = VIEWS.indexOf(tab.id.replace("tab-", ""));
+    var next = null;
+    if (event.key === "ArrowRight") {
+      next = VIEWS[(index + 1) % VIEWS.length];
+    } else if (event.key === "ArrowLeft") {
+      next = VIEWS[(index + VIEWS.length - 1) % VIEWS.length];
+    } else if (event.key === "Home") {
+      next = VIEWS[0];
+    } else if (event.key === "End") {
+      next = VIEWS[VIEWS.length - 1];
+    }
+    if (next) {
+      event.preventDefault();
+      select(next, true);
+      remember(next);
+    }
+  });
+
+  document.addEventListener("DOMContentLoaded", setup);
+  document.addEventListener("htmx:afterSettle", setup);
+  if (document.readyState !== "loading") {
+    setup();
+  }
+})();

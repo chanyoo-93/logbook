@@ -1,0 +1,192 @@
+{# 표 보기: 보고서 데이터(ReportData)로 그린 장부 모양 보고서. 사용자 보고서 템플릿과 무관하게 기본 구조다.
+   data-copy-skip이 붙은 자리표시 문구는 화면에만 보이고 복사본에서 빠진다(report.js). #}
+{% set sheet = body.sheet %}
+{% set data = sheet.data %}
+<article id="report-sheet" class="sheet" aria-labelledby="sheet-title">
+  <header class="sheet__head">
+    <h3 id="sheet-title" class="sheet__title">{{ data.title }}</h3>
+    <p id="sheet-meta" class="sheet__meta">{% if data.author %}작성자 {{ data.author }} · {% endif %}{{ data.week_label }} · {{ data.start }} ~ {{ data.end }}</p>
+  </header>
+
+  <section id="sheet-hours" class="sheet__section" aria-labelledby="sheet-hours-title">
+    <h4 id="sheet-hours-title" class="sheet__heading">1. 공수 요약</h4>
+    <p class="sheet__summary">총 <strong>{{ data.total }}</strong> · 기록 {{ data.log_count }}건 · 완료 태스크 {{ data.done_task_count }}건</p>
+{% if data.matrix %}
+    <div class="sheet__scroll">
+      <table id="sheet-hours-table" class="sheet__table">
+        <thead>
+          <tr>
+            <th scope="col">프로젝트</th>
+{% for category in data.categories %}
+            <th scope="col" class="num">{{ category }}</th>
+{% endfor %}
+            <th scope="col" class="num">합계</th>
+            <th scope="col" class="num">비율</th>
+          </tr>
+        </thead>
+        <tbody>
+{% for row in data.matrix %}
+          <tr>
+            <th scope="row">{{ row.project }}</th>
+{% for cell in row.cells %}
+            <td class="num{% if cell == '-' %} sheet__nil{% endif %}">{{ cell }}</td>
+{% endfor %}
+            <td class="num sheet__strong">{{ row.total }}</td>
+            <td class="num">{{ row.percent }}</td>
+          </tr>
+{% endfor %}
+        </tbody>
+        <tfoot>
+          <tr>
+            <th scope="row">합계</th>
+{% for total in sheet.category_totals %}
+            <td class="num{% if total == '-' %} sheet__nil{% endif %}">{{ total }}</td>
+{% endfor %}
+            <td class="num">{{ data.total }}</td>
+            <td class="num">100%</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+{% endif %}
+  </section>
+
+  <section id="sheet-results" class="sheet__section" aria-labelledby="sheet-results-title">
+    <h4 id="sheet-results-title" class="sheet__heading">2. 프로젝트별 실적</h4>
+{% if data.sections %}
+    <div class="sheet__scroll">
+      <table id="sheet-results-table" class="sheet__table">
+        <thead>
+          <tr>
+            <th scope="col">프로젝트</th>
+            <th scope="col">상태</th>
+            <th scope="col">태스크</th>
+            <th scope="col" class="num">실적</th>
+            <th scope="col" class="num">예상</th>
+          </tr>
+        </thead>
+{% for section in data.sections %}
+        <tbody>
+          <tr class="sheet__group">
+            <th scope="rowgroup">{{ section.project }}</th>
+            <td></td>
+            <td></td>
+            <td class="num">{{ section.total }}</td>
+            <td></td>
+          </tr>
+{% for task in section.tasks %}
+          <tr>
+            <td></td>
+            <td>{{ task.status }}</td>
+            <td class="sheet__wrap">{{ task.title }} #{{ task.task_id }}</td>
+            <td class="num">{% if task.actual_label != "실제" %}<span class="sheet__label">{{ task.actual_label }}</span> {% endif %}{{ task.actual }}</td>
+            <td class="num">{{ task.estimate or "" }}</td>
+          </tr>
+{% endfor %}
+{% for label, minutes in section.others %}
+          <tr>
+            <td></td>
+            <td>기타</td>
+            <td class="sheet__wrap">{{ label }}</td>
+            <td class="num">{{ minutes }}</td>
+            <td></td>
+          </tr>
+{% endfor %}
+        </tbody>
+{% endfor %}
+      </table>
+    </div>
+{% else %}
+    <p class="sheet__empty" data-copy-skip>기록이 없습니다.</p>
+{% endif %}
+  </section>
+
+  <section id="sheet-notes" class="sheet__section" aria-labelledby="sheet-notes-title">
+    <h4 id="sheet-notes-title" class="sheet__heading">3. 특이사항 / 리스크</h4>
+{% if data.notes %}
+    <h5 class="sheet__subheading">특이사항</h5>
+    <p id="sheet-notes-text" class="sheet__text">{{ data.notes }}</p>
+{% endif %}
+{% if data.risks %}
+    <h5 class="sheet__subheading">리스크</h5>
+    <p id="sheet-risks-text" class="sheet__text">{{ data.risks }}</p>
+{% endif %}
+{% if not data.notes and not data.risks %}
+    <p class="sheet__empty" data-copy-skip>(작성하세요)</p>
+{% endif %}
+  </section>
+
+  <section id="sheet-plan" class="sheet__section" aria-labelledby="sheet-plan-title">
+    <h4 id="sheet-plan-title" class="sheet__heading">4. 다음 주 계획</h4>
+{% if data.plan %}
+    <div class="sheet__scroll">
+      <table id="sheet-plan-table" class="sheet__table">
+        <thead>
+          <tr>
+            <th scope="col">프로젝트</th>
+            <th scope="col">태스크</th>
+            <th scope="col" class="num">예상</th>
+            <th scope="col">비고</th>
+          </tr>
+        </thead>
+{% for group in data.plan %}
+        <tbody>
+          <tr class="sheet__group">
+            <th scope="rowgroup">{{ group.project }}</th>
+            <td></td>
+            <td class="num">{{ group.estimate_total }}</td>
+            <td></td>
+          </tr>
+{% for item in group.items %}
+          <tr>
+            <td></td>
+            <td class="sheet__wrap">{{ item.title }} #{{ item.task_id }}</td>
+            <td class="num">{{ item.estimate or "" }}</td>
+            <td>{% if item.carried %}이월 후보{% endif %}</td>
+          </tr>
+{% endfor %}
+        </tbody>
+{% endfor %}
+      </table>
+    </div>
+{% else %}
+    <p class="sheet__empty" data-copy-skip>계획된 태스크가 없습니다.</p>
+{% endif %}
+  </section>
+{% if data.commits %}
+
+  <section id="sheet-commits" class="sheet__section" aria-labelledby="sheet-commits-title">
+    <h4 id="sheet-commits-title" class="sheet__heading">부록. 커밋 내역</h4>
+    <div class="sheet__scroll">
+      <table id="sheet-commits-table" class="sheet__table">
+        <thead>
+          <tr>
+            <th scope="col">프로젝트</th>
+            <th scope="col">날짜</th>
+            <th scope="col">커밋</th>
+            <th scope="col">내용</th>
+          </tr>
+        </thead>
+{% for group in data.commits %}
+        <tbody>
+          <tr class="sheet__group">
+            <th scope="rowgroup">{{ group.project }} ({{ group.repo }})</th>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+{% for commit in group.commits %}
+          <tr>
+            <td></td>
+            <td class="num">{{ commit.date }}</td>
+            <td class="sheet__hash">{{ commit.hash }}</td>
+            <td class="sheet__wrap">{{ commit.subject }}</td>
+          </tr>
+{% endfor %}
+        </tbody>
+{% endfor %}
+      </table>
+    </div>
+  </section>
+{% endif %}
+</article>
