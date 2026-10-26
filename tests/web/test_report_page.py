@@ -26,7 +26,9 @@ def _report_with_one_log(client: TestClient, web_engine: Engine) -> str:
     return client.get("/report").text
 
 
-def test_copy_is_an_icon_button_on_the_markdown_box(client: TestClient, web_engine: Engine) -> None:
+def test_markdown_copy_is_a_labelled_button_in_raw_panel(
+    client: TestClient, web_engine: Engine
+) -> None:
     html = _report_with_one_log(client, web_engine)
 
     copy = [e for e in parse_html(html) if e.attrs.get("data-copy-target") == "report-markdown"]
@@ -34,19 +36,17 @@ def test_copy_is_an_icon_button_on_the_markdown_box(client: TestClient, web_engi
     button = copy[0]
     assert button.tag == "button"
     assert button.attrs.get("type") == "button"
-    assert "icon-button" in str(button.attrs.get("class")).split()
-    assert button.attrs.get("aria-label") == "Markdown 복사"
-    assert button.attrs.get("title") == "Markdown 복사"
-    assert button.text.strip() == ""
-    # 복사 아이콘은 Markdown 상자 안(미리보기 위 오른쪽)에 겹쳐 둔다
-    box = html[html.index('class="report__preview-box"') :]
-    assert box.index('data-copy-target="report-markdown"') < box.index('id="report-markdown"')
-    assert box.index('id="report-markdown"') < box.index("</div>")
+    assert "btn" in str(button.attrs.get("class")).split()
+    assert button.text == "Markdown 복사"
+    assert button.attrs.get("data-copy-done") == "Markdown 원문을 복사했습니다."
+    # 원문 탭 안, 미리보기 위에 둔다
+    raw = html[html.index('id="panel-raw"') :]
+    assert raw.index('data-copy-target="report-markdown"') < raw.index('id="report-markdown"')
     actions = html[html.index('class="report__actions"') : html.index('id="copy-status"')]
     assert "data-copy-target" not in actions
 
 
-def test_download_is_an_icon_link(client: TestClient, web_engine: Engine) -> None:
+def test_download_is_a_labelled_link(client: TestClient, web_engine: Engine) -> None:
     html = _report_with_one_log(client, web_engine)
 
     links = [
@@ -57,14 +57,12 @@ def test_download_is_an_icon_link(client: TestClient, web_engine: Engine) -> Non
     assert len(links) == 1
     link = links[0]
     assert "download" in link.attrs
-    assert "icon-button" in str(link.attrs.get("class")).split()
+    assert "btn" in str(link.attrs.get("class")).split()
+    assert link.text == "내려받기"
     assert link.attrs.get("aria-label") == "Markdown 내려받기"
-    assert link.attrs.get("title") == "Markdown 내려받기"
-    assert link.text.strip() == ""
     actions = html[html.index('class="report__actions"') : html.index('id="copy-status"')]
     assert "/report/download" in actions
-    assert ">복사<" not in html
-    assert ">내려받기<" not in html
+    assert "<svg" in actions  # 아이콘과 글자를 함께 보인다
 
 
 def test_report_page_shows_preview_copy_download_and_notes_form(

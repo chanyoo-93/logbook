@@ -8,7 +8,7 @@ from sqlalchemy import Engine
 from logbook.core.report import TEMPLATE_NAME
 from logbook.core.weeks import Week
 from logbook.web.pages.report import category_totals
-from tests.helpers import FIXED_NOW
+from tests.helpers import FIXED_NOW, FakeCollect
 from tests.web.helpers import add_log, add_project, add_task, by_id, parse_html
 
 W40 = Week(2026, 40)
@@ -156,7 +156,7 @@ def test_plan_table_groups_next_week_tasks(client: TestClient, web_engine: Engin
 def test_empty_sections_show_skipped_placeholders(client: TestClient) -> None:
     html = client.get("/report").text
 
-    skipped = [e for e in parse_html(html) if "data-copy-skip" in e.attrs]
+    skipped = [e for e in parse_html(html) if "data-copy-skip" in e.attrs and e.tag == "p"]
     texts = [e.text for e in skipped]
     assert "기록이 없습니다." in texts
     assert "(작성하세요)" in texts
@@ -188,3 +188,48 @@ def test_sheet_survives_broken_user_template(client: TestClient, tmp_home: Path)
 
     assert by_id(html, "report-sheet").tag == "article"
     assert "보고서 템플릿을 읽지 못했습니다" in html[html.index('id="panel-raw"') :]
+
+
+def _rich_copy_buttons(html: str) -> list[tuple[str, str, str, str]]:
+    return [
+        (
+            str(e.attrs["data-copy-rich"]),
+            e.text,
+            str(e.attrs.get("aria-label")),
+            str(e.attrs.get("data-copy-done")),
+        )
+        for e in parse_html(html)
+        if "data-copy-rich" in e.attrs
+    ]
+
+
+def test_sheet_has_full_and_section_copy_buttons(client: TestClient, web_engine: Engine) -> None:
+    _seed(web_engine)
+
+    html = client.get("/report").text
+
+    assert _rich_copy_buttons(html) == [
+        ("report-sheet", "전체 복사", "보고서 전체 복사", "보고서 전체를 복사했습니다."),
+        ("sheet-hours", "복사", "공수 요약 복사", "공수 요약을 복사했습니다."),
+        ("sheet-results", "복사", "프로젝트별 실적 복사", "프로젝트별 실적을 복사했습니다."),
+        ("sheet-notes", "복사", "특이사항 / 리스크 복사", "특이사항 / 리스크를 복사했습니다."),
+        ("sheet-plan", "복사", "다음 주 계획 복사", "다음 주 계획을 복사했습니다."),
+    ]
+    buttons = [e for e in parse_html(html) if "data-copy-rich" in e.attrs]
+    for button in buttons:
+        assert button.tag == "button"
+        assert button.attrs.get("type") == "button"
+        assert "data-copy-skip" in button.attrs  # 복사본에는 버튼이 들어가지 않는다
+        assert by_id(html, str(button.attrs["data-copy-rich"]))
+
+
+def test_commit_appendix_has_its_own_copy_button(
+    git_client: TestClient, fake_collect: FakeCollect
+) -> None:
+    html = git_client.get("/report").text
+
+    rows = _rows(html, "sheet-commits-table")
+    assert ["payment (payment-server)", "", "", ""] in rows
+    assert ("sheet-commits", "복사", "커밋 내역 복사", "커밋 내역을 복사했습니다.") in (
+        _rich_copy_buttons(html)
+    )

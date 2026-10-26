@@ -25,21 +25,24 @@ a.btn {
   text-decoration: none;
 }
 
-.report > .form-message,
-.report__preview-box {
+/* 아이콘+글자 버튼(내려받기, 전체 복사, Markdown 복사) */
+.report__download,
+.report__copy,
+.sheet__copy-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.report__download .icon,
+.report__copy .icon,
+.sheet__copy-all .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.report > .form-message {
   margin: var(--space-3) var(--space-4);
-}
-
-/* Markdown 상자: 복사 아이콘을 오른쪽 위에 겹쳐 둔다(GitHub 코드 블록처럼). 글이 아이콘 밑으로 들어가지 않게 오른쪽을 비운다. */
-.report__preview-box {
-  position: relative;
-}
-
-.report__copy {
-  position: absolute;
-  top: var(--space-2);
-  right: var(--space-2);
-  background: var(--bg);
 }
 
 .report__warnings {
@@ -52,7 +55,7 @@ a.btn {
 
 .report__preview {
   margin: 0;
-  padding: var(--space-3) calc(2.25rem + var(--space-3)) var(--space-3) var(--space-3);
+  padding: var(--space-3);
   border: 1px solid var(--rule);
   border-radius: var(--radius-md);
   background: var(--bg);
@@ -208,7 +211,16 @@ a.btn {
   font-size: var(--text-sm);
 }
 
-.report__raw .report__preview-box {
+.report__raw-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.report__raw-head .report__raw-note {
   margin: 0;
 }
 
@@ -218,8 +230,42 @@ a.btn {
 }
 
 .sheet__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
   padding-bottom: var(--space-3);
   border-bottom: 2px solid var(--ink);
+}
+
+/* 절 머리: 제목 오른쪽에 그 절만 복사하는 버튼. 버튼은 화면 글꼴을 쓴다. */
+.sheet__section-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+
+.sheet__section-head .sheet__heading {
+  margin: 0;
+}
+
+.sheet__copy,
+.sheet__copy-all {
+  font-family: var(--font-body);
+}
+
+.sheet__copy {
+  min-height: 1.5rem;
+  padding: 0 var(--space-2);
+  border-color: var(--rule);
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+.sheet__copy:hover {
+  color: var(--ink);
 }
 
 .sheet__title {

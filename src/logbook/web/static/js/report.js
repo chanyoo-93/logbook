@@ -1,9 +1,12 @@
-// 보고서 화면: [data-copy-target] 버튼이 대상 요소의 텍스트를 클립보드로 복사한다. 이벤트 위임이라 htmx가 본문을 바꿔도 동작한다.
+// 보고서 화면 복사. 이벤트 위임이라 htmx가 본문을 바꿔도 동작한다.
+// - [data-copy-target]: 대상 요소의 글자를 그대로 복사한다(원문 Markdown).
+// - [data-copy-rich]: 표 보기의 절이나 보고서 전체를 서식 있는 HTML과 글(표는 탭 구분) 두 형식으로 함께 넣는다.
+//   엑셀·한글은 HTML 표를 셀로 받는다. 자리표시 문구와 버튼([data-copy-skip])은 복사본에서 뺀다.
 (function () {
   "use strict";
 
   var COPIED = "보고서를 클립보드에 복사했습니다.";
-  var COPY_FAILED = "복사하지 못했습니다. 미리보기에서 직접 선택해 복사하세요.";
+  var COPY_FAILED = "복사하지 못했습니다. 화면에서 직접 선택해 복사하세요.";
 
   function showStatus(text) {
     var status = document.getElementById("copy-status");
@@ -12,7 +15,7 @@
     }
   }
 
-  // Clipboard API를 못 쓰면 대상을 선택한 뒤 execCommand("copy")로 대신한다.
+  // Clipboard API를 못 쓰면 대상을 선택한 뒤 execCommand("copy")로 대신한다. 선택 복사는 서식도 함께 넣는다.
   function copyBySelection(target) {
     var selection = window.getSelection();
     var range = document.createRange();
@@ -25,6 +28,7 @@
     } catch (error) {
       done = false;
     }
+    selection.removeAllRanges();
     return done;
   }
 
@@ -43,17 +47,103 @@
     return Promise.resolve(copyBySelection(target));
   }
 
+  // 복사본: 화면 전용 요소와 id를 빼고, 붙여 넣은 곳에서도 괘선과 숫자 정렬이 남도록 표 속성을 단다.
+  function cleanCopy(target) {
+    var copy = target.cloneNode(true);
+    copy.querySelectorAll("[data-copy-skip]").forEach(function (node) {
+      node.remove();
+    });
+    copy.removeAttribute("id");
+    copy.querySelectorAll("[id]").forEach(function (node) {
+      node.removeAttribute("id");
+    });
+    copy.querySelectorAll("table").forEach(function (table) {
+      table.setAttribute("border", "1");
+      table.setAttribute("cellpadding", "4");
+      table.setAttribute("cellspacing", "0");
+    });
+    copy.querySelectorAll(".num").forEach(function (cell) {
+      cell.setAttribute("align", "right");
+    });
+    return copy;
+  }
+
+  function oneLine(node) {
+    return node.textContent.replace(/\s+/g, " ").trim();
+  }
+
+  // 글 형식: 제목 앞에 빈 줄, 표는 행마다 칸을 탭으로 잇는다. 특이사항 글은 줄바꿈을 지킨다.
+  function collectLines(node, lines) {
+    Array.prototype.forEach.call(node.children, function (child) {
+      var tag = child.tagName;
+      if (tag === "TABLE") {
+        Array.prototype.forEach.call(child.rows, function (row) {
+          lines.push(Array.prototype.map.call(row.cells, oneLine).join("\t"));
+        });
+      } else if (/^H[1-6]$/.test(tag)) {
+        if (lines.length && lines[lines.length - 1] !== "") {
+          lines.push("");
+        }
+        lines.push(oneLine(child));
+      } else if (tag === "P") {
+        var text = child.classList.contains("sheet__text")
+          ? child.textContent.replace(/\r/g, "").trim()
+          : oneLine(child);
+        if (text) {
+          lines.push(text);
+        }
+      } else {
+        collectLines(child, lines);
+      }
+    });
+    return lines;
+  }
+
+  function copyRich(target) {
+    var copy = cleanCopy(target);
+    var html = copy.outerHTML;
+    // 끝의 빈 줄만 걷어 낸다(trim은 마지막 행의 빈 칸 탭까지 지운다).
+    var text = collectLines(copy, []).join("\n").replace(/^\n+|\n+$/g, "") + "\n";
+    var fallback = function () {
+      var holder = document.createElement("div");
+      holder.style.position = "fixed";
+      holder.style.left = "-10000px";
+      holder.style.top = "0";
+      holder.appendChild(copy);
+      document.body.appendChild(holder);
+      var done = copyBySelection(copy);
+      holder.remove();
+      return done;
+    };
+    if (navigator.clipboard && navigator.clipboard.write && window.ClipboardItem) {
+      var item = new window.ClipboardItem({
+        "text/html": new Blob([html], { type: "text/html" }),
+        "text/plain": new Blob([text], { type: "text/plain" }),
+      });
+      return navigator.clipboard.write([item]).then(
+        function () {
+          return true;
+        },
+        fallback
+      );
+    }
+    return Promise.resolve(fallback());
+  }
+
   document.addEventListener("click", function (event) {
-    var button = event.target.closest && event.target.closest("[data-copy-target]");
+    var button = event.target.closest && event.target.closest("[data-copy-target], [data-copy-rich]");
     if (!button) {
       return;
     }
-    var target = document.getElementById(button.getAttribute("data-copy-target"));
+    var rich = button.hasAttribute("data-copy-rich");
+    var target = document.getElementById(
+      button.getAttribute(rich ? "data-copy-rich" : "data-copy-target")
+    );
     if (!target) {
       showStatus(COPY_FAILED);
       return;
     }
-    copyText(target).then(function (done) {
+    (rich ? copyRich(target) : copyText(target)).then(function (done) {
       showStatus(done ? button.getAttribute("data-copy-done") || COPIED : COPY_FAILED);
     });
   });

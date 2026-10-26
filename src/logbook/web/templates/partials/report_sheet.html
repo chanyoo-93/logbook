@@ -1,15 +1,28 @@
 {# 표 보기: 보고서 데이터(ReportData)로 그린 장부 모양 보고서. 사용자 보고서 템플릿과 무관하게 기본 구조다.
-   data-copy-skip이 붙은 자리표시 문구는 화면에만 보이고 복사본에서 빠진다(report.js). #}
+   data-copy-skip이 붙은 자리표시 문구와 복사 버튼은 화면에만 보이고 복사본에서 빠진다(report.js의 [data-copy-rich]). #}
+{% from "partials/icons.html" import icon_copy %}
+{% macro copy_button(target, name, done) -%}
+<button type="button" class="btn btn--small sheet__copy" data-copy-rich="{{ target }}" data-copy-done="{{ done }}" aria-label="{{ name }} 복사" data-copy-skip>복사</button>
+{%- endmacro %}
+{% macro section_head(target, number, name, done) -%}
+<div class="sheet__section-head">
+      <h4 id="{{ target }}-title" class="sheet__heading">{{ number }}{{ name }}</h4>
+      {{ copy_button(target, name, done) }}
+    </div>
+{%- endmacro %}
 {% set sheet = body.sheet %}
 {% set data = sheet.data %}
 <article id="report-sheet" class="sheet" aria-labelledby="sheet-title">
   <header class="sheet__head">
-    <h3 id="sheet-title" class="sheet__title">{{ data.title }}</h3>
-    <p id="sheet-meta" class="sheet__meta">{% if data.author %}작성자 {{ data.author }} · {% endif %}{{ data.week_label }} · {{ data.start }} ~ {{ data.end }}</p>
+    <div class="sheet__head-text">
+      <h3 id="sheet-title" class="sheet__title">{{ data.title }}</h3>
+      <p id="sheet-meta" class="sheet__meta">{% if data.author %}작성자 {{ data.author }} · {% endif %}{{ data.week_label }} · {{ data.start }} ~ {{ data.end }}</p>
+    </div>
+    <button type="button" class="btn btn--small sheet__copy-all" data-copy-rich="report-sheet" data-copy-done="보고서 전체를 복사했습니다." aria-label="보고서 전체 복사" data-copy-skip>{{ icon_copy() }}전체 복사</button>
   </header>
 
   <section id="sheet-hours" class="sheet__section" aria-labelledby="sheet-hours-title">
-    <h4 id="sheet-hours-title" class="sheet__heading">1. 공수 요약</h4>
+    {{ section_head("sheet-hours", "1. ", "공수 요약", "공수 요약을 복사했습니다.") }}
     <p class="sheet__summary">총 <strong>{{ data.total }}</strong> · 기록 {{ data.log_count }}건 · 완료 태스크 {{ data.done_task_count }}건</p>
 {% if data.matrix %}
     <div class="sheet__scroll">
@@ -52,7 +65,7 @@
   </section>
 
   <section id="sheet-results" class="sheet__section" aria-labelledby="sheet-results-title">
-    <h4 id="sheet-results-title" class="sheet__heading">2. 프로젝트별 실적</h4>
+    {{ section_head("sheet-results", "2. ", "프로젝트별 실적", "프로젝트별 실적을 복사했습니다.") }}
 {% if data.sections %}
     <div class="sheet__scroll">
       <table id="sheet-results-table" class="sheet__table">
@@ -102,7 +115,7 @@
   </section>
 
   <section id="sheet-notes" class="sheet__section" aria-labelledby="sheet-notes-title">
-    <h4 id="sheet-notes-title" class="sheet__heading">3. 특이사항 / 리스크</h4>
+    {{ section_head("sheet-notes", "3. ", "특이사항 / 리스크", "특이사항 / 리스크를 복사했습니다.") }}
 {% if data.notes %}
     <h5 class="sheet__subheading">특이사항</h5>
     <p id="sheet-notes-text" class="sheet__text">{{ data.notes }}</p>
@@ -117,7 +130,7 @@
   </section>
 
   <section id="sheet-plan" class="sheet__section" aria-labelledby="sheet-plan-title">
-    <h4 id="sheet-plan-title" class="sheet__heading">4. 다음 주 계획</h4>
+    {{ section_head("sheet-plan", "4. ", "다음 주 계획", "다음 주 계획을 복사했습니다.") }}
 {% if data.plan %}
     <div class="sheet__scroll">
       <table id="sheet-plan-table" class="sheet__table">
@@ -156,7 +169,7 @@
 {% if data.commits %}
 
   <section id="sheet-commits" class="sheet__section" aria-labelledby="sheet-commits-title">
-    <h4 id="sheet-commits-title" class="sheet__heading">부록. 커밋 내역</h4>
+    {{ section_head("sheet-commits", "부록. ", "커밋 내역", "커밋 내역을 복사했습니다.") }}
     <div class="sheet__scroll">
       <table id="sheet-commits-table" class="sheet__table">
         <thead>
