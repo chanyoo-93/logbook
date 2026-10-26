@@ -1,6 +1,7 @@
 {% from "partials/choose_macro.html" import choose %}
 {% from "partials/marks.html" import pill %}
-<section id="timer" class="panel timer{% if timer %} timer--running{% endif %}" aria-label="타이머"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+<section id="timer" class="timer{% if timer %} timer--running{% endif %}" aria-labelledby="timer-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+  <h3 id="timer-title" class="visually-hidden">타이머</h3>
 {% if timer %}
   <span class="timer__dot" aria-hidden="true"></span>
   <div class="timer__body">

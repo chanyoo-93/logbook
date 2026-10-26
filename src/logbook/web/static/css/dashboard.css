@@ -9,6 +9,11 @@
   overflow: clip;
 }
 
+/* 작업 기록: 대시보드 맨 위의 첫 패널이라 위 여백은 main의 안쪽 여백으로 충분하다. */
+.work {
+  margin-top: 0;
+}
+
 .panel__head {
   display: flex;
   flex-wrap: wrap;

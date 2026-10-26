@@ -159,11 +159,37 @@ def test_surfaces_use_soft_shadow_instead_of_heavy_top_rule(file_name: str, sele
     assert "box-shadow: var(--shadow-soft)" in declarations
 
 
-def test_quick_bar_has_no_heavy_top_rule_but_keeps_raised_shadow() -> None:
+def test_quick_row_is_a_plain_row_inside_the_work_panel() -> None:
+    """빠른 기록 줄은 작업 기록 패널 안의 한 줄이다(D1). 겉모양은 .panel이 맡고 위에 붙지 않는다(D5)."""
     declarations = _declarations(_read("app.css"), ".quick")
+    properties = {part.split(":")[0] for part in declarations}
 
-    assert _squash(HEAVY_TOP_RULE) not in declarations
-    assert "box-shadow: var(--shadow-raised)" in declarations
+    assert not {"position", "top", "z-index", "border", "border-radius", "box-shadow"} & properties
+    assert "background" not in properties
+
+
+def test_work_panel_has_no_extra_top_margin() -> None:
+    assert "margin-top: 0" in _declarations(_read("dashboard.css"), ".work")
+
+
+def test_timer_row_is_separated_from_quick_row_by_hairline() -> None:
+    declarations = _declarations(_read("components.css"), ".work .timer")
+
+    assert "border-top: 1px solid var(--rule)" in declarations
+
+
+def test_stat_numbers_are_smaller_than_before() -> None:
+    """평가(2026-10-26): 가장 큰 요소가 숫자라 기록이 묻혔다. 최대 크기를 약 30% 줄인다."""
+    declarations = _declarations(_read("app.css"), ":root")
+
+    assert "--text-stat: clamp(1.75rem, 1.3rem + 1.6vw, 2.5rem)" in declarations
+    assert "--text-stat-lead: clamp(2rem, 1.4rem + 2.2vw, 3rem)" in declarations
+
+
+def test_print_hides_the_work_panel() -> None:
+    block = _media_block(_read("responsive.css"), "@media print")
+
+    assert "display: none" in _declarations(block, ".work, #flash, .skip-link, .masthead__nav")
 
 
 def test_masthead_uses_hairline_bottom_rule() -> None:
@@ -260,7 +286,6 @@ def test_old_single_radius_token_is_gone() -> None:
         ("components.css", ".btn", "var(--radius-sm)"),
         ("tasks.css", ".task-card", "var(--radius-sm)"),
         ("dashboard.css", ".panel", "var(--radius-md)"),
-        ("app.css", ".quick", "var(--radius-md)"),
         ("tasks.css", ".task-form", "var(--radius-md)"),
         ("tasks.css", ".board__col-head", "var(--radius-md)"),
         ("app.css", ".config-notice", "var(--radius-md)"),

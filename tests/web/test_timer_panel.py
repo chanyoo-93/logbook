@@ -225,8 +225,5 @@ def test_running_timer_panel_has_running_class_and_idle_does_not(
     running = client.get("/timer", headers=HTMX).text
 
     assert "timer--running" not in str(by_id(idle, "timer").attrs["class"]).split()
-    assert str(by_id(running, "timer").attrs["class"]).split() == [
-        "panel",
-        "timer",
-        "timer--running",
-    ]
+    # 작업 기록 패널 안의 한 줄이라 panel 클래스는 없다(2026-10-26 D1).
+    assert str(by_id(running, "timer").attrs["class"]).split() == ["timer", "timer--running"]

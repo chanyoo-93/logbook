@@ -127,7 +127,10 @@ def test_dashboard_page_skeleton(client: TestClient) -> None:
     flash = by_id(html, "flash")
     assert flash.attrs["role"] == "status"
     assert flash.attrs["aria-live"] == "polite"
-    assert [by_id(html, name).tag for name in ("quick-form", "summary", "timer", "recent")] == [
+    assert [
+        by_id(html, name).tag for name in ("work", "quick-form", "timer", "recent", "summary")
+    ] == [
+        "section",
         "form",
         "section",
         "section",
@@ -136,12 +139,31 @@ def test_dashboard_page_skeleton(client: TestClient) -> None:
 
 
 def test_dashboard_sections_are_in_reading_order(client: TestClient) -> None:
+    """기록·타이머가 주인공이다: 작업 기록 패널(빠른 기록 → 타이머) → 최근 기록 → 주간 요약."""
     html = _get(client)
 
     positions = [
-        html.index(f'id="{name}"') for name in ("quick-form", "summary", "timer", "recent")
+        html.index(f'id="{name}"') for name in ("work", "quick-form", "timer", "recent", "summary")
     ]
     assert positions == sorted(positions)
+
+
+def test_work_panel_holds_quick_form_and_timer(client: TestClient) -> None:
+    html = _get(client)
+
+    work = by_id(html, "work")
+    assert "panel" in work.attrs["class"].split()
+    assert work.attrs["aria-labelledby"] == "work-title"
+    assert by_id(html, "work-title").text == "작업 기록"
+    # 타이머는 작업 기록 패널 안의 한 줄이다. 따로 패널 모양을 갖지 않는다.
+    work_end = html.index('id="recent"')
+    assert html.index('id="work"') < html.index('id="timer"') < work_end
+    timer = by_id(html, "timer")
+    assert "panel" not in timer.attrs["class"].split()
+    assert timer.attrs["aria-labelledby"] == "timer-title"
+    assert "aria-label" not in timer.attrs
+    title = by_id(html, "timer-title")
+    assert (title.tag, title.text, title.attrs["class"]) == ("h3", "타이머", "visually-hidden")
 
 
 def test_summary_numbers(client: TestClient, web_engine: Engine) -> None:
@@ -477,7 +499,7 @@ def test_summary_progress_markup_has_no_inline_style_and_keeps_dl_structure(
     html = _get(client)
 
     assert not inline_code_violations(html)
-    assert "style=" not in html[html.index('id="summary"') : html.index('id="timer"')]
+    assert "style=" not in html[html.index('id="summary"') : html.index("</main>")]
     svg = next(e for e in all_by_tag(html, "svg") if "progress" in str(e.attrs.get("class")))
     assert svg.attrs["viewbox"] == "0 0 100 4"
     assert svg.attrs["aria-hidden"] == "true"
