@@ -5,8 +5,13 @@
 <script src="/static/js/dashboard.js" defer></script>
 {% endblock %}
 {% block content %}
+<section id="work" class="panel work" aria-labelledby="work-title">
+  <div class="panel__head">
+    <h2 id="work-title" class="panel__title">작업 기록</h2>
+  </div>
 {% include "partials/quick_form.html" %}
-{% include "partials/summary.html" %}
 {% include "partials/timer.html" %}
+</section>
 {% include "partials/recent.html" %}
+{% include "partials/summary.html" %}
 {% endblock %}

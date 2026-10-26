@@ -1,8 +1,9 @@
-{# 라벨이 숨겨진 선택 칸. css는 CSS 블록 이름(quick, timer-start), id_prefix는 입력 id의 앞부분이다. #}
-{% macro choose(css, id_prefix, name, label, empty_label, choices, current) %}
+{# 라벨이 숨겨진 선택 칸. css는 CSS 블록 이름(quick, timer-start), id_prefix는 입력 id의 앞부분이다.
+   hint가 있으면 빈 값이 무엇으로 정해지는지 말풍선(title)으로 설명한다. #}
+{% macro choose(css, id_prefix, name, label, empty_label, choices, current, hint="") %}
   <div class="{{ css }}__field {{ css }}__field--{{ name }}">
     <label class="visually-hidden" for="{{ id_prefix }}-{{ name }}">{{ label }}</label>
-    <select id="{{ id_prefix }}-{{ name }}" name="{{ name }}">
+    <select id="{{ id_prefix }}-{{ name }}" name="{{ name }}"{% if hint %} title="{{ hint }}"{% endif %}>
       <option value="">{{ empty_label }}</option>
 {% for choice in choices %}
       <option value="{{ choice.value }}"{% if choice.value == current %} selected{% endif %}>{{ choice.label }}</option>

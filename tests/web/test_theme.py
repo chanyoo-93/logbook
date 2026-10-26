@@ -105,6 +105,11 @@ def _contrast(first: str, second: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
+def _parse_declarations(body: str) -> dict[str, str]:
+    """`{…}` 안의 속성 선언을 {속성: 값}으로."""
+    return {name: value.strip() for name, value in re.findall(r"([\w-]+)\s*:\s*([^;]+);", body)}
+
+
 @pytest.fixture(scope="module")
 def css() -> str:
     return CSS_PATH.read_text(encoding="utf-8")
@@ -227,3 +232,24 @@ def test_pill_rules_exist_and_old_tag_rules_are_gone(other_css: str) -> None:
     assert re.search(r"\.pill--danger\s*\{", other_css)
     for old in (".task-card__tag", ".task-card__over", ".timer__state"):
         assert old not in other_css
+
+
+def test_placeholder_uses_muted_ink_at_full_opacity(css: str) -> None:
+    """안내 글자는 브라우저 기본 회색(어두운 테마에서 3.5:1) 대신 --ink-muted를 쓴다.
+
+    --ink-muted/--surface 대비는 밝은 6.53:1, 어두운 6.11:1이다(CONTRAST_PAIRS가 4.5:1 이상을 검사).
+    opacity: 1은 Firefox가 안내 글자를 흐리게 하는 기본값을 막는다.
+    """
+    match = re.search(r"(?m)^::placeholder\s*\{([^}]*)\}", css)
+
+    assert match, "::placeholder 규칙이 없습니다"
+    assert _parse_declarations(match.group(1)) == {"color": "var(--ink-muted)", "opacity": "1"}
+
+
+@pytest.mark.parametrize(("theme", "expected"), [("light", 6.53), ("dark", 6.11)])
+def test_placeholder_contrast_on_surface(
+    themes: dict[str, dict[str, str]], theme: str, expected: float
+) -> None:
+    colors = themes[theme]
+
+    assert round(_contrast(colors["--ink-muted"], colors["--surface"]), 2) == expected

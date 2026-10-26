@@ -10,6 +10,11 @@
   color: var(--ink-muted);
 }
 
+/* 작업 기록 패널 안에서는 빠른 기록 줄 아래의 둘째 줄이다. */
+.work .timer {
+  border-top: 1px solid var(--rule);
+}
+
 /* 진행 중: 다른 패널과 같은 모양(색을 뒤집은 띠와 왼쪽 초록 선은 사용자 확인 뒤 없앴다). 진행 중 표시는 꼬리표와 점이 맡는다 */
 .timer--running {
   color: var(--ink);

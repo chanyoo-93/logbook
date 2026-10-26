@@ -1,6 +1,7 @@
 {% from "partials/choose_macro.html" import choose %}
 {% from "partials/marks.html" import pill %}
-<section id="timer" class="panel timer{% if timer %} timer--running{% endif %}" aria-label="타이머"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+<section id="timer" class="timer{% if timer %} timer--running{% endif %}" aria-labelledby="timer-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+  <h3 id="timer-title" class="visually-hidden">타이머</h3>
 {% if timer %}
   <span class="timer__dot" aria-hidden="true"></span>
   <div class="timer__body">
@@ -20,9 +21,9 @@
         <label class="visually-hidden" for="timer-note">메모</label>
         <input id="timer-note" name="note" type="text" autocomplete="off" data-focus placeholder="무엇을 하나요 (태스크를 고르면 생략)" value="{{ timer_values.note }}">
       </div>
-      {{ choose("timer-start", "timer", "project", "프로젝트", "자동 (태스크 또는 " ~ default_project ~ ")", timer_options.projects, timer_values.project) }}
-      {{ choose("timer-start", "timer", "category", "카테고리", "자동 (태스크)", timer_options.categories, timer_values.category) }}
-      {{ choose("timer-start", "timer", "task", "태스크", "없음", timer_options.tasks, timer_values.task) }}
+      {{ choose("timer-start", "timer", "project", "프로젝트", "프로젝트 자동", timer_options.projects, timer_values.project, "비우면 태스크의 프로젝트를 쓰고, 태스크도 없으면 기본 프로젝트(" ~ default_project ~ ")에 기록합니다.") }}
+      {{ choose("timer-start", "timer", "category", "카테고리", "카테고리 자동", timer_options.categories, timer_values.category, "비우면 태스크의 카테고리를 씁니다.") }}
+      {{ choose("timer-start", "timer", "task", "태스크", "태스크 없음", timer_options.tasks, timer_values.task) }}
       <button type="submit" class="btn btn--primary">시작</button>
     </div>
   </form>

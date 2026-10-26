@@ -20,6 +20,7 @@ from tests.web.helpers import (
     all_by_tag,
     by_id,
     inline_code_violations,
+    named_input,
     parse_html,
     select_options,
 )
@@ -297,7 +298,7 @@ def test_elapsed_without_timer_returns_start_form(client: TestClient) -> None:
     html = client.get("/timer/elapsed", headers=HTMX).text
 
     assert by_id(html, "timer-start").tag == "form"
-    assert select_options(html, "category")[0] == ("", "자동 (태스크)", False)
+    assert select_options(html, "category")[0] == ("", "카테고리 자동", False)
 
 
 def test_data_focus_on_timer_states(client: TestClient, web_engine: Engine) -> None:
@@ -333,3 +334,16 @@ def by_form(html: str) -> str:
     start = html.index('id="quick-form"')
     end = html.index("</form>", start)
     return html[start:end]
+
+
+def test_timer_start_selects_explain_auto_rule_in_title(client: TestClient) -> None:
+    """빈 값 문구는 짧게, 자동 규칙 전체 설명은 말풍선(title)에 둔다(2026-10-26 D2)."""
+    html = client.get("/timer", headers=HTMX).text
+
+    assert select_options(html, "project")[0] == ("", "프로젝트 자동", False)
+    assert select_options(html, "task")[0] == ("", "태스크 없음", False)
+    assert named_input(html, "project").attrs["title"] == (
+        "비우면 태스크의 프로젝트를 쓰고, 태스크도 없으면 기본 프로젝트(common)에 기록합니다."
+    )
+    assert named_input(html, "category").attrs["title"] == "비우면 태스크의 카테고리를 씁니다."
+    assert "title" not in named_input(html, "task").attrs
