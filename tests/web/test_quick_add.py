@@ -18,6 +18,7 @@ from tests.web.helpers import (
     all_by_tag,
     by_id,
     json_attr,
+    named_input,
     parse_html,
 )
 
@@ -115,18 +116,18 @@ def test_form_options(client: TestClient, web_engine: Engine) -> None:
     html = _quick_form_html(client)
 
     projects = _options(html, "project")
-    assert projects[0] == ("", "자동 (태스크 또는 common)", False)
+    assert projects[0] == ("", "프로젝트 자동", False)
     assert [value for value, _, _ in projects[1:]] == ["common", "payment"]
     assert projects[2] == ("payment", "payment — 결제 서버", False)
     categories = _options(html, "category")
-    assert categories[0] == ("", "자동 (태스크)", False)
+    assert categories[0] == ("", "카테고리 자동", False)
     assert categories[1:4] == [
         ("dev", "dev — 개발", False),
         ("review", "review — 코드리뷰", False),
         ("meeting", "meeting — 회의", False),
     ]
     assert _options(html, "task") == [
-        ("", "없음", False),
+        ("", "태스크 없음", False),
         ("1", "#1 payment · 환불 API 설계", False),
         ("2", "#2 payment · 할 일", False),
     ]
@@ -277,3 +278,14 @@ def test_result_line_escapes_note(client: TestClient, web_engine: Engine) -> Non
     assert by_id(response.text, "quick-result").text == (
         "✔ #1 payment/dev 2h — <b>x</b> (오늘 누적 2h)"
     )
+
+
+def test_quick_selects_explain_auto_rule_in_title(client: TestClient) -> None:
+    """빈 값 문구는 짧게, 자동 규칙 전체 설명은 말풍선(title)에 둔다(2026-10-26 D2)."""
+    form = _quick_form_html(client)
+
+    assert named_input(form, "project").attrs["title"] == (
+        "비우면 태스크의 프로젝트, 태스크가 없으면 common에 기록합니다."
+    )
+    assert named_input(form, "category").attrs["title"] == "비우면 태스크의 카테고리를 씁니다."
+    assert "title" not in named_input(form, "task").attrs
