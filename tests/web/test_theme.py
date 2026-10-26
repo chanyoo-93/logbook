@@ -42,6 +42,8 @@ CONTRAST_PAIRS = (
     ("--ink-muted", "--surface"),
     ("--ink-muted", "--bg"),
     ("--accent", "--surface"),
+    ("--accent", "--bg"),
+    ("--accent", "--accent-soft"),
     ("--accent-ink", "--accent"),
     ("--danger", "--surface"),
     ("--ok", "--surface"),
