@@ -352,9 +352,21 @@ def test_report_text_uses_document_font(selector: str) -> None:
     assert "font-family: var(--font-document)" in _declarations(_read("report.css"), selector)
 
 
+def test_report_copy_icon_sits_on_the_top_right_of_the_markdown_box() -> None:
+    css = _read("report.css")
+
+    assert "position: relative" in _declarations(css, ".report__preview-box")
+    copy = _declarations(css, ".report__copy")
+    assert {"position: absolute", "top: var(--space-2)", "right: var(--space-2)"} <= copy
+    # 글이 아이콘 밑으로 들어가지 않게 오른쪽을 비운다
+    preview = _declarations(css, ".report__preview")
+    padding = "var(--space-3) calc(2.25rem + var(--space-3)) var(--space-3) var(--space-3)"
+    assert f"padding: {padding}" in preview
+
+
 def test_report_preview_sets_document_font_after_font_inherit() -> None:
     css = _squash(_read("report.css"))
-    block = css[css.index(".report__preview { padding") :]
+    block = css[css.index(".report__preview { margin") :]
     block = block[: block.index("}")]
 
     assert block.index("font: inherit") < block.index("font-family: var(--font-document)")
@@ -389,6 +401,10 @@ def test_board_column_head_uses_state_color(column: str, background: str, ink: s
 
     assert f"background: var({background})" in declarations
     assert f"color: var({ink})" in declarations
+
+
+def test_board_column_head_has_no_dot_rule() -> None:
+    assert ".board__dot" not in _read("tasks.css")
 
 
 def test_board_column_has_no_surface_of_its_own() -> None:
@@ -439,11 +455,12 @@ def test_task_form_fields_wrap_in_a_responsive_grid_with_full_width_title_and_de
     assert "grid-column: 1 / -1" in full
 
 
-def test_running_timer_keeps_panel_colors_with_an_ok_left_line() -> None:
-    # 사용자 결정(2026-10-15): 색을 뒤집은 띠는 취소했다. 다른 패널과 같은 색에 왼쪽 초록 선.
+def test_running_timer_keeps_panel_colors_without_a_left_line() -> None:
+    # 사용자 결정(2026-10-23): 왼쪽 초록 선도 없앴다. 다른 패널과 같은 모양이다.
     band = _declarations(_read("components.css"), ".timer--running")
 
-    assert band == {"border-left: 4px solid var(--ok)", "color: var(--ink)"}
+    assert band == {"color: var(--ink)"}
+    assert not any(d.startswith("border") for d in band)
 
 
 def test_running_timer_has_no_band_overrides() -> None:
@@ -459,3 +476,31 @@ def test_today_progress_done_fill_uses_ok_color() -> None:
 
     assert "fill: var(--ok)" in _declarations(css, ".progress--done .progress__fill")
     assert "display: flex" in _declarations(css, ".stat__progress")
+
+
+def test_menu_button_in_a_table_draws_its_focus_ring_inside() -> None:
+    # 표 스크롤 상자가 첫 행 위·마지막 행 아래의 바깥 윤곽선을 자르지 않게 안쪽에 그린다
+    declarations = _declarations(_read("dashboard.css"), ".grid .icon-button:focus-visible")
+
+    assert "outline-offset: -2px" in declarations
+
+
+def test_log_actions_column_shrinks_to_the_menu_button() -> None:
+    declarations = _declarations(_read("dashboard.css"), ".grid .grid__menu-cell")
+
+    assert "width: 1%" in declarations
+    assert "text-align: right" in declarations
+
+
+def test_context_menu_floats_above_scroll_boxes_instead_of_being_clipped() -> None:
+    # .table-wrap(overflow-x: auto)과 .panel(overflow: clip)이 absolute 메뉴를 잘랐다.
+    # fixed로 띄우고 app.js가 위치를 정한다.
+    declarations = _declarations(_read("components.css"), ".menu__list")
+    script = (Path(logbook.web.__file__).parent / "static" / "js" / "app.js").read_text(
+        encoding="utf-8"
+    )
+
+    assert "position: fixed" in declarations
+    assert "function placeMenu" in script
+    assert "getBoundingClientRect" in script
+    assert 'addEventListener("scroll"' in script

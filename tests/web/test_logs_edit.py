@@ -193,6 +193,7 @@ def test_display_row(client: TestClient, web_engine: Engine) -> None:
     assert "is-editing" not in str(row.attrs.get("class", ""))
     assert "결제 재시도" in html
     assert [e for e in parse_html(html) if e.attrs.get("hx-delete") == f"/logs/{log_id}"]
+    assert [e for e in parse_html(html) if e.attrs.get("role") == "menuitem"]
 
 
 @pytest.mark.parametrize("suffix", ["row", "edit"])

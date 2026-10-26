@@ -72,8 +72,8 @@ src/logbook/
     server.py    # 루프백 소켓을 열고 uvicorn 실행 (`lb serve`가 호출)
     api/         # JSON API (/api/*): logs, tasks, stats, report, timer
     pages/       # 화면 라우트 (대시보드, 기록, 타이머, 태스크·보고서·설정), tasks.py·task_views.py(칸반·계획 패널, 태스크 등록·수정 화면, 상태 변경), report.py, report_polish.py(POST /report/polish 문장 다듬기), settings.py, panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText), fonts.py(GET /fonts.css), colors.py(GET /colors.css)
-    templates/   # Jinja2 + HTMX. task_new.html·task_edit.html·partials/task_form.html(태스크 등록·수정 화면). partials/marks.html에 공용 부품 매크로 pill(꼬리표)·project_mark(프로젝트 색 점)·category_pill(카테고리 꼬리표)
-    static/      # 최소한의 CSS와 JS(js/report.js, js/board.js(태스크 보드 끌어 놓기) 포함), vendor/에 htmx·Chart.js·SortableJS 로컬 파일 (CDN 없음)
+    templates/   # Jinja2 + HTMX. task_new.html·task_edit.html·partials/task_form.html(태스크 등록·수정 화면). partials/marks.html에 공용 부품 매크로 pill(꼬리표)·project_mark(프로젝트 색 점)·category_pill(카테고리 꼬리표), partials/icons.html(인라인 SVG 아이콘 매크로), partials/menu.html(행 ⋮ 컨텍스트 메뉴 틀 row_menu)
+    static/      # 최소한의 CSS와 JS(js/app.js(htmx 공통 처리·행 ⋮ 메뉴), js/report.js, js/board.js(태스크 보드 끌어 놓기) 포함), vendor/에 htmx·Chart.js·SortableJS 로컬 파일 (CDN 없음)
                  # css/: app.css(디자인 토큰: 색 :root 두 벌은 여기에만, 글꼴·글자 크기·간격·모서리·그림자), dashboard·logs·components·tasks·report·settings·responsive.css (순서는 web/assets.py의 STYLESHEETS가 정하고 base.html·오류 페이지가 그대로 링크)
 tests/
 docs/

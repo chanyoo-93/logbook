@@ -167,14 +167,6 @@
   color: var(--danger);
 }
 
-.board__dot {
-  flex: none;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: var(--radius-full);
-  background: currentcolor;
-}
-
 .board__col-title {
   flex: 1;
   margin: 0;

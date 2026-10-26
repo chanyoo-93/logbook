@@ -10,9 +10,8 @@
   color: var(--ink-muted);
 }
 
-/* 진행 중: 다른 패널과 같은 색에 왼쪽 초록 선(색을 뒤집은 띠는 2026-10-15 사용자 확인 뒤 취소) */
+/* 진행 중: 다른 패널과 같은 모양(색을 뒤집은 띠와 왼쪽 초록 선은 사용자 확인 뒤 없앴다). 진행 중 표시는 꼬리표와 점이 맡는다 */
 .timer--running {
-  border-left: 4px solid var(--ok);
   color: var(--ink);
 }
 
@@ -212,3 +211,98 @@ main > p[role="alert"] {
   border-left-color: var(--ok);
 }
 
+
+/* 아이콘과 아이콘 버튼: 글자 없이 아이콘만 있는 버튼(뜻은 aria-label·title). 색은 글자색(currentColor)을 따른다. */
+.icon {
+  display: block;
+  flex: none;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--ink-muted);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+
+.icon-button:hover,
+.icon-button[aria-expanded="true"] {
+  border-color: var(--rule);
+  background: var(--row-hover);
+  color: var(--ink);
+}
+
+.icon-button:active {
+  transform: scale(0.97);
+}
+
+/* 컨텍스트 메뉴: 표 스크롤 상자(.table-wrap)와 구역(.panel)의 overflow에 잘리지 않도록 fixed로 띄우고, 위치(top·left)는 app.js가 ⋮ 버튼 기준으로 정한다. 폭은 화면 안으로 제한한다. */
+.menu {
+  position: relative;
+  display: inline-block;
+}
+
+.menu__button {
+  flex: none;
+}
+
+.menu__list {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 8rem;
+  max-width: calc(100vw - 2 * var(--gutter));
+  margin: 0;
+  padding: var(--space-1);
+  border: 1px solid var(--rule-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-raised);
+}
+
+.menu__list[hidden] {
+  display: none;
+}
+
+.menu__item {
+  display: block;
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+  background: var(--row-hover);
+}
+
+.menu__item--danger {
+  color: var(--danger);
+}
+
+.menu__item[disabled] {
+  color: var(--ink-muted);
+  opacity: 0.55;
+  cursor: not-allowed;
+}

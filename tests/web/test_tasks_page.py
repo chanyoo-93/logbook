@@ -322,6 +322,15 @@ def test_empty_notice_is_the_first_item_inside_the_list(client: TestClient) -> N
         assert start < notice < column.index("</ul>")
 
 
+def test_column_heads_have_title_and_count_but_no_dot(client: TestClient) -> None:
+    html = client.get("/tasks").text
+
+    # 열 머리 왼쪽의 점은 사용자 확인 뒤 없앴다(2026-10-23). 색 바탕·제목·건수는 그대로다
+    assert by_class(html, "board__dot") == []
+    assert len(by_class(html, "board__col-title")) == 4
+    assert len(by_class(html, "board__count")) == 4
+
+
 def test_column_counts_match_cards(client: TestClient, web_engine: Engine) -> None:
     _seed_board(web_engine)
 
