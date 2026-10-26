@@ -224,7 +224,9 @@ def test_summary_without_logs_shows_empty_message(client: TestClient, web_engine
     assert "0m" in by_id(html, "summary").text
 
 
-def test_recent_logs_are_newest_first_and_limited(client: TestClient, web_engine: Engine) -> None:
+def test_recent_logs_same_day_newest_entry_first_and_limited(
+    client: TestClient, web_engine: Engine
+) -> None:
     ids = [
         add_log(web_engine, minutes=10, note=f"기록 {n}", day=W40_THURSDAY) for n in range(1, 13)
     ]
@@ -236,6 +238,21 @@ def test_recent_logs_are_newest_first_and_limited(client: TestClient, web_engine
     ]
 
     assert rows == [f"log-{log_id}" for log_id in reversed(ids[-10:])]
+
+
+def test_recent_logs_follow_work_date_not_entry_order(
+    client: TestClient, web_engine: Engine
+) -> None:
+    newer = add_log(web_engine, minutes=10, note="목요일", day=W40_THURSDAY)
+    backdated = add_log(web_engine, minutes=10, note="월요일(나중에 입력)", day=W40_MONDAY)
+
+    rows = [
+        e.attrs["id"]
+        for e in all_by_tag(_get(client), "tr")
+        if str(e.attrs.get("id")).startswith("log-")
+    ]
+
+    assert rows == [f"log-{newer}", f"log-{backdated}"]
 
 
 def test_recent_logs_table_columns_and_cells(client: TestClient, web_engine: Engine) -> None:
