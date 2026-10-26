@@ -35,7 +35,7 @@ def _make_task(s: Session) -> Task:
     return task
 
 
-def test_recent_worklogs_returns_latest_ids_first_with_relations(
+def test_recent_worklogs_orders_by_work_date_then_newest_entry_with_relations(
     seeded: Session, engine: Engine
 ) -> None:
     task = _make_task(seeded)
@@ -43,7 +43,7 @@ def test_recent_worklogs_returns_latest_ids_first_with_relations(
         _add(
             seeded,
             work_date=date(2026, 9, 20 + index % 5),
-            task_id=task.id if index == 11 else None,
+            task_id=task.id if index == 9 else None,
             project_slug="payment",
         )
     seeded.commit()
@@ -51,12 +51,32 @@ def test_recent_worklogs_returns_latest_ids_first_with_relations(
     with session_scope(engine) as s:
         logs = services.recent_worklogs(s, limit=10)
 
-    ids = [log.id for log in logs]
-    assert ids == sorted(ids, reverse=True)
-    assert len(ids) == 10
-    assert ids[0] == max(ids)  # 가장 최근에 넣은 기록(태스크 연결)이 맨 앞이다
+    keys = [(log.date, log.id) for log in logs]
+    assert keys == sorted(keys, reverse=True)
+    assert len(keys) == 10
+    # 9월 24일(index 4, 9)이 가장 최신 날짜이고, 같은 날은 나중에 넣은 index 9(태스크 연결)가 위다.
+    assert logs[0].date == date(2026, 9, 24)
     assert logs[0].project.slug == "payment"
     assert logs[0].task is not None
+
+
+def test_recent_worklogs_puts_backdated_entry_below_newer_dates(seeded: Session) -> None:
+    today = _add(seeded, work_date=THU)
+    backdated = _add(seeded, work_date=date(2026, 9, 28))
+
+    ids = [log.id for log in services.recent_worklogs(seeded, limit=10)]
+
+    assert ids == [today.id, backdated.id]
+
+
+def test_recent_worklogs_drops_backdated_entry_outside_latest_dates(seeded: Session) -> None:
+    newer = [_add(seeded, work_date=THU) for _ in range(10)]
+    backdated = _add(seeded, work_date=date(2026, 9, 28))
+
+    ids = [log.id for log in services.recent_worklogs(seeded, limit=10)]
+
+    assert backdated.id not in ids
+    assert ids == [log.id for log in reversed(newer)]
 
 
 def test_recent_worklogs_returns_all_when_fewer_than_limit(seeded: Session) -> None:
