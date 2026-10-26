@@ -160,7 +160,7 @@ def test_surfaces_use_soft_shadow_instead_of_heavy_top_rule(file_name: str, sele
 
 
 def test_quick_row_is_a_plain_row_inside_the_work_panel() -> None:
-    """빠른 기록 줄은 작업 기록 패널 안의 한 줄이다(D1). 겉모양은 .panel이 맡고 위에 붙지 않는다(D5)."""
+    """빠른 기록 줄은 작업 기록 패널 안의 한 줄이다(D1). 겉모양은 .panel이 맡고 위에 붙지 않는다."""
     declarations = _declarations(_read("app.css"), ".quick")
     properties = {part.split(":")[0] for part in declarations}
 
