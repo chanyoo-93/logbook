@@ -130,6 +130,12 @@ a {
   outline-offset: 2px;
 }
 
+/* 안내 글자: 브라우저 기본 회색은 어두운 테마에서 대비가 모자라 글자색 토큰을 쓴다. opacity는 Firefox의 흐림을 막는다. */
+::placeholder {
+  color: var(--ink-muted);
+  opacity: 1;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;

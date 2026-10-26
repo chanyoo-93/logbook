@@ -35,6 +35,7 @@
 <p class="config-notice{% if config_notice_error %} config-notice--error{% endif %}" role="{{ 'alert' if config_notice_error else 'status' }}">{{ config_notice }}</p>
 {% endif %}
 <main id="main" tabindex="-1">
+<h1 class="visually-hidden">{{ self.title() }}</h1>
 {% block content %}{% endblock %}
 </main>
 <div id="flash" role="status" aria-live="polite"></div>
