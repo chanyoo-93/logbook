@@ -105,6 +105,11 @@ def _contrast(first: str, second: str) -> float:
     return (lighter + 0.05) / (darker + 0.05)
 
 
+def _parse_declarations(body: str) -> dict[str, str]:
+    """`{…}` 안의 속성 선언을 {속성: 값}으로."""
+    return {name: value.strip() for name, value in re.findall(r"([\w-]+)\s*:\s*([^;]+);", body)}
+
+
 @pytest.fixture(scope="module")
 def css() -> str:
     return CSS_PATH.read_text(encoding="utf-8")
@@ -238,7 +243,7 @@ def test_placeholder_uses_muted_ink_at_full_opacity(css: str) -> None:
     match = re.search(r"(?m)^::placeholder\s*\{([^}]*)\}", css)
 
     assert match, "::placeholder 규칙이 없습니다"
-    assert _declarations(match.group(1)) == {"color": "var(--ink-muted)", "opacity": "1"}
+    assert _parse_declarations(match.group(1)) == {"color": "var(--ink-muted)", "opacity": "1"}
 
 
 @pytest.mark.parametrize(("theme", "expected"), [("light", 6.53), ("dark", 6.11)])
@@ -248,7 +253,3 @@ def test_placeholder_contrast_on_surface(
     colors = themes[theme]
 
     assert round(_contrast(colors["--ink-muted"], colors["--surface"]), 2) == expected
-
-
-def _declarations(body: str) -> dict[str, str]:
-    return {name: value.strip() for name, value in re.findall(r"([\w-]+)\s*:\s*([^;]+);", body)}

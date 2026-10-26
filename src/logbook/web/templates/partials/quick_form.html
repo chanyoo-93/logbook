@@ -9,7 +9,7 @@
       <label class="visually-hidden" for="quick-note">메모</label>
       <input id="quick-note" name="note" type="text" autocomplete="off" placeholder="무엇을 했나요" value="{{ quick_values.note }}">
     </div>
-    {{ choose("quick", "quick", "project", "프로젝트", "프로젝트 자동", quick_options.projects, quick_values.project, "비우면 태스크의 프로젝트, 태스크가 없으면 " ~ default_project ~ "에 기록합니다.") }}
+    {{ choose("quick", "quick", "project", "프로젝트", "프로젝트 자동", quick_options.projects, quick_values.project, "비우면 태스크의 프로젝트를 쓰고, 태스크도 없으면 기본 프로젝트(" ~ default_project ~ ")에 기록합니다.") }}
     {{ choose("quick", "quick", "category", "카테고리", "카테고리 자동", quick_options.categories, quick_values.category, "비우면 태스크의 카테고리를 씁니다.") }}
     {{ choose("quick", "quick", "task", "태스크", "태스크 없음", quick_options.tasks, quick_values.task) }}
     <button type="submit" class="btn btn--primary">기록</button>

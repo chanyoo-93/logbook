@@ -343,7 +343,7 @@ def test_timer_start_selects_explain_auto_rule_in_title(client: TestClient) -> N
     assert select_options(html, "project")[0] == ("", "프로젝트 자동", False)
     assert select_options(html, "task")[0] == ("", "태스크 없음", False)
     assert named_input(html, "project").attrs["title"] == (
-        "비우면 태스크의 프로젝트, 태스크가 없으면 common에 기록합니다."
+        "비우면 태스크의 프로젝트를 쓰고, 태스크도 없으면 기본 프로젝트(common)에 기록합니다."
     )
     assert named_input(html, "category").attrs["title"] == "비우면 태스크의 카테고리를 씁니다."
     assert "title" not in named_input(html, "task").attrs

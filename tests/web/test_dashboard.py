@@ -156,8 +156,8 @@ def test_work_panel_holds_quick_form_and_timer(client: TestClient) -> None:
     assert work.attrs["aria-labelledby"] == "work-title"
     assert by_id(html, "work-title").text == "작업 기록"
     # 타이머는 작업 기록 패널 안의 한 줄이다. 따로 패널 모양을 갖지 않는다.
-    work_end = html.index('id="recent"')
-    assert html.index('id="work"') < html.index('id="timer"') < work_end
+    assert by_id(html, "quick-form").text in work.text
+    assert by_id(html, "timer").text in work.text
     timer = by_id(html, "timer")
     assert "panel" not in timer.attrs["class"].split()
     assert timer.attrs["aria-labelledby"] == "timer-title"

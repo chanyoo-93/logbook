@@ -285,7 +285,7 @@ def test_quick_selects_explain_auto_rule_in_title(client: TestClient) -> None:
     form = _quick_form_html(client)
 
     assert named_input(form, "project").attrs["title"] == (
-        "비우면 태스크의 프로젝트, 태스크가 없으면 common에 기록합니다."
+        "비우면 태스크의 프로젝트를 쓰고, 태스크도 없으면 기본 프로젝트(common)에 기록합니다."
     )
     assert named_input(form, "category").attrs["title"] == "비우면 태스크의 카테고리를 씁니다."
     assert "title" not in named_input(form, "task").attrs

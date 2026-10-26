@@ -41,3 +41,10 @@ def test_h1_is_the_first_element_of_main(client: TestClient) -> None:
     first_tag = html.index("<", html.index(">", main_start) + 1)
 
     assert html.startswith('<h1 class="visually-hidden">', first_tag)
+
+
+@pytest.mark.parametrize("path", ["/logs", "/report", "/tasks"])
+def test_htmx_partial_responses_have_no_h1(client: TestClient, path: str) -> None:
+    html = client.get(path, headers={"HX-Request": "true"}).text
+
+    assert all_by_tag(html, "h1") == []
