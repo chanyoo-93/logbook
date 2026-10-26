@@ -224,7 +224,9 @@ def test_summary_without_logs_shows_empty_message(client: TestClient, web_engine
     assert "0m" in by_id(html, "summary").text
 
 
-def test_recent_logs_are_newest_first_and_limited(client: TestClient, web_engine: Engine) -> None:
+def test_recent_logs_same_day_newest_entry_first_and_limited(
+    client: TestClient, web_engine: Engine
+) -> None:
     ids = [
         add_log(web_engine, minutes=10, note=f"기록 {n}", day=W40_THURSDAY) for n in range(1, 13)
     ]
