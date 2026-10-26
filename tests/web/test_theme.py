@@ -42,6 +42,8 @@ CONTRAST_PAIRS = (
     ("--ink-muted", "--surface"),
     ("--ink-muted", "--bg"),
     ("--accent", "--surface"),
+    ("--accent", "--bg"),
+    ("--accent", "--accent-soft"),
     ("--accent-ink", "--accent"),
     ("--danger", "--surface"),
     ("--ok", "--surface"),
@@ -253,3 +255,12 @@ def test_placeholder_contrast_on_surface(
     colors = themes[theme]
 
     assert round(_contrast(colors["--ink-muted"], colors["--surface"]), 2) == expected
+
+
+def test_light_accent_hover_is_visibly_darker_than_accent(
+    themes: dict[str, dict[str, str]],
+) -> None:
+    """주 버튼 hover가 눈에 띄게 밝은 강조색과 hover 색의 명도 대비를 1.5:1 이상으로 둔다."""
+    light = themes["light"]
+
+    assert _contrast(light["--accent"], light["--accent-hover"]) >= 1.5

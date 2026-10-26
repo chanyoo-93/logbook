@@ -114,6 +114,7 @@ def _error_page(message: str) -> str:
         "</head>\n"
         "<body>\n"
         "<main>\n"
+        '<h1 class="visually-hidden">오류</h1>\n'
         f'<p role="alert">{escape(message)}</p>\n'
         '<a href="/">대시보드로 돌아가기</a>\n'
         "</main>\n"
