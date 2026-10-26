@@ -119,6 +119,14 @@ def test_error_page_has_hidden_h1_first_in_main(probe_client: TestClient) -> Non
     assert html.startswith('<h1 class="visually-hidden">', first_tag)
 
 
+def test_htmx_and_api_errors_have_no_h1(probe_client: TestClient) -> None:
+    flash = probe_client.get("/raise/missing", headers={"HX-Request": "true"}).text
+    api = probe_client.get("/api/raise/missing").text
+
+    assert all_by_tag(flash, "h1") == []
+    assert "<h1" not in api
+
+
 def test_history_restore_request_gets_full_page(probe_client: TestClient) -> None:
     response = probe_client.get(
         "/raise/invalid",
