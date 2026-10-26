@@ -12,10 +12,14 @@
   var UNSAVED_WARNING = " 저장하지 않은 특이사항·리스크는 들어가지 않았습니다.";
 
   // 서버가 그린 값(defaultValue)과 지금 값이 다르면 저장하지 않은 것이다. 저장하면 폼이 다시 그려져 안내도 사라진다.
+  // 충돌(409) 응답은 입력값을 그대로 그리므로 서버가 data-unsaved를 달아 둔다. 이때는 값이 같아도 저장 안 함이다.
   function hasUnsavedNotes() {
     var form = document.getElementById("report-notes");
     if (!form) {
       return false;
+    }
+    if (form.hasAttribute("data-unsaved")) {
+      return true;
     }
     return Array.prototype.some.call(form.querySelectorAll("textarea"), function (field) {
       return field.value !== field.defaultValue;
@@ -32,11 +36,16 @@
     }
   });
 
+  // 같은 문구를 다시 넣어도 화면 낭독기가 읽도록 한 번 비운 뒤 채운다.
   function showStatus(text) {
     var status = document.getElementById("copy-status");
-    if (status) {
-      status.textContent = text;
+    if (!status) {
+      return;
     }
+    status.textContent = "";
+    window.setTimeout(function () {
+      status.textContent = text;
+    }, 50);
   }
 
   // Clipboard API를 못 쓰면 대상을 선택한 뒤 execCommand("copy")로 대신한다. 선택 복사는 서식도 함께 넣는다.
@@ -214,6 +223,7 @@
       tab.setAttribute("aria-selected", chosen ? "true" : "false");
       tab.tabIndex = chosen ? 0 : -1;
       panel.hidden = !chosen;
+      panel.tabIndex = 0;
       if (chosen && focus) {
         tab.focus();
       }

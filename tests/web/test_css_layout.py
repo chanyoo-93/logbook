@@ -387,6 +387,19 @@ def test_report_markdown_copy_sits_beside_the_raw_note() -> None:
     assert ".report__preview-box" not in css
 
 
+def test_report_tabs_stay_hidden_until_js_turns_them_on() -> None:
+    # .report__tabs의 display: flex가 hidden 속성(UA 규칙)을 이기지 않게 한다
+    assert "display: none" in _declarations(_read("report.css"), ".report__tabs[hidden]")
+
+
+def test_copy_buttons_hide_until_js_turns_views_on() -> None:
+    css = _squash(_read("report.css"))
+    # _squash가 콜론 뒤에 한 칸을 둔다
+    selector = ".report__views: not(.report__views--tabs) [data-copy-rich]"
+    assert selector in css
+    assert "display: none" in css[css.index(selector) :].split("}")[0]
+
+
 def test_sheet_section_head_puts_copy_beside_heading() -> None:
     css = _read("report.css")
 

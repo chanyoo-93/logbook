@@ -75,7 +75,7 @@ a.btn {
   border-top: 1px solid var(--rule);
 }
 
-/* 저장 버튼 옆 안내: 저장하지 않은 내용이 있을 때만 글자가 찬다(report.js). 비어 있으면 자리를 차지하지 않는다. */
+/* 저장 버튼 옆 안내: 저장하지 않은 내용이 있을 때만 글자가 찬다(report.js, 충돌 응답은 서버가 채운다). */
 .report-notes__actions {
   display: flex;
   flex-wrap: wrap;
@@ -100,7 +100,8 @@ a.btn {
   background: var(--accent);
 }
 
-.report-notes__dirty:empty {
+/* 비어 있어도 접근성 트리에 남겨(라이브 영역) 글자가 찰 때 읽히게 한다. 점만 감춘다. */
+.report-notes__dirty:empty::before {
   display: none;
 }
 
@@ -186,6 +187,17 @@ a.btn {
 /* 표 보기·원문 탭: 머리 메뉴처럼 아래 굵은 선이 지금 보기다. 탭은 report.js가 켠다(JS가 없으면 숨김). */
 .report__views {
   margin: var(--space-3) var(--space-4) var(--space-4);
+}
+
+/* 복사 버튼은 JS로만 동작하므로 JS가 보기를 켜기 전(report__views--tabs 없음)에는 감춘다. */
+.report__views:not(.report__views--tabs) [data-copy-rich],
+.report__views:not(.report__views--tabs) [data-copy-target] {
+  display: none;
+}
+
+/* JS가 탭을 켜기 전(hidden)에는 display: flex가 hidden을 이기지 않게 한다. */
+.report__tabs[hidden] {
+  display: none;
 }
 
 .report__tabs {
