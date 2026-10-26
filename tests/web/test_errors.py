@@ -109,6 +109,16 @@ def test_flash_fragment_escapes_message(probe_client: TestClient) -> None:
     assert paragraph.text == str(RAISED_ERRORS["markup"])
 
 
+def test_error_page_has_hidden_h1_first_in_main(probe_client: TestClient) -> None:
+    html = probe_client.get("/raise/missing").text
+
+    headings = all_by_tag(html, "h1")
+    first_tag = html.index("<", html.index("<main>") + len("<main>"))
+
+    assert [(h.text, h.attrs.get("class")) for h in headings] == [("오류", "visually-hidden")]
+    assert html.startswith('<h1 class="visually-hidden">', first_tag)
+
+
 def test_history_restore_request_gets_full_page(probe_client: TestClient) -> None:
     response = probe_client.get(
         "/raise/invalid",

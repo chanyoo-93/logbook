@@ -19,7 +19,7 @@
     <div class="timer-start__fields">
       <div class="timer-start__field timer-start__field--note">
         <label class="visually-hidden" for="timer-note">메모</label>
-        <input id="timer-note" name="note" type="text" autocomplete="off" data-focus placeholder="무엇을 하나요 (태스크를 고르면 생략)" value="{{ timer_values.note }}">
+        <input id="timer-note" name="note" type="text" autocomplete="off" data-focus placeholder="무엇을 하나요" title="태스크를 고르면 비워도 됩니다." value="{{ timer_values.note }}">
       </div>
       {{ choose("timer-start", "timer", "project", "프로젝트", "프로젝트 자동", timer_options.projects, timer_values.project, "비우면 태스크의 프로젝트를 쓰고, 태스크도 없으면 기본 프로젝트(" ~ default_project ~ ")에 기록합니다.") }}
       {{ choose("timer-start", "timer", "category", "카테고리", "카테고리 자동", timer_options.categories, timer_values.category, "비우면 태스크의 카테고리를 씁니다.") }}

@@ -67,7 +67,9 @@ def test_idle_panel_has_start_form_with_same_choices_as_quick_form(
     assert form.attrs["hx-swap"] == "outerHTML"
     assert form.attrs["hx-sync"] == "this:drop"
     assert form.attrs["hx-disabled-elt"] == "find button"
-    assert by_id(html, "timer-note").attrs["placeholder"] == "무엇을 하나요 (태스크를 고르면 생략)"
+    note = by_id(html, "timer-note")
+    assert note.attrs["placeholder"] == "무엇을 하나요"
+    assert note.attrs["title"] == "태스크를 고르면 비워도 됩니다."
     assert "터미널에서 lb start로 시작하세요." not in html
     quick_ids = {"project": "quick-project", "category": "quick-category", "task": "quick-task"}
     for name, quick_id in quick_ids.items():
