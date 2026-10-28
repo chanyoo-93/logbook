@@ -168,14 +168,21 @@ def test_saved_notes_appear_in_sheet(client: TestClient, web_engine: Engine) -> 
     _seed(web_engine)
     client.post(
         "/report/notes",
-        data={"week": "2026-W40", "version": "", "notes": "배포 연기\n금요일", "risks": ""},
+        data={
+            "week": "2026-W40",
+            "version": "",
+            "notes": "배포 연기\r\n금요일",  # 브라우저는 textarea 줄바꿈을 CRLF로 보낸다
+            "risks": "<b>위험</b>",
+        },
         headers={"HX-Request": "true"},
     )
 
     html = client.get("/report").text
 
-    assert by_id(html, "sheet-notes-text").text == "배포 연기 금요일"
-    assert "배포 연기\n금요일" in html  # 줄바꿈은 그대로 두고 CSS(pre-line)로 보인다
+    assert by_id(html, "sheet-notes-text").tag == "p"
+    # 줄마다 <br>로 나눈다. CSS(pre-line)만 쓰면 엑셀에 붙였을 때 줄바꿈이 사라진다
+    assert "배포 연기<br>금요일" in html
+    assert "&lt;b&gt;위험&lt;/b&gt;" in html  # 줄을 나눠도 사용자 글은 이스케이프한다
     assert (
         "(작성하세요)" not in html[html.index('id="report-sheet"') : html.index('id="panel-raw"')]
     )

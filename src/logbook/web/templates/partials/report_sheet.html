@@ -10,6 +10,10 @@
       {{ copy_button(target, name, done) }}
     </div>
 {%- endmacro %}
+{# 여러 줄 글: 줄마다 <br>로 나눈다(CRLF도). CSS만으로 줄을 보이면 엑셀 등에 붙였을 때 줄바꿈이 사라진다. 줄 글자는 autoescape된다. #}
+{% macro lines(text) -%}
+{% for line in text.splitlines() %}{% if not loop.first %}<br>{% endif %}{{ line }}{% endfor %}
+{%- endmacro %}
 {% set sheet = body.sheet %}
 {% set data = sheet.data %}
 <article id="report-sheet" class="sheet" aria-labelledby="sheet-title">
@@ -118,11 +122,11 @@
     {{ section_head("sheet-notes", "3. ", "특이사항 / 리스크", "특이사항 / 리스크를 복사했습니다.") }}
 {% if data.notes %}
     <h5 class="sheet__subheading">특이사항</h5>
-    <p id="sheet-notes-text" class="sheet__text">{{ data.notes }}</p>
+    <p id="sheet-notes-text" class="sheet__text">{{ lines(data.notes) }}</p>
 {% endif %}
 {% if data.risks %}
     <h5 class="sheet__subheading">리스크</h5>
-    <p id="sheet-risks-text" class="sheet__text">{{ data.risks }}</p>
+    <p id="sheet-risks-text" class="sheet__text">{{ lines(data.risks) }}</p>
 {% endif %}
 {% if not data.notes and not data.risks %}
     <p class="sheet__empty" data-copy-skip>(작성하세요)</p>

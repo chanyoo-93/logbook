@@ -105,6 +105,16 @@
     return node.textContent.replace(/\s+/g, " ").trim();
   }
 
+  // 여러 줄 글(특이사항): 템플릿이 줄마다 <br>로 나눠 두었으므로 <br>을 줄바꿈으로 되돌린다.
+  function multiLine(node) {
+    return Array.prototype.map
+      .call(node.childNodes, function (part) {
+        return part.nodeName === "BR" ? "\n" : part.textContent;
+      })
+      .join("")
+      .trim();
+  }
+
   // 글 형식: 제목 앞에 빈 줄, 표는 행마다 칸을 탭으로 잇는다. 특이사항 글은 줄바꿈을 지킨다.
   function collectLines(node, lines) {
     Array.prototype.forEach.call(node.children, function (child) {
@@ -119,9 +129,7 @@
         }
         lines.push(oneLine(child));
       } else if (tag === "P") {
-        var text = child.classList.contains("sheet__text")
-          ? child.textContent.replace(/\r/g, "").trim()
-          : oneLine(child);
+        var text = child.classList.contains("sheet__text") ? multiLine(child) : oneLine(child);
         if (text) {
           lines.push(text);
         }
