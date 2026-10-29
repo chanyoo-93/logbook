@@ -1,5 +1,5 @@
-{% from "partials/choose_macro.html" import choose %}
 {% from "partials/marks.html" import pill %}
+{# 타이머 영역: 진행 중이면 진행 줄과 정지·취소, 아니면 결과 줄만 둔다. 시작은 빠른 기록 폼의 `타이머 시작` 버튼이다(2026-10-29 E1). #}
 <section id="timer" class="timer{% if timer %} timer--running{% endif %}" aria-labelledby="timer-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
   <h3 id="timer-title" class="visually-hidden">타이머</h3>
 {% if timer %}
@@ -13,22 +13,9 @@
     <button type="button" class="btn" data-focus hx-post="/timer/stop" hx-target="#timer" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">정지</button>
     <button type="button" class="btn" hx-post="/timer/cancel" hx-vals='{{ {"version": timer.version}|tojson }}' hx-confirm="{{ timer.cancel_confirm }}" hx-target="#timer" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">취소</button>
   </div>
-{% else %}
-  <p class="timer__idle">진행 중인 타이머가 없습니다.</p>
-  <form id="timer-start" class="timer-start" aria-label="타이머 시작" hx-post="/timer/start" hx-target="#timer" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button">
-    <div class="timer-start__fields">
-      <div class="timer-start__field timer-start__field--note">
-        <label class="visually-hidden" for="timer-note">메모</label>
-        <input id="timer-note" name="note" type="text" autocomplete="off" data-focus placeholder="무엇을 하나요" title="태스크를 고르면 비워도 됩니다." value="{{ timer_values.note }}">
-      </div>
-      {{ choose("timer-start", "timer", "project", "프로젝트", "프로젝트 자동", timer_options.projects, timer_values.project, "비우면 태스크의 프로젝트를 쓰고, 태스크도 없으면 기본 프로젝트(" ~ default_project ~ ")에 기록합니다.") }}
-      {{ choose("timer-start", "timer", "category", "카테고리", "카테고리 자동", timer_options.categories, timer_values.category, "비우면 태스크의 카테고리를 씁니다.") }}
-      {{ choose("timer-start", "timer", "task", "태스크", "태스크 없음", timer_options.tasks, timer_values.task) }}
-      <button type="submit" class="btn btn--primary">시작</button>
-    </div>
-  </form>
 {% endif %}
 {% if timer_message|default("") %}
-  <p id="timer-result" class="form-message{% if timer_error|default(false) %} form-message--error{% endif %}" role="{{ 'alert' if timer_error|default(false) else 'status' }}">{{ timer_message }}</p>
+{# 정지·취소 뒤에는 정지 버튼이 사라지므로 결과 줄이 포커스를 받는다(app.js의 data-focus). #}
+  <p id="timer-result" class="form-message{% if timer_error|default(false) %} form-message--error{% endif %}" role="{{ 'alert' if timer_error|default(false) else 'status' }}"{% if not timer %} tabindex="-1" data-focus{% endif %}>{{ timer_message }}</p>
 {% endif %}
 </section>

@@ -100,7 +100,7 @@ def test_form_inputs_are_labelled(client: TestClient) -> None:
     assert duration.attrs["autocomplete"] == "off"
     assert duration.attrs["placeholder"] == "2h, 90m, 1:30"
     assert "autofocus" in duration.attrs
-    assert [e.text for e in all_by_tag(html, "button")] == ["기록"]
+    assert [e.text for e in all_by_tag(html, "button")] == ["기록", "타이머 시작"]
 
 
 def test_form_options(client: TestClient, web_engine: Engine) -> None:

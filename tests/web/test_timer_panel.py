@@ -38,9 +38,9 @@ def test_panel_without_timer(client: TestClient) -> None:
     response = client.get("/timer", headers=HTMX)
 
     assert response.status_code == 200
-    assert "진행 중인 타이머가 없습니다" in by_id(response.text, "timer").text
+    assert "진행 중인 타이머가 없습니다" not in response.text  # 안내 줄을 없앴다(2026-10-29 E1)
     assert "timer-elapsed" not in _ids(response.text)
-    assert [e.text for e in all_by_tag(response.text, "button")] == ["시작"]
+    assert all_by_tag(response.text, "button") == []  # 시작은 빠른 기록 폼의 버튼이다
 
 
 def test_panel_with_timer(client: TestClient, web_engine: Engine, clock: Clock) -> None:
@@ -131,7 +131,7 @@ def test_elapsed_without_timer_returns_empty_panel(client: TestClient) -> None:
     assert response.status_code == 200
     assert response.headers["HX-Retarget"] == "#timer"
     assert response.headers["HX-Reswap"] == "outerHTML"
-    assert "진행 중인 타이머가 없습니다" in by_id(response.text, "timer").text
+    assert "timer--running" not in str(by_id(response.text, "timer").attrs["class"]).split()
 
 
 def test_stop_saves_log_and_refreshes_panels(
@@ -152,7 +152,7 @@ def test_stop_saves_log_and_refreshes_panels(
     with db.session_scope(web_engine) as s:
         log = services.list_worklogs(s, project_slug="payment")[0]
         assert (log.minutes, log.date) == (85, FIXED_TODAY)
-    assert "진행 중인 타이머가 없습니다" in by_id(html, "timer").text
+    assert "timer--running" not in str(by_id(html, "timer").attrs["class"]).split()
     assert "hx-swap-oob" not in by_id(html, "timer").attrs
     for name in ("summary", "recent"):
         assert by_id(html, name).attrs["hx-swap-oob"] == "true"
@@ -201,7 +201,7 @@ def test_stop_without_timer(client: TestClient) -> None:
     assert response.status_code == 404
     assert by_id(html, "timer-result").text == NO_TIMER_MESSAGE
     assert by_id(html, "timer-result").attrs["role"] == "alert"
-    assert "진행 중인 타이머가 없습니다" in by_id(html, "timer").text
+    assert "timer--running" not in str(by_id(html, "timer").attrs["class"]).split()
     assert "timer-elapsed" not in _ids(html)
 
 

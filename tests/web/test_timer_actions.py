@@ -47,38 +47,49 @@ def _start_directly(engine: Engine, note: str = "설계") -> None:
         services.start_timer(s, now=FIXED_NOW, note=note, project_slug="payment", category="design")
 
 
+def _idle(html: str) -> bool:
+    """진행 중이 아닌 타이머 영역: 시작 폼·선택 상자·안내 줄 없이 결과 줄만 둔다(2026-10-29 E1)."""
+    timer = by_id(html, "timer")
+    start = html.index('id="timer"')
+    section = html[start : html.index("</section>", start)]
+    return (
+        "timer--running" not in str(timer.attrs["class"]).split()
+        and "<select" not in section
+        and "<form" not in section
+        and "timer__idle" not in section
+    )
+
+
 def _cancel_version(html: str) -> str:
     button = next(e for e in all_by_tag(html, "button") if e.text == "취소")
     vals = json.loads(str(button.attrs["hx-vals"]))
     return str(vals["version"])
 
 
-def test_idle_panel_has_start_form_with_same_choices_as_quick_form(
-    client: TestClient, web_engine: Engine
-) -> None:
+def test_quick_form_has_timer_start_button(client: TestClient, web_engine: Engine) -> None:
     add_project(web_engine, "payment", "결제 서버")
     add_task(web_engine, title="환불 API 설계", project="payment")
 
     html = client.get("/").text
 
-    form = by_id(html, "timer-start")
-    assert form.attrs["hx-post"] == "/timer/start"
-    assert form.attrs["hx-target"] == "#timer"
-    assert form.attrs["hx-swap"] == "outerHTML"
-    assert form.attrs["hx-sync"] == "this:drop"
-    assert form.attrs["hx-disabled-elt"] == "find button"
-    note = by_id(html, "timer-note")
-    assert note.attrs["placeholder"] == "무엇을 하나요"
-    assert note.attrs["title"] == "태스크를 고르면 비워도 됩니다."
-    assert "터미널에서 lb start로 시작하세요." not in html
-    quick_ids = {"project": "quick-project", "category": "quick-category", "task": "quick-task"}
-    for name, quick_id in quick_ids.items():
-        assert by_id(html, f"timer-{name}").tag == "select"
-        assert by_id(html, quick_id).tag == "select"
-    timer_html = client.get("/timer", headers=HTMX).text
-    quick_html = client.post("/logs", data={"duration": "", "note": ""}, headers=HTMX).text
-    for name in ("project", "category", "task"):
-        assert select_options(timer_html, name) == select_options(quick_html, name)
+    # 타이머 시작 폼은 없고, 빠른 기록 폼의 선택 상자를 함께 쓴다(2026-10-29 E1).
+    ids = {str(e.attrs.get("id")) for e in parse_html(html)}
+    assert not ids & {"timer-start", "timer-note", "timer-project", "timer-category", "timer-task"}
+    assert _idle(html)
+    form = by_form(html)
+    buttons = all_by_tag(form, "button")
+    assert [b.text for b in buttons] == ["기록", "타이머 시작"]
+    record, start = buttons
+    assert (record.attrs["type"], record.attrs["class"]) == ("submit", "btn btn--primary")
+    # Enter는 늘 기록이다: 타이머 시작은 submit 버튼이 아니다(E2).
+    assert start.attrs["type"] == "button"
+    assert "btn--primary" not in str(start.attrs["class"]).split()
+    assert "quick__timer" in str(start.attrs["class"]).split()
+    assert start.attrs["hx-post"] == "/timer/start"
+    assert start.attrs["hx-target"] == "#timer"
+    assert start.attrs["hx-swap"] == "outerHTML"
+    assert start.attrs["hx-sync"] == "closest form:drop"
+    assert "<svg" in form[form.index("quick__timer") :]
     assert inline_code_violations(html) == []
 
 
@@ -94,6 +105,11 @@ def test_start_with_note_and_category(client: TestClient, web_engine: Engine) ->
     )
     assert by_id(html, "timer-result").attrs["role"] == "status"
     assert "timer-elapsed" in {str(e.attrs.get("id")) for e in parse_html(html)}
+    # 입력한 메모가 다음 기록에 섞이지 않게 빠른 기록 폼을 빈 값으로 다시 그린다.
+    quick = by_id(html, "quick-form")
+    assert quick.attrs["hx-swap-oob"] == "true"
+    assert named_input(html, "note").attrs.get("value", "") == ""
+    assert [v for v, _, sel in select_options(html, "category") if sel] == []
     with db.session_scope(web_engine) as s:
         timer = services.get_timer(s)
         assert timer is not None
@@ -127,18 +143,20 @@ def test_start_from_todo_task_uses_title_and_marks_doing(
         pytest.param({"note": "메모"}, CATEGORY_REQUIRED, id="no-category-no-task"),
     ],
 )
-def test_start_validation_errors_keep_input(
+def test_start_validation_errors_leave_quick_form_alone(
     client: TestClient, web_engine: Engine, form: dict[str, str], message: str
 ) -> None:
-    response = client.post("/timer/start", data={"project": "common", **form}, headers=HTMX)
+    response = client.post(
+        "/timer/start", data={"duration": "", "project": "common", **form}, headers=HTMX
+    )
 
     html = response.text
     assert response.status_code == 400
     assert by_id(html, "timer-result").text == message
     assert by_id(html, "timer-result").attrs["role"] == "alert"
-    assert by_id(html, "timer-note").attrs["value"] == form.get("note", "")
-    selected = [v for v, _, sel in select_options(html, "category") if sel]
-    assert selected == ([form["category"]] if "category" in form else [])
+    # 입력값은 빠른 기록 폼에 그대로 남는다. 응답은 타이머 영역만 바꾼다.
+    assert 'id="quick-form"' not in html
+    assert _idle(html)
     assert not _has_timer(web_engine)
 
 
@@ -179,7 +197,7 @@ def test_cancel_with_same_version(client: TestClient, web_engine: Engine, clock:
     assert by_id(html, "timer-result").text == (
         "✔ 타이머를 버렸습니다: payment/design — 설계 (경과 1h 25m)"
     )
-    assert by_id(html, "timer-start").tag == "form"
+    assert _idle(html)
     assert not _has_timer(web_engine)
     assert _log_count(web_engine) == 0
 
@@ -249,7 +267,7 @@ def test_cancel_without_timer(client: TestClient) -> None:
     html = response.text
     assert response.status_code == 404
     assert by_id(html, "timer-result").text == NO_TIMER_MESSAGE
-    assert by_id(html, "timer-start").tag == "form"
+    assert _idle(html)
 
 
 def test_cancel_from_other_origin_is_forbidden(client: TestClient, web_engine: Engine) -> None:
@@ -283,36 +301,38 @@ def test_cancel_button_has_confirm_and_version(
     assert inline_code_violations(html) == []
 
 
-def test_stop_response_has_start_form_with_choices(
-    client: TestClient, web_engine: Engine, clock: Clock
-) -> None:
+def test_stop_response_has_idle_panel(client: TestClient, web_engine: Engine, clock: Clock) -> None:
     add_project(web_engine, "payment", "결제 서버")
     _start_directly(web_engine)
     clock.advance(minutes=85)
 
     html = client.post("/timer/stop", headers=HTMX).text
 
-    assert by_id(html, "timer-start").tag == "form"
-    assert ("payment", "payment — 결제 서버", False) in select_options(html, "project")
+    assert _idle(html)
 
 
-def test_elapsed_without_timer_returns_start_form(client: TestClient) -> None:
+def test_elapsed_without_timer_returns_idle_panel(client: TestClient) -> None:
     html = client.get("/timer/elapsed", headers=HTMX).text
 
-    assert by_id(html, "timer-start").tag == "form"
-    assert select_options(html, "category")[0] == ("", "카테고리 자동", False)
+    assert _idle(html)
+    assert by_id(html, "timer").text == "타이머"  # 숨은 제목만 남는다
 
 
 def test_data_focus_on_timer_states(client: TestClient, web_engine: Engine) -> None:
     add_project(web_engine, "payment", "결제 서버")
     idle = client.get("/timer", headers=HTMX).text
-    focus = [e for e in parse_html(idle) if "data-focus" in e.attrs]
-    assert [e.attrs.get("id") for e in focus] == ["timer-note"]
+    assert [e for e in parse_html(idle) if "data-focus" in e.attrs] == []
 
     _start_directly(web_engine)
     running = client.get("/timer", headers=HTMX).text
     focus = [e for e in parse_html(running) if "data-focus" in e.attrs]
     assert [e.text for e in focus] == ["정지"]
+
+    # 정지·취소 뒤에는 정지 버튼이 사라지므로 결과 줄이 포커스를 받는다.
+    version = _cancel_version(running)
+    stopped = client.post("/timer/cancel", data={"version": version}, headers=HTMX).text
+    focus = [e for e in parse_html(stopped) if "data-focus" in e.attrs]
+    assert [(e.attrs.get("id"), e.attrs.get("tabindex")) for e in focus] == [("timer-result", "-1")]
 
 
 def test_data_focus_on_log_areas(client: TestClient, web_engine: Engine) -> None:
@@ -332,20 +352,7 @@ def test_data_focus_on_log_areas(client: TestClient, web_engine: Engine) -> None
 
 
 def by_form(html: str) -> str:
-    """빠른 기록 폼 조각만 잘라 낸다(타이머 시작 폼과 섞이지 않게)."""
+    """빠른 기록 폼 조각만 잘라 낸다."""
     start = html.index('id="quick-form"')
     end = html.index("</form>", start)
     return html[start:end]
-
-
-def test_timer_start_selects_explain_auto_rule_in_title(client: TestClient) -> None:
-    """빈 값 문구는 짧게, 자동 규칙 전체 설명은 말풍선(title)에 둔다(2026-10-26 D2)."""
-    html = client.get("/timer", headers=HTMX).text
-
-    assert select_options(html, "project")[0] == ("", "프로젝트 자동", False)
-    assert select_options(html, "task")[0] == ("", "태스크 없음", False)
-    assert named_input(html, "project").attrs["title"] == (
-        "비우면 태스크의 프로젝트를 쓰고, 태스크도 없으면 기본 프로젝트(common)에 기록합니다."
-    )
-    assert named_input(html, "category").attrs["title"] == "비우면 태스크의 카테고리를 씁니다."
-    assert "title" not in named_input(html, "task").attrs
