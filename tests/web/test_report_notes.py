@@ -89,6 +89,9 @@ def test_save_with_stale_version_is_conflict(client: TestClient, web_engine: Eng
     assert by_id(html, "report-notes-text").text == "내 입력"
     assert by_id(html, "report-risks-text").text == "내 위험"
     assert "다른 탭" in by_id(html, "report-markdown").text
+    # 입력값은 저장되지 않았으므로 안내가 찬 채로 그린다(report.js도 이 표시를 본다)
+    assert "data-unsaved" in by_id(html, "report-notes").attrs
+    assert by_id(html, "report-notes-dirty").text.startswith("저장하지 않은 내용이 있습니다.")
     current = _version(html)
     assert current != ""
     assert _stored(web_engine) == ("다른 탭", "")
@@ -144,3 +147,11 @@ def test_bad_week_response_does_not_collect_commits(
 
     assert response.status_code == 400
     assert fake_collect.calls == []
+
+
+def test_successful_save_clears_unsaved_mark(client: TestClient) -> None:
+    html = _post(client, notes="내용").text
+
+    assert "data-unsaved" not in by_id(html, "report-notes").attrs
+    assert by_id(html, "report-notes-dirty").text == ""
+    assert by_id(html, "report-sheet").tag == "article"

@@ -1,4 +1,4 @@
-<form id="report-notes" class="report-notes" aria-labelledby="report-notes-title" hx-post="/report/notes" hx-target="#report-body" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button">
+<form id="report-notes" class="report-notes" aria-labelledby="report-notes-title" hx-post="/report/notes" hx-target="#report-body" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button"{% if body.notes_unsaved %} data-unsaved{% endif %}>
   <h2 id="report-notes-title" class="report-notes__title" tabindex="-1" data-focus>특이사항 · 리스크</h2>
   <input type="hidden" name="week" value="{{ body.week }}">
   <input type="hidden" name="version" value="{{ body.notes.version }}">
@@ -10,7 +10,10 @@
     <label for="report-risks-text">리스크</label>
     <textarea id="report-risks-text" name="risks" rows="4">{{ body.notes.risks }}</textarea>
   </div>
-  <button type="submit" class="btn btn--primary">저장</button>
+  <div class="report-notes__actions">
+    <button type="submit" class="btn btn--primary">저장</button>
+    <p id="report-notes-dirty" class="report-notes__dirty" role="status" data-dirty-text="저장하지 않은 내용이 있습니다. 표 보기와 복사에는 저장한 내용만 들어갑니다.">{% if body.notes_unsaved %}저장하지 않은 내용이 있습니다. 표 보기와 복사에는 저장한 내용만 들어갑니다.{% endif %}</p>
+  </div>
 {% if body.message %}
   <p id="report-notes-result" class="form-message{% if body.is_error %} form-message--error{% endif %}" role="{{ 'alert' if body.is_error else 'status' }}">{{ body.message }}</p>
 {% endif %}

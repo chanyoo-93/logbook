@@ -377,16 +377,33 @@ def test_report_text_uses_document_font(selector: str) -> None:
     assert "font-family: var(--font-document)" in _declarations(_read("report.css"), selector)
 
 
-def test_report_copy_icon_sits_on_the_top_right_of_the_markdown_box() -> None:
+def test_report_markdown_copy_sits_beside_the_raw_note() -> None:
     css = _read("report.css")
 
-    assert "position: relative" in _declarations(css, ".report__preview-box")
-    copy = _declarations(css, ".report__copy")
-    assert {"position: absolute", "top: var(--space-2)", "right: var(--space-2)"} <= copy
-    # 글이 아이콘 밑으로 들어가지 않게 오른쪽을 비운다
-    preview = _declarations(css, ".report__preview")
-    padding = "var(--space-3) calc(2.25rem + var(--space-3)) var(--space-3) var(--space-3)"
-    assert f"padding: {padding}" in preview
+    head = _declarations(css, ".report__raw-head")
+    assert {"display: flex", "justify-content: space-between"} <= head
+    # 버튼이 상자 밖으로 나와 미리보기 오른쪽을 비워 둘 필요가 없다
+    assert "padding: var(--space-3)" in _declarations(css, ".report__preview")
+    assert ".report__preview-box" not in css
+
+
+def test_report_tabs_stay_hidden_until_js_turns_them_on() -> None:
+    # .report__tabs의 display: flex가 hidden 속성(UA 규칙)을 이기지 않게 한다
+    assert "display: none" in _declarations(_read("report.css"), ".report__tabs[hidden]")
+
+
+def test_copy_buttons_hide_until_js_turns_views_on() -> None:
+    css = _squash(_read("report.css"))
+    # _squash가 콜론 뒤에 한 칸을 둔다
+    selector = ".report__views: not(.report__views--tabs) [data-copy-rich]"
+    assert selector in css
+    assert "display: none" in css[css.index(selector) :].split("}")[0]
+
+
+def test_sheet_section_head_puts_copy_beside_heading() -> None:
+    css = _read("report.css")
+
+    assert {"display: flex", "align-items: baseline"} <= _declarations(css, ".sheet__section-head")
 
 
 def test_report_preview_sets_document_font_after_font_inherit() -> None:
