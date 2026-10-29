@@ -27,7 +27,7 @@ from logbook.web.pages.views import RECENT_LIMIT, QuickFormValues, log_row
 router = APIRouter()
 
 QUICK_FORM_TEMPLATE = "partials/quick_form_response.html"
-DURATION_REQUIRED = "시간을 입력하세요. 예: 2h, 90m, 1:30"
+DURATION_REQUIRED = "시간을 입력하세요. 예: 2h, 90m, 1:30. 시간을 재려면 타이머 시작을 누르세요."
 
 
 @router.get("/", response_class=HTMLResponse)
