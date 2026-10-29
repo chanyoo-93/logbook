@@ -36,7 +36,7 @@ def dashboard(request: Request, ctx: Ctx) -> HTMLResponse:
     week = week_of(now.date(), ctx.cfg.week_start)
     with ctx.session() as s:
         summary = build_summary(s, ctx, week, now)
-        timer_panel = timer_panel_context(s, ctx, now)
+        timer_panel = timer_panel_context(s, now)
         rows = [log_row(log) for log in services.recent_worklogs(s, limit=RECENT_LIMIT)]
         form = quick_form_context(s, ctx, QuickFormValues())
     return render(

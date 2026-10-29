@@ -47,7 +47,7 @@ TIMER_CANCELED = f"{RESULT_MARK} 타이머를 버렸습니다: {{scope}} — {{n
 def _panel(ctx: WebContext, *, message: str = "", is_error: bool = False) -> dict[str, Any]:
     """지금 DB 상태로 패널 값을 만든다(오류 응답에서 패널을 다시 그릴 때 쓴다)."""
     with ctx.session() as s:
-        return timer_panel_context(s, ctx, ctx.now(), message=message, is_error=is_error)
+        return timer_panel_context(s, ctx.now(), message=message, is_error=is_error)
 
 
 @router.get("/timer", response_class=HTMLResponse)
@@ -91,7 +91,7 @@ def _start(ctx: WebContext, values: TimerStartValues) -> dict[str, Any]:
             message += TASK_STARTED.format(id=started.timer.task_id)
         return {
             **quick_form_context(s, ctx, QuickFormValues()),
-            **timer_panel_context(s, ctx, now, message=message),
+            **timer_panel_context(s, now, message=message),
         }
 
 
@@ -124,7 +124,7 @@ def stop_timer(request: Request, ctx: Ctx) -> HTMLResponse:
             message = result_line(s, stopped.log, now.date())
             page = {
                 **refreshed_panels(s, ctx, now),
-                **timer_panel_context(s, ctx, now, message=message),
+                **timer_panel_context(s, now, message=message),
             }
     except LogbookError as error:
         # 실패해도 DB는 그대로이므로 현재 상태로 패널을 다시 그린다.
@@ -145,7 +145,7 @@ def _cancel(ctx: WebContext, version: str) -> dict[str, Any]:
         view = timer_view(timer, now)
         services.cancel_timer(s)
         message = TIMER_CANCELED.format(scope=view.scope, note=view.note, elapsed=view.elapsed)
-        return timer_panel_context(s, ctx, now, message=message)
+        return timer_panel_context(s, now, message=message)
 
 
 @router.post("/timer/cancel", response_class=HTMLResponse)

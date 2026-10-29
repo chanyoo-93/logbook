@@ -108,8 +108,10 @@ def test_start_with_note_and_category(client: TestClient, web_engine: Engine) ->
     # 입력한 메모가 다음 기록에 섞이지 않게 빠른 기록 폼을 빈 값으로 다시 그린다.
     quick = by_id(html, "quick-form")
     assert quick.attrs["hx-swap-oob"] == "true"
-    assert named_input(html, "note").attrs.get("value", "") == ""
-    assert [v for v, _, sel in select_options(html, "category") if sel] == []
+    for name in ("duration", "note"):
+        assert named_input(html, name).attrs.get("value", "") == ""
+    for name in ("project", "category", "task"):
+        assert [v for v, _, sel in select_options(html, name) if sel] == []
     with db.session_scope(web_engine) as s:
         timer = services.get_timer(s)
         assert timer is not None

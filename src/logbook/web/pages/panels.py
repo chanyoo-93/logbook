@@ -73,7 +73,6 @@ def quick_form_context(
 
 def timer_panel_context(
     s: Session,
-    ctx: WebContext,
     now: datetime,
     *,
     message: str = "",

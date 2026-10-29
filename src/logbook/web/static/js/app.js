@@ -9,10 +9,21 @@
   }
 
   // 새 요청을 보낼 때 지난 오류를 지운다.
-  document.addEventListener("htmx:beforeRequest", function () {
+  // 빠른 기록 폼의 두 버튼(기록, 타이머 시작)은 결과 줄이 서로 다른 곳(#quick-result, #timer-result)에 뜬다.
+  // 한쪽 응답은 다른 쪽을 다시 그리지 않으므로, 폼에서 요청을 보낼 때 지난 결과 줄을 둘 다 지운다.
+  document.addEventListener("htmx:beforeRequest", function (event) {
     var area = flashArea();
     if (area) {
       area.replaceChildren();
+    }
+    var source = event.target;
+    if (source && source.closest && source.closest("#quick-form")) {
+      ["quick-result", "timer-result"].forEach(function (id) {
+        var line = document.getElementById(id);
+        if (line) {
+          line.remove();
+        }
+      });
     }
   });
 
