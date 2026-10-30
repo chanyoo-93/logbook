@@ -384,8 +384,9 @@ def log_table_view(
     is_error: bool = False,
     is_filtered: bool = False,
 ) -> LogTableView:
-    """logs는 날짜 순(list_worklogs)이어야 한다. 같은 날짜끼리 하루 묶음으로 나눈다."""
-    days = [list(group) for _, group in groupby(logs, key=lambda log: log.date)]
+    """같은 날짜끼리 하루 묶음으로 나눈다(날짜 → ID 순, list_worklogs와 같은 순서)."""
+    ordered = sorted(logs, key=lambda log: (log.date, log.id))
+    days = [list(group) for _, group in groupby(ordered, key=lambda log: log.date)]
     return LogTableView(
         heading=week_heading(week),
         days=tuple(

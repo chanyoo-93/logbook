@@ -179,7 +179,7 @@ def test_timer_row_is_separated_from_quick_row_by_hairline() -> None:
 
 
 def test_stat_numbers_are_smaller_than_before() -> None:
-    """평가(2026-10-26): 가장 큰 요소가 숫자라 기록이 묻혔다. 최대 크기를 약 30% 줄인다."""
+    """평가(2026-10-26): 가장 큰 요소가 숫자라 기록이 묻혔다. 이번 주 공수 최대 3rem."""
     declarations = _declarations(_read("app.css"), ":root")
 
     assert "--text-stat-lead: clamp(2rem, 1.4rem + 2.2vw, 3rem)" in declarations
@@ -194,6 +194,11 @@ def test_side_stat_numbers_are_one_step_below_the_lead() -> None:
     assert "--text-stat:" not in _read("app.css")  # 쓰는 곳이 없어진 토큰
 
 
+def test_title_step_is_twenty_pixels() -> None:
+    """결정 H3(2026-10-30): 본문 15px의 1.33배."""
+    assert "--text-title: 1.25rem" in _declarations(_read("app.css"), ":root")
+
+
 @pytest.mark.parametrize(
     ("file", "selector"),
     [
@@ -205,8 +210,7 @@ def test_side_stat_numbers_are_one_step_below_the_lead() -> None:
     ],
 )
 def test_section_titles_use_title_step(file: str, selector: str) -> None:
-    """결정 H3(2026-10-30): 구역 제목(h2)은 20px(본문 15px의 1.33배)."""
-    assert "--text-title: 1.25rem" in _declarations(_read("app.css"), ":root")
+    """결정 H3(2026-10-30): 구역 제목(h2)은 20px 단계를 쓴다."""
     assert "font-size: var(--text-title)" in _declarations(_read(file), selector)
 
 

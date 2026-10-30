@@ -80,6 +80,11 @@
 - `app.css`에 `--text-title: 1.25rem`(20px) 토큰을 더하고 `.panel__title`(`dashboard.css`)이 쓴다. `--text-md`(17px)는 다른 곳(보드 열 제목, 오류 카드 제목, 타이머 등)이 계속 쓴다.
 - `dashboard.css`: `.stat__value`의 기본 크기를 `--text-lg`로 내린다. `.stat--lead .stat__value`는 지금처럼 `--text-stat-lead`다. 그러면 쓰지 않게 되는 `--text-stat` 토큰을 지운다(지금 쓰는 곳은 `.stat__value` 한 곳이다).
 
+### 구현 중 바뀐 것(사용자 승인)
+
+- 20px 제목은 `.panel__title`만이 아니라 태스크·보고서 화면의 h2(`board__title`, `plan__title`, `task-page__title`, `report__title`, `report-notes__title`)에도 적용했다. 평가가 짚은 `/tasks` 제목 단계가 이 클래스들이다.
+- 좁은 화면(720px 미만)에서는 하루 합계를 날짜 바로 옆에 둔다(`responsive.css`). 표가 가로로 스크롤해서 오른쪽 끝의 합계가 처음 화면 밖에 있었다.
+
 ## Task 1: 제목과 요약 숫자 단계(H3·H4)
 
 **Files:** `static/css/app.css`, `static/css/dashboard.css`

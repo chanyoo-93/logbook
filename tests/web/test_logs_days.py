@@ -3,6 +3,7 @@
 W40 = 09-28 ~ 10-04, 오늘 = 2026-10-01 목요일, 하루 목표는 기본값 8h.
 """
 
+import json
 from datetime import date
 
 from fastapi.testclient import TestClient
@@ -81,11 +82,15 @@ def test_grouped_rows_have_no_date_cell(client: TestClient, web_engine: Engine) 
 def test_filtered_day_shows_total_only(client: TestClient, web_engine: Engine) -> None:
     _seed(web_engine)
 
-    html = client.get("/logs?project=payment").text
+    for query, heads in (
+        ("?project=payment", ["09-28 (월) 4h", "10-01 (목) 5h"]),
+        ("?category=meeting", ["09-28 (월) 2h 30m"]),
+    ):
+        html = client.get(f"/logs{query}").text
 
-    assert [th.text for th in _day_heads(html)] == ["09-28 (월) 4h", "10-01 (목) 5h"]
-    assert by_class(html, "progress") == []
-    assert by_class(html, "log-day__target") == []
+        assert [th.text for th in _day_heads(html)] == heads, query
+        assert by_class(html, "progress") == [], query
+        assert by_class(html, "log-day__target") == [], query
 
 
 def test_week_total_and_empty_state_stay(client: TestClient, web_engine: Engine) -> None:
@@ -105,10 +110,9 @@ def test_edit_row_keeps_date_input_within_seven_cells(
     html = client.get(f"/logs/{log_id}/edit").text
 
     assert len(all_by_tag(html, "td")) == 7
-    [first] = all_by_tag(html, "td")[:1]
-    first_html = html[html.index("<td") : html.index("</td>")]
-    assert 'name="log_date"' in first_html
-    assert first.text == str(log_id)
+    first_cell = html[html.index("<td") : html.index("</td>")]  # 첫 칸(ID)
+    assert 'name="log_date"' in first_cell
+    assert all_by_tag(html, "td")[0].text == str(log_id)
 
 
 def test_moving_a_log_to_another_day_redraws_both_totals(
@@ -142,3 +146,22 @@ def test_moving_a_log_to_another_day_redraws_both_totals(
         "09-28 (월) 10h / 8h",
         "10-01 (목) 5h / 8h",
     ]
+
+
+def test_deleting_the_last_log_of_a_day_removes_its_head(
+    client: TestClient, web_engine: Engine
+) -> None:
+    ids = _seed(web_engine)
+    for key in ("mon_a", "mon_b"):
+        page = client.get("/logs").text
+        version = next(
+            str(e.attrs["hx-vals"])
+            for e in parse_html(page)
+            if e.attrs.get("hx-delete") == f"/logs/{ids[key]}"
+        )
+        response = client.delete(
+            f"/logs/{ids[key]}", params={"version": json.loads(version)["version"]}, headers=HTMX
+        )
+        assert response.status_code == 200
+
+    assert [th.text for th in _day_heads(response.text)] == ["10-01 (목) 8h 30m / 8h"]
