@@ -9,6 +9,7 @@ import hashlib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from itertools import groupby
 from typing import TYPE_CHECKING
 from urllib.parse import urlencode
 
@@ -263,9 +264,21 @@ class LogFilterView:
 
 
 @dataclass(frozen=True)
+class LogDayView:
+    """기록 표의 하루 묶음: 머리글(날짜·합계·목표 막대)과 그날 행."""
+
+    day: str  # '10-01 (목)'
+    total: str  # 그날 합계(format_duration)
+    target: str  # 하루 목표(format_duration). 필터가 있으면 ''(거른 합계는 목표와 비교하지 않는다)
+    percent: int  # 목표 대비 0~100
+    reached: bool  # 합계 >= 목표
+    rows: tuple[LogRowView, ...]
+
+
+@dataclass(frozen=True)
 class LogTableView:
     heading: str  # week_heading
-    rows: tuple[LogRowView, ...]
+    days: tuple[LogDayView, ...]  # 기록이 있는 날만, 날짜 순
     total: str  # format_duration
     count: int
     message: str = ""  # 결과 줄
@@ -343,17 +356,41 @@ def log_filter_view(s: Session, cfg: Config, week: Week | None, values: LogFilte
     )
 
 
+def progress_percent(actual_minutes: int, estimate_minutes: int) -> int:
+    """실적/기준(예상 공수, 하루 목표) 비율을 0~100 정수로. 기준이 0이면 실적이 있을 때만 100."""
+    if estimate_minutes <= 0:
+        return 100 if actual_minutes > 0 else 0
+    return min(100, round(actual_minutes / estimate_minutes * 100))
+
+
+def _log_day(logs: Sequence[WorkLog], target_minutes: int, *, is_filtered: bool) -> LogDayView:
+    minutes = sum(log.minutes for log in logs)
+    return LogDayView(
+        day=day_label(logs[0].date),
+        total=format_duration(minutes),
+        target="" if is_filtered else format_duration(target_minutes),
+        percent=progress_percent(minutes, target_minutes),
+        reached=minutes >= target_minutes,
+        rows=tuple(log_row(log) for log in logs),
+    )
+
+
 def log_table_view(
     week: Week,
     logs: Sequence[WorkLog],
     *,
+    daily_target_minutes: int,
     message: str = "",
     is_error: bool = False,
     is_filtered: bool = False,
 ) -> LogTableView:
+    """logs는 날짜 순(list_worklogs)이어야 한다. 같은 날짜끼리 하루 묶음으로 나눈다."""
+    days = [list(group) for _, group in groupby(logs, key=lambda log: log.date)]
     return LogTableView(
         heading=week_heading(week),
-        rows=tuple(log_row(log) for log in logs),
+        days=tuple(
+            _log_day(group, daily_target_minutes, is_filtered=is_filtered) for group in days
+        ),
         total=format_duration(sum(log.minutes for log in logs)),
         count=len(logs),
         message=message,

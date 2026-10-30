@@ -5,13 +5,12 @@
 {% if table.message %}
   <p id="log-result" class="form-message{% if table.is_error %} form-message--error{% endif %}" role="{{ 'alert' if table.is_error else 'status' }}">{{ table.message }}</p>
 {% endif %}
-{% if table.rows %}
+{% if table.days %}
   <div class="table-wrap">
     <table class="grid grid--logs grid--records">
       <thead class="visually-hidden">
         <tr>
           <th scope="col" class="num">ID</th>
-          <th scope="col">날짜</th>
           <th scope="col">프로젝트</th>
           <th scope="col">카테고리</th>
           <th scope="col" class="num">시간</th>
@@ -20,14 +19,27 @@
           <th scope="col">동작</th>
         </tr>
       </thead>
-      <tbody>
-{% for row in table.rows %}
+{% for day in table.days %}
+      <tbody class="log-day">
+        <tr class="log-day__head">
+          <th scope="rowgroup" colspan="7">
+            <div class="log-day__line">
+              <span class="log-day__date">{{ day.day }}</span>
+              <span class="log-day__total">{{ day.total }}{% if day.target %}<span class="log-day__target"> / {{ day.target }}</span>{% endif %}</span>
+            </div>
+{% if day.target %}
+            <svg class="progress{% if day.reached %} progress--done{% endif %}" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="progress__track" width="100" height="4"/><rect class="progress__fill" width="{{ day.percent }}" height="4"/></svg>
+{% endif %}
+          </th>
+        </tr>
+{% for row in day.rows %}
 {% include "partials/log_row.html" %}
 {% endfor %}
       </tbody>
+{% endfor %}
       <tfoot>
         <tr>
-          <td id="log-total" colspan="8">합계 {{ table.total }} / 기록 {{ table.count }}건</td>
+          <td id="log-total" colspan="7">합계 {{ table.total }} / 기록 {{ table.count }}건</td>
         </tr>
       </tfoot>
     </table>

@@ -9,8 +9,8 @@
 </select>
 {% endmacro %}
 <tr id="log-{{ edit.id }}" class="is-editing">
-  <td class="num">{{ edit.id }}<input type="hidden" name="version" value="{{ edit.values.version }}"></td>
-  <td><input type="date" name="log_date" aria-label="날짜" value="{{ edit.values.log_date }}"></td>
+  {# 날짜 칸이 없는 표(날짜 묶음)라 날짜 입력은 ID 칸 안에 둔다 #}
+  <td class="num log-edit__id">{{ edit.id }}<input type="hidden" name="version" value="{{ edit.values.version }}"><input type="date" name="log_date" aria-label="날짜" value="{{ edit.values.log_date }}"></td>
   <td>{{ edit_select("log_project", "프로젝트", edit.projects, edit.values.log_project) }}</td>
   <td>{{ edit_select("log_category", "카테고리", edit.categories, edit.values.log_category) }}</td>
   <td><input type="text" name="duration" aria-label="시간" autocomplete="off" data-focus value="{{ edit.values.duration }}"></td>

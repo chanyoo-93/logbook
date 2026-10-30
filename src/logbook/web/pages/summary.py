@@ -9,8 +9,7 @@ from typing import TYPE_CHECKING, TypedDict
 from logbook.core import services
 from logbook.core.duration import format_duration
 from logbook.core.weeks import Week, day_label, week_heading
-from logbook.web.pages.task_views import progress_percent
-from logbook.web.pages.views import category_color_map, project_color
+from logbook.web.pages.views import category_color_map, progress_percent, project_color
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session

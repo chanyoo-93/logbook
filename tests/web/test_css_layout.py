@@ -574,3 +574,10 @@ def test_timer_start_button_hides_while_timer_runs() -> None:
     # 진행 중이면 빠른 기록 폼의 타이머 시작 버튼을 숨긴다(2026-10-29 E3)
     selector = ".work:has(.timer--running) .quick__timer"
     assert "display: none" in _declarations(_read("dashboard.css"), selector)
+
+
+def test_day_total_sits_next_to_date_on_narrow_screens() -> None:
+    """결정 H2(2026-10-30): 320px에서 표가 가로로 스크롤해도 하루 합계가 처음 화면에 보인다."""
+    assert "justify-content: space-between" in _declarations(_read("logs.css"), ".log-day__line")
+    narrow = _media_block(_read("responsive.css"), NARROW_QUERY)
+    assert "justify-content: flex-start" in _declarations(narrow, ".log-day__line")
