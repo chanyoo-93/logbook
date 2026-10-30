@@ -18,7 +18,7 @@ from logbook.web.api.envelope import fail, ok
 from logbook.web.assets import FONTS_CSS_URL, STYLESHEETS
 from logbook.web.errors import ConflictError, ErrorKind, classify
 from tests.web.conftest import RAISED_ERRORS
-from tests.web.helpers import all_by_tag
+from tests.web.helpers import all_by_tag, inline_code_violations
 
 CASES = [
     ("invalid", 400, "invalid_input"),
@@ -113,7 +113,8 @@ def test_error_page_has_hidden_h1_first_in_main(probe_client: TestClient) -> Non
     html = probe_client.get("/raise/missing").text
 
     headings = all_by_tag(html, "h1")
-    first_tag = html.index("<", html.index("<main>") + len("<main>"))
+    main = '<main id="main" tabindex="-1">'
+    first_tag = html.index("<", html.index(main) + len(main))
 
     assert [(h.text, h.attrs.get("class")) for h in headings] == [("오류", "visually-hidden")]
     assert html.startswith('<h1 class="visually-hidden">', first_tag)
@@ -150,12 +151,10 @@ def test_page_errors_render_error_page(probe_client: TestClient) -> None:
         *[f"/static/css/{name}" for name in STYLESHEETS],
         FONTS_CSS_URL,
     ]
-    [back] = all_by_tag(response.text, "a")
-    assert back.attrs["href"] == "/"
-    assert back.text == "대시보드로 돌아가기"
-    assert "<script" not in response.text
-    assert "style=" not in response.text
-    assert "<style" not in response.text
+    assert ("대시보드로", "/") in [
+        (a.text, a.attrs.get("href")) for a in all_by_tag(response.text, "a")
+    ]
+    assert inline_code_violations(response.text) == []
 
 
 def test_error_page_escapes_message(probe_client: TestClient) -> None:
