@@ -1,0 +1,5 @@
+{# 타이머 시작 성공 응답: 타이머 영역(hx-target)과, 입력한 메모가 다음 기록에 섞이지 않게 빈 빠른 기록 폼(OOB). #}
+{% include "partials/timer.html" %}
+{% with quick_oob = true %}
+{% include "partials/quick_form.html" %}
+{% endwith %}

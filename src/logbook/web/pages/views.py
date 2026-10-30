@@ -113,7 +113,7 @@ class TimerView:
 
 @dataclass(frozen=True)
 class TimerStartValues:
-    """타이머 시작 폼에 채워 둘 값. 입력 문자열 그대로이고 비어 있으면 '자동'이다."""
+    """타이머 시작 요청(빠른 기록 폼의 `타이머 시작`) 입력값. 문자열 그대로, 비면 '자동'."""
 
     note: str = ""
     project: str = ""

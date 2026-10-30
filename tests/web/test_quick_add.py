@@ -22,7 +22,7 @@ from tests.web.helpers import (
     parse_html,
 )
 
-DURATION_REQUIRED = "시간을 입력하세요. 예: 2h, 90m, 1:30"
+DURATION_REQUIRED = "시간을 입력하세요. 예: 2h, 90m, 1:30. 시간을 재려면 타이머 시작을 누르세요."
 CATEGORY_REQUIRED = "카테고리를 고르세요. 태스크를 고르면 태스크의 카테고리를 씁니다."
 NOTE_REQUIRED = "메모를 입력하세요. 무엇을 했는지 한 줄로 적어 주세요."
 TASK_OF_PAYMENT = (
@@ -100,7 +100,7 @@ def test_form_inputs_are_labelled(client: TestClient) -> None:
     assert duration.attrs["autocomplete"] == "off"
     assert duration.attrs["placeholder"] == "2h, 90m, 1:30"
     assert "autofocus" in duration.attrs
-    assert [e.text for e in all_by_tag(html, "button")] == ["기록"]
+    assert [e.text for e in all_by_tag(html, "button")] == ["기록", "타이머 시작"]
 
 
 def test_form_options(client: TestClient, web_engine: Engine) -> None:

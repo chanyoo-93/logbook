@@ -27,7 +27,7 @@ from logbook.web.pages.views import RECENT_LIMIT, QuickFormValues, log_row
 router = APIRouter()
 
 QUICK_FORM_TEMPLATE = "partials/quick_form_response.html"
-DURATION_REQUIRED = "시간을 입력하세요. 예: 2h, 90m, 1:30"
+DURATION_REQUIRED = "시간을 입력하세요. 예: 2h, 90m, 1:30. 시간을 재려면 타이머 시작을 누르세요."
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -36,7 +36,7 @@ def dashboard(request: Request, ctx: Ctx) -> HTMLResponse:
     week = week_of(now.date(), ctx.cfg.week_start)
     with ctx.session() as s:
         summary = build_summary(s, ctx, week, now)
-        timer_panel = timer_panel_context(s, ctx, now)
+        timer_panel = timer_panel_context(s, now)
         rows = [log_row(log) for log in services.recent_worklogs(s, limit=RECENT_LIMIT)]
         form = quick_form_context(s, ctx, QuickFormValues())
     return render(

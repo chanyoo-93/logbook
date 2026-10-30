@@ -14,6 +14,17 @@
   margin-top: 0;
 }
 
+/* 타이머가 진행 중이면 빠른 기록 폼의 타이머 시작을 숨긴다. 정지·취소는 진행 줄이 맡는다(2026-10-29 E3). */
+.work:has(.timer--running) .quick__timer {
+  display: none;
+}
+
+/* 타이머가 없고 결과 줄도 없으면 타이머 영역은 자리를 차지하지 않는다(숨은 제목만 있다). */
+.work .timer:not(.timer--running):not(:has(.form-message)) {
+  padding: 0;
+  border-top: 0;
+}
+
 .panel__head {
   display: flex;
   flex-wrap: wrap;

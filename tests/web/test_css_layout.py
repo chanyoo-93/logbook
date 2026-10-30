@@ -219,7 +219,6 @@ def test_table_head_and_foot_rules_use_rule_strong(
     ("file_name", "selector"),
     [
         ("app.css", ".quick input:hover, .quick select:hover"),
-        ("components.css", ".timer-start input:hover, .timer-start select:hover"),
         ("report.css", ".report-notes textarea:hover"),
         (
             "tasks.css",
@@ -232,7 +231,7 @@ def test_control_hover_border_is_darker_than_default(file_name: str, selector: s
 
 
 _CONTROL_TAG = re.compile(r"(?<![\w-])(input|select|textarea)(?![\w-])")
-MIN_BORDERED_CONTROL_RULES = 7
+MIN_BORDERED_CONTROL_RULES = 6  # 타이머 시작 폼을 빠른 기록 폼에 합쳐 하나 줄었다(2026-10-29 E1)
 
 
 def test_every_bordered_control_rule_uses_the_control_border_token() -> None:
@@ -292,7 +291,6 @@ def test_old_single_radius_token_is_gone() -> None:
         ("report.css", ".report__preview", "var(--radius-md)"),
         ("report.css", ".report-polish", "var(--radius-md)"),
         ("app.css", ".quick input, .quick select", "var(--radius-xs)"),
-        ("components.css", ".timer-start input, .timer-start select", "var(--radius-xs)"),
         (
             "logs.css",
             ".filters input, .filters select, .grid .is-editing input, .grid .is-editing select",
@@ -546,3 +544,9 @@ def test_context_menu_floats_above_scroll_boxes_instead_of_being_clipped() -> No
     assert "function placeMenu" in script
     assert "getBoundingClientRect" in script
     assert 'addEventListener("scroll"' in script
+
+
+def test_timer_start_button_hides_while_timer_runs() -> None:
+    # 진행 중이면 빠른 기록 폼의 타이머 시작 버튼을 숨긴다(2026-10-29 E3)
+    selector = ".work:has(.timer--running) .quick__timer"
+    assert "display: none" in _declarations(_read("dashboard.css"), selector)

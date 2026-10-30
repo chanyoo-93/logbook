@@ -18,17 +18,24 @@ from logbook.web.pages.panels import (
     CATEGORY_REQUIRED,
     NOTE_REQUIRED,
     RESULT_MARK,
+    quick_form_context,
     refreshed_panels,
     result_line,
     timer_panel_context,
 )
 from logbook.web.pages.templating import render, render_error
-from logbook.web.pages.views import TimerStartValues, timer_version, timer_view
+from logbook.web.pages.views import (
+    QuickFormValues,
+    TimerStartValues,
+    timer_version,
+    timer_view,
+)
 
 router = APIRouter()
 
 PANEL_TEMPLATE = "partials/timer.html"
 STOP_TEMPLATE = "partials/timer_stop_response.html"
+START_TEMPLATE = "partials/timer_start_response.html"
 ELAPSED_TEMPLATE = "partials/timer_elapsed.html"
 # 경과 갱신 중 타이머가 사라졌을 때(CLI에서 정지 등) 요소 대신 패널 전체를 바꾼다.
 PANEL_RETARGET = {"HX-Retarget": "#timer", "HX-Reswap": "outerHTML"}
@@ -37,18 +44,10 @@ TASK_STARTED = " (태스크 #{id}: 할 일 → 진행)"
 TIMER_CANCELED = f"{RESULT_MARK} 타이머를 버렸습니다: {{scope}} — {{note}} (경과 {{elapsed}})"
 
 
-def _panel(
-    ctx: WebContext,
-    *,
-    values: TimerStartValues | None = None,
-    message: str = "",
-    is_error: bool = False,
-) -> dict[str, Any]:
+def _panel(ctx: WebContext, *, message: str = "", is_error: bool = False) -> dict[str, Any]:
     """지금 DB 상태로 패널 값을 만든다(오류 응답에서 패널을 다시 그릴 때 쓴다)."""
     with ctx.session() as s:
-        return timer_panel_context(
-            s, ctx, ctx.now(), values=values, message=message, is_error=is_error
-        )
+        return timer_panel_context(s, ctx.now(), message=message, is_error=is_error)
 
 
 @router.get("/timer", response_class=HTMLResponse)
@@ -66,7 +65,7 @@ def timer_elapsed(request: Request, ctx: Ctx) -> HTMLResponse:
 
 
 def _start(ctx: WebContext, values: TimerStartValues) -> dict[str, Any]:
-    """폼 값을 검증해 타이머를 시작하고, 성공 응답의 패널 값을 돌려준다."""
+    """폼 값을 검증해 타이머를 시작하고, 성공 응답의 값(패널과 빈 빠른 기록 폼)을 돌려준다."""
     task_text = values.task.strip()
     note = values.note.strip()
     if not task_text and not note:
@@ -90,7 +89,10 @@ def _start(ctx: WebContext, values: TimerStartValues) -> dict[str, Any]:
         message = TIMER_STARTED.format(scope=view.scope, note=view.note, started=view.started)
         if started.task_started:
             message += TASK_STARTED.format(id=started.timer.task_id)
-        return timer_panel_context(s, ctx, now, message=message)
+        return {
+            **quick_form_context(s, ctx, QuickFormValues()),
+            **timer_panel_context(s, now, message=message),
+        }
 
 
 @router.post("/timer/start", response_class=HTMLResponse)
@@ -106,11 +108,11 @@ def start_timer(
     try:
         panel = _start(ctx, values)
     except LogbookError as error:
-        # 실패해도 DB는 그대로다. 그사이 CLI가 시작했다면 진행 중 패널이,
-        # 아니면 입력값을 채운 폼이 나온다.
-        context = _panel(ctx, values=values, message=str(error), is_error=True)
+        # 실패해도 DB는 그대로다. 그사이 CLI가 시작했다면 진행 중 패널이 나온다.
+        # 입력값은 빠른 기록 폼에 그대로 남으므로 타이머 영역만 바꾼다.
+        context = _panel(ctx, message=str(error), is_error=True)
         return render_error(request, error, PANEL_TEMPLATE, context)
-    return render(request, PANEL_TEMPLATE, panel)
+    return render(request, START_TEMPLATE, panel)
 
 
 @router.post("/timer/stop", response_class=HTMLResponse)
@@ -122,7 +124,7 @@ def stop_timer(request: Request, ctx: Ctx) -> HTMLResponse:
             message = result_line(s, stopped.log, now.date())
             page = {
                 **refreshed_panels(s, ctx, now),
-                **timer_panel_context(s, ctx, now, message=message),
+                **timer_panel_context(s, now, message=message),
             }
     except LogbookError as error:
         # 실패해도 DB는 그대로이므로 현재 상태로 패널을 다시 그린다.
@@ -143,7 +145,7 @@ def _cancel(ctx: WebContext, version: str) -> dict[str, Any]:
         view = timer_view(timer, now)
         services.cancel_timer(s)
         message = TIMER_CANCELED.format(scope=view.scope, note=view.note, elapsed=view.elapsed)
-        return timer_panel_context(s, ctx, now, message=message)
+        return timer_panel_context(s, now, message=message)
 
 
 @router.post("/timer/cancel", response_class=HTMLResponse)

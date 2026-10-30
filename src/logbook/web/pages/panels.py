@@ -11,7 +11,6 @@ from logbook.web.pages.summary import build_summary
 from logbook.web.pages.views import (
     RECENT_LIMIT,
     QuickFormValues,
-    TimerStartValues,
     log_row,
     quick_form_options,
     record_text,
@@ -74,24 +73,18 @@ def quick_form_context(
 
 def timer_panel_context(
     s: Session,
-    ctx: WebContext,
     now: datetime,
     *,
-    values: TimerStartValues | None = None,
     message: str = "",
     is_error: bool = False,
 ) -> dict[str, Any]:
-    """타이머 패널의 템플릿 값. 진행 중이면 타이머 뷰, 아니면 시작 폼의 선택지와 채워 둘 값."""
+    """타이머 패널의 템플릿 값(진행 중이면 타이머 뷰와 결과 줄). 시작은 빠른 기록 폼이 맡는다."""
     timer = services.get_timer(s)
     context: dict[str, Any] = {
         "timer": None,
         "timer_message": message,
         "timer_error": is_error,
-        "default_project": ctx.cfg.default_project,
     }
     if timer is not None:
         context["timer"] = timer_view(timer, now)
-        return context
-    context["timer_options"] = quick_form_options(s, ctx.cfg)
-    context["timer_values"] = values if values is not None else TimerStartValues()
     return context

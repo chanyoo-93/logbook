@@ -293,11 +293,9 @@ def test_recent_logs_empty_message(client: TestClient) -> None:
     assert "기록이 없습니다." in by_id(_get(client), "recent").text
 
 
-def test_timer_idle_message(client: TestClient) -> None:
-    timer = by_id(_get(client), "timer").text
-
-    assert "진행 중인 타이머가 없습니다." in timer
-    assert "터미널에서 lb start로 시작하세요." not in timer
+def test_timer_idle_has_no_message_line(client: TestClient) -> None:
+    # 타이머가 없으면 안내 줄 없이 숨은 제목만 둔다(2026-10-29 E1).
+    assert by_id(_get(client), "timer").text == "타이머"
 
 
 def test_timer_running(client: TestClient, web_engine: Engine, clock: Clock) -> None:
