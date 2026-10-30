@@ -35,10 +35,10 @@ def test_board_columns_say_what_to_do(client: TestClient) -> None:
     assert ("새 태스크", "/tasks/new") in _links(html)
 
 
-def test_board_todo_link_keeps_project_filter(client: TestClient) -> None:
+def test_new_task_links_keep_project_filter(client: TestClient) -> None:
     html = client.get("/tasks?project=common").text
 
-    assert ("새 태스크", "/tasks/new?project=common") in _links(html)
+    assert _links(html).count(("새 태스크", "/tasks/new?project=common")) == 2  # 할 일 열과 계획
 
 
 def test_plan_points_to_new_task(client: TestClient) -> None:

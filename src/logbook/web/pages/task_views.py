@@ -132,6 +132,7 @@ class PlanPanelView:
     carry_confirm: str
     message: str = ""
     is_error: bool = False
+    project: str = ""  # 필터한 프로젝트 slug ('' = 전체). 빈 상태의 새 태스크 링크가 이어 받는다
 
 
 @dataclass(frozen=True)
@@ -318,4 +319,5 @@ def plan_panel(
         ),
         message=message,
         is_error=is_error,
+        project=project,
     )
