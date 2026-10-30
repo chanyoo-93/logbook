@@ -80,7 +80,9 @@ def _table_page(
         category=values.category or None,
     )
     return {
-        "table": log_table_view(week, logs, message=message),
+        "table": log_table_view(
+            week, logs, message=message, is_filtered=bool(values.project or values.category)
+        ),
         "filters": log_filter_view(s, ctx.cfg, week, values),
     }
 

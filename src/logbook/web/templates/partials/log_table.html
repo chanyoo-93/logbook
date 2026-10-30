@@ -32,7 +32,9 @@
       </tfoot>
     </table>
   </div>
+{% elif table.is_filtered %}
+  <p class="empty">조건에 맞는 기록이 없습니다. 주차나 필터를 바꿔 보세요.</p>
 {% else %}
-  <p class="empty">기록이 없습니다.</p>
+  <p class="empty">이 주에는 기록이 없습니다. <a class="empty__link" href="/">대시보드</a>에서 기록하세요.</p>
 {% endif %}
 </section>

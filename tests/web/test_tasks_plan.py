@@ -99,7 +99,7 @@ def test_plan_filter_shows_only_that_project(client: TestClient, web_engine: Eng
 def test_empty_plan_has_no_carry_button(client: TestClient) -> None:
     html = client.get("/tasks").text
 
-    assert "계획된 태스크가 없습니다." in _panel(html)
+    assert "계획한 태스크가 없습니다." in _panel(html)
     assert _carry_button(html) is None
 
 

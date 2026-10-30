@@ -16,7 +16,7 @@
   </div>
 {% endfor %}
 {% else %}
-  <p class="empty">계획된 태스크가 없습니다.</p>
+  <p class="empty">계획한 태스크가 없습니다. <a class="empty__link" href="/tasks/new">새 태스크</a>에서 계획 주를 정하세요.</p>
 {% endif %}
 {% if plan.carry_ids %}
   <button type="button" class="btn btn--small" hx-post="/tasks/carry" hx-vals='{{ {"ids": plan.carry_ids|join(",")}|tojson }}' hx-include="#task-filters" hx-target="#task-plan" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this" hx-confirm="{{ plan.carry_confirm }}">다음 주로 이월</button>

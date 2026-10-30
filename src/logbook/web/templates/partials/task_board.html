@@ -1,3 +1,5 @@
+{# 빈 열 안내(2026-10-29 G2): 할 일 열은 새 태스크 링크, 나머지는 끌어 오라는 안내 #}
+{% set DROP_HINTS = {"doing": "진행할 태스크를 여기로 끌어 오면 진행 중이 됩니다.", "done": "완료한 태스크를 여기로 끌어 오세요.", "dropped": "중단할 태스크를 여기로 끌어 오세요."} %}
 <section id="task-board" class="board" aria-labelledby="task-board-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
   <div class="board__head">
     <h2 id="task-board-title" class="board__title" tabindex="-1" data-focus>태스크 보드</h2>
@@ -15,8 +17,12 @@
       </div>
       <ul class="board__cards" data-status="{{ column.key }}">
 {% if not column.cards %}
-        {# 안내도 목록 안에 둬야 "없습니다." 위에 놓아도 이 열로 들어간다(끌 수 있는 것은 .task-card뿐) #}
-        <li class="empty board__empty">없습니다.</li>
+        {# 안내도 목록 안에 둬야 안내 위에 놓아도 이 열로 들어간다(끌 수 있는 것은 .task-card뿐) #}
+{% if column.key == "todo" %}
+        <li class="empty board__empty">할 일이 없습니다. <a class="empty__link" href="/tasks/new{% if board.project %}?project={{ board.project|urlencode }}{% endif %}">새 태스크</a>로 추가하세요.</li>
+{% else %}
+        <li class="empty board__empty">{{ DROP_HINTS[column.key] }}</li>
+{% endif %}
 {% endif %}
 {% for card in column.cards %}
 {% include "partials/task_card.html" %}
