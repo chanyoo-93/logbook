@@ -42,7 +42,8 @@
   // 1. 응답이 2xx이고 대상이 편집 중(is-editing)이면 대상 안의 [data-focus]로 옮긴다.
   // 2. 응답이 2xx이고 요청이 POST·PATCH·DELETE면 대상 안의 [data-focus]로 옮긴다.
   // 3. 응답이 4xx이고 대상이 편집 중이면 대상 안의 [data-focus]로 옮긴다.
-  // 4. 응답이 4xx이고 대상이 data-refocus 폼(등록·수정 화면)이면 대상 안의 [data-focus](제목 칸)로 옮긴다.
+  // 4. 응답이 4xx이고 대상에 data-refocus가 있으면 대상 안의 [data-focus]로 옮긴다
+  //    (등록·수정 화면 폼은 제목 칸, 진행 중인 타이머 영역은 정지 버튼).
   // 5. 그 밖(GET 필터·주 이동, 타이머 경과 갱신, 그 밖의 오류)은 옮기지 않는다.
   //    1분마다 오는 경과 갱신이 입력 중인 칸의 포커스를 뺏지 않게 한다.
   // afterSwap이 아니라 afterSettle에서 본다. htmx는 id가 같은 요소를 교체하면 settle 전까지

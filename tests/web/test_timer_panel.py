@@ -205,6 +205,33 @@ def test_stop_without_timer(client: TestClient) -> None:
     assert "timer-elapsed" not in _ids(html)
 
 
+def _refocus(html: str) -> bool:
+    return "data-refocus" in by_id(html, "timer").attrs
+
+
+def test_running_panel_refocuses_stop_after_failure(
+    client: TestClient, web_engine: Engine, clock: Clock
+) -> None:
+    # 진행 중일 때만 #timer에 data-refocus를 둔다.
+    # 실패 응답(4xx) 뒤에도 포커스가 정지 버튼으로 돌아온다(app.js).
+    assert not _refocus(client.get("/timer", headers=HTMX).text)
+
+    _start(web_engine)
+    assert _refocus(client.get("/timer", headers=HTMX).text)
+
+    clock.advance(seconds=29)
+    failed = client.post("/timer/stop", headers=HTMX)
+    assert failed.status_code == 400
+    assert _refocus(failed.text)
+
+    clock.advance(minutes=30)
+    stopped = client.post("/timer/stop", headers=HTMX).text
+    assert not _refocus(stopped)
+    missing = client.post("/timer/stop", headers=HTMX)
+    assert missing.status_code == 404
+    assert not _refocus(missing.text)
+
+
 def test_stop_from_other_origin_is_forbidden(
     client: TestClient, web_engine: Engine, clock: Clock
 ) -> None:

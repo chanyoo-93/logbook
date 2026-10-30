@@ -159,6 +159,8 @@ def test_start_validation_errors_leave_quick_form_alone(
     # 입력값은 빠른 기록 폼에 그대로 남는다. 응답은 타이머 영역만 바꾼다.
     assert 'id="quick-form"' not in html
     assert _idle(html)
+    # 시작 실패는 포커스를 옮기지 않는다(입력하던 칸에 남는다).
+    assert "data-refocus" not in by_id(html, "timer").attrs
     assert not _has_timer(web_engine)
 
 
