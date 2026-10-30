@@ -3,7 +3,7 @@
 str(error)는 CLI 문구('lb ...' 안내) 그대로이고, error.web_message는 웹 화면의 동작을 안내한다.
 """
 
-from datetime import timedelta, timezone
+from datetime import timedelta
 
 import pytest
 from sqlalchemy.orm import Session
@@ -11,8 +11,6 @@ from sqlalchemy.orm import Session
 from logbook.core import services
 from logbook.core.errors import LogbookError, NotFoundError
 from tests.core.test_services_timer import T0, _start
-
-KST = timezone(timedelta(hours=9))
 
 
 @pytest.fixture

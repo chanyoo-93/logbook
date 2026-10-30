@@ -117,8 +117,14 @@ def test_htmx_and_api_errors_have_no_masthead(probe_client: TestClient) -> None:
     assert "masthead" not in api
 
 
+def test_normal_screens_keep_week_label(client: TestClient) -> None:
+    # base.html의 가드(is defined)가 일반 화면의 이번 주 표기를 말없이 빼지 않는지
+    for path in ("/", "/tasks"):
+        assert len(by_class(client.get(path).text, "masthead__week")) == 1, path
+
+
 def test_falls_back_to_plain_page_when_rendering_fails(
-    probe_client: TestClient, monkeypatch: pytest.MonkeyPatch
+    probe_client: TestClient, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
     def broken(path: str, status: int, message: str) -> str:
         raise RuntimeError("template")
@@ -131,3 +137,4 @@ def test_falls_back_to_plain_page_when_rendering_fails(
     [alert] = [p for p in all_by_tag(response.text, "p") if p.attrs.get("role") == "alert"]
     assert alert.text == str(RAISED_ERRORS["missing"])
     assert [a.attrs["href"] for a in all_by_tag(response.text, "a")] == ["/"]
+    assert any(r.exc_info and r.name == "logbook.web.errors" for r in caplog.records)

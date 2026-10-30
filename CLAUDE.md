@@ -44,7 +44,7 @@ src/logbook/
     report.py    # 보고서 데이터 클래스 + Markdown 렌더링 (조립은 services/report.py)
     templates/   # 기본 보고서 템플릿 (report.md.j2)
     config.py    # 설정 로드
-    errors.py    # 사용자에게 보여줄 한국어 오류 타입 (LogbookError 계열)
+    errors.py    # 사용자에게 보여줄 한국어 오류 타입 (LogbookError 계열, CLI 문구 + 선택 웹 문구 web_message)
     platform.py  # OS별 처리 (콘솔 인코딩, 클립보드, 데이터 디렉터리)
     external.py  # 외부 명령(git, gh) 실행 공용 함수 run_tool (shell=False, 시간 제한, 한국어 오류 문구)
     gitcollect.py# git 커밋 수집(`lb git-collect`와 보고서 커밋 부록, DB 접근 없음)
@@ -63,7 +63,7 @@ src/logbook/
     assets.py    # 스타일시트 목록 STYLESHEETS (base.html과 오류 페이지가 공유, 다른 web 모듈을 import하지 않음)
     htmx.py      # HTMX 요청 판별(is_htmx)과 헤더 상수
     security.py  # Host 검사, 교차 출처 쓰기 차단, 보안 헤더(CSP)
-    errors.py    # 오류 → HTTP 상태·JSON 봉투·HTMX 알림 변환
+    errors.py    # 오류 → HTTP 상태·JSON 봉투·HTMX 알림·오류 페이지(error.html) 변환, 웹 문구 선택 user_message()
     app.py       # FastAPI 앱 조립
     config_watch.py # 설정 파일 자동 반영(내용 해시로 변경을 감지하고 요청마다 설정 스냅숏을 돌려줌)
     fonts.py     # 설정 [web]의 글꼴 → /fonts.css 내용(CSS 변수 --font-heading·--font-document·--font-body)

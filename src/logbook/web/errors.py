@@ -4,6 +4,7 @@
 HTMX 오류 응답은 놓일 자리를 응답 헤더(HX-Retarget, HX-Reswap)로 정한다.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import cast
 
@@ -27,6 +28,8 @@ from logbook.web.api.envelope import fail
 from logbook.web.assets import FONTS_CSS_URL, STATIC_CSS_URL, STYLESHEETS
 from logbook.web.htmx import is_htmx
 from logbook.web.security import is_api_path, security_headers
+
+logger = logging.getLogger(__name__)
 
 API_NOT_FOUND = "요청한 API가 없습니다: {method} {path}"
 PAGE_NOT_FOUND = "페이지를 찾을 수 없습니다: {path}"
@@ -163,7 +166,8 @@ def _templated_error_page(path: str, status: int, message: str) -> str:
 def _error_page(path: str, status: int, message: str) -> str:
     try:
         return _templated_error_page(path, status, message)
-    except Exception:  # 오류 처리 안에서 또 실패하면 최소 페이지로 대신한다.
+    except Exception:  # 오류 처리 안에서 또 실패하면 최소 페이지로 대신하고 원인은 로그에 남긴다.
+        logger.exception("오류 페이지를 그리지 못해 최소 페이지로 대신했습니다.")
         return _plain_error_page(message)
 
 
