@@ -50,6 +50,12 @@ def _panel(ctx: WebContext, *, message: str = "", is_error: bool = False) -> dic
         return timer_panel_context(s, ctx.now(), message=message, is_error=is_error)
 
 
+def _failed_action_panel(ctx: WebContext, error: LogbookError) -> dict[str, Any]:
+    """정지·취소 실패 뒤의 패널. 누른 버튼이 사라졌을 수 있으므로(CLI가 먼저 정지·취소)
+    포커스를 패널로 돌려받는다(timer_refocus → data-refocus). 시작 실패는 쓰지 않는다."""
+    return {**_panel(ctx, message=user_message(error), is_error=True), "timer_refocus": True}
+
+
 @router.get("/timer", response_class=HTMLResponse)
 def timer_panel(request: Request, ctx: Ctx) -> HTMLResponse:
     # 지금 화면은 /timer/elapsed만 폴링한다. 타이머 패널 전체를 다시 그릴 때 쓰는 조각이다.
@@ -128,7 +134,7 @@ def stop_timer(request: Request, ctx: Ctx) -> HTMLResponse:
             }
     except LogbookError as error:
         # 실패해도 DB는 그대로이므로 현재 상태로 패널을 다시 그린다.
-        context = _panel(ctx, message=user_message(error), is_error=True)
+        context = _failed_action_panel(ctx, error)
         return render_error(request, error, PANEL_TEMPLATE, context)
     return render(request, STOP_TEMPLATE, page)
 
@@ -155,6 +161,6 @@ def cancel_timer(request: Request, ctx: Ctx, version: FormText = "") -> HTMLResp
     try:
         panel = _cancel(ctx, version)
     except LogbookError as error:
-        context = _panel(ctx, message=user_message(error), is_error=True)
+        context = _failed_action_panel(ctx, error)
         return render_error(request, error, PANEL_TEMPLATE, context)
     return render(request, PANEL_TEMPLATE, panel)

@@ -1,7 +1,7 @@
 {% from "partials/marks.html" import pill %}
 {# 타이머 영역: 진행 중이면 진행 줄과 정지·취소, 아니면 결과 줄만 둔다. 시작은 빠른 기록 폼의 `타이머 시작` 버튼이다(2026-10-29 E1).
-   진행 중에만 data-refocus를 둔다. 정지가 실패(4xx)해도 포커스가 정지 버튼으로 돌아온다(app.js). 시작 실패는 입력하던 칸에 남는다. #}
-<section id="timer" class="timer{% if timer %} timer--running{% endif %}" aria-labelledby="timer-title"{% if timer %} data-refocus{% endif %}{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+   진행 중이거나 정지·취소가 실패했을 때 data-refocus를 둔다. 4xx 뒤에도 포커스가 정지 버튼(진행 중) 또는 결과 줄(타이머 없음)로 간다(app.js). 시작 실패는 입력하던 칸에 남는다. #}
+<section id="timer" class="timer{% if timer %} timer--running{% endif %}" aria-labelledby="timer-title"{% if timer or timer_refocus|default(false) %} data-refocus{% endif %}{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
   <h3 id="timer-title" class="visually-hidden">타이머</h3>
 {% if timer %}
   <span class="timer__dot" aria-hidden="true"></span>

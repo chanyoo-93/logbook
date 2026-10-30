@@ -72,7 +72,7 @@ def test_no_timer(seeded: Session) -> None:
     assert str(error) == services.NO_TIMER_MESSAGE
     assert error.web_message == services.NO_TIMER_WEB_MESSAGE
     assert services.NO_TIMER_WEB_MESSAGE == (
-        "진행 중인 타이머가 없습니다. 빠른 기록의 타이머 시작으로 시작하세요."
+        "진행 중인 타이머가 없습니다. 빠른 기록의 타이머 시작 버튼을 누르세요."
     )
 
 

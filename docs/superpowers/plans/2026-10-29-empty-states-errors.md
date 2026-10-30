@@ -50,7 +50,7 @@
 | `services/timer.py` 이미 진행 중 | `… 시작). 'lb stop'으로 저장하거나 'lb cancel'로 버리세요.` | `… 시작). 대시보드의 정지로 저장하거나 취소로 버리세요.` |
 | `services/timer.py` 1분 미만 | `… 버리려면 'lb cancel'을 실행하세요.` | `… 버리려면 취소를 누르세요.` |
 | `services/timer.py` 24시간 초과 | `… 'lb cancel'로 버린 뒤 'lb add'로 날짜별로 나눠 기록하세요.` | `… 취소로 버린 뒤 빠른 기록으로 기록하고, 날짜는 기록 화면에서 고치세요.` |
-| `services/timer.py` `NO_TIMER_MESSAGE` | `진행 중인 타이머가 없습니다. 'lb start "메모"'로 시작하세요.` | `진행 중인 타이머가 없습니다. 빠른 기록의 타이머 시작으로 시작하세요.` |
+| `services/timer.py` `NO_TIMER_MESSAGE` | `진행 중인 타이머가 없습니다. 'lb start "메모"'로 시작하세요.` | `진행 중인 타이머가 없습니다. 빠른 기록의 타이머 시작 버튼을 누르세요.` |
 | `services/worklogs.py` 기록 없음 | `… 'lb log'로 확인하세요.` | `… 기록 화면에서 확인하세요.` |
 | `services/_shared.py` 태스크 없음 | `… 'lb task list'로 확인하세요.` | `… 태스크 화면에서 확인하세요.` |
 | `services/projects.py` 프로젝트 없음 | `… 'lb project list'로 확인하거나, 새 프로젝트라면 'lb project add …'으로 만드세요.` | `프로젝트를 찾을 수 없습니다: 'x'. 설정 화면의 프로젝트 목록에서 확인하거나 추가하세요.` |

@@ -29,7 +29,7 @@ MAX_ROUND_MINUTES = 60
 _TIMER_ID = 1
 _ONE_SECOND = timedelta(seconds=1)
 NO_TIMER_MESSAGE = "진행 중인 타이머가 없습니다. 'lb start \"메모\"'로 시작하세요."
-NO_TIMER_WEB_MESSAGE = "진행 중인 타이머가 없습니다. 빠른 기록의 타이머 시작으로 시작하세요."
+NO_TIMER_WEB_MESSAGE = "진행 중인 타이머가 없습니다. 빠른 기록의 타이머 시작 버튼을 누르세요."
 
 
 class StartedTimer(NamedTuple):

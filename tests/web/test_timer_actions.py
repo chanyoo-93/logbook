@@ -272,6 +272,9 @@ def test_cancel_without_timer(client: TestClient) -> None:
     assert response.status_code == 404
     assert by_id(html, "timer-result").text == NO_TIMER_WEB_MESSAGE
     assert _idle(html)
+    # CLI가 먼저 취소한 경우: 취소 버튼이 사라지므로 포커스는 결과 줄로 간다(app.js의 data-refocus).
+    assert "data-refocus" in by_id(html, "timer").attrs
+    assert "data-focus" in by_id(html, "timer-result").attrs
 
 
 def test_cancel_from_other_origin_is_forbidden(client: TestClient, web_engine: Engine) -> None:
