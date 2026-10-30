@@ -11,6 +11,7 @@ from logbook.core import db, services
 from logbook.core.errors import NotFoundError
 from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import Week, parse_week
+from logbook.web.errors import user_message
 from logbook.web.pages.task_views import STATUS_LABELS, task_version
 from tests.web.helpers import (
     add_log,
@@ -252,7 +253,7 @@ def test_unknown_project_full_page_shows_error(client: TestClient, web_engine: E
         try:
             services.get_project(s, "nope")
         except NotFoundError as error:
-            message = str(error)
+            message = user_message(error)
 
     response = client.get("/tasks?project=nope")
 

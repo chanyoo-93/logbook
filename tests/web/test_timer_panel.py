@@ -4,13 +4,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 
 from logbook.core import db, services
-from logbook.core.services.timer import NO_TIMER_MESSAGE
+from logbook.core.services.timer import NO_TIMER_WEB_MESSAGE
 from tests.conftest import FIXED_TODAY
 from tests.helpers import FIXED_NOW, Clock
 from tests.web.helpers import add_log, add_project, all_by_tag, by_class, by_id, parse_html
 
 HTMX = {"HX-Request": "true"}
-ONE_MINUTE_MESSAGE = "1분이 지나지 않아 기록하지 않았습니다. 버리려면 'lb cancel'을 실행하세요."
+ONE_MINUTE_MESSAGE = "1분이 지나지 않아 기록하지 않았습니다. 버리려면 취소를 누르세요."
 
 
 def _start(engine: Engine) -> None:
@@ -199,7 +199,7 @@ def test_stop_without_timer(client: TestClient) -> None:
 
     html = response.text
     assert response.status_code == 404
-    assert by_id(html, "timer-result").text == NO_TIMER_MESSAGE
+    assert by_id(html, "timer-result").text == NO_TIMER_WEB_MESSAGE
     assert by_id(html, "timer-result").attrs["role"] == "alert"
     assert "timer--running" not in str(by_id(html, "timer").attrs["class"]).split()
     assert "timer-elapsed" not in _ids(html)

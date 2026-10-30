@@ -12,6 +12,7 @@ from logbook.core.errors import InvalidInputError, LogbookError
 from logbook.core.ids import parse_id
 from logbook.core.weeks import week_of
 from logbook.web.context import TASK_LABEL, Ctx, WebContext
+from logbook.web.errors import user_message
 from logbook.web.pages.forms import FormText
 from logbook.web.pages.panels import (
     CATEGORY_REQUIRED,
@@ -98,6 +99,6 @@ def add_log(
         page = _add_log(ctx, values)
     except LogbookError as error:
         with ctx.session() as s:
-            form = quick_form_context(s, ctx, values, message=str(error), is_error=True)
+            form = quick_form_context(s, ctx, values, message=user_message(error), is_error=True)
         return render_error(request, error, QUICK_FORM_TEMPLATE, form)
     return render(request, QUICK_FORM_TEMPLATE, page)

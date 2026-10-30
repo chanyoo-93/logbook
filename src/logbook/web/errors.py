@@ -92,6 +92,15 @@ def classify(error: LogbookError) -> ErrorKind:
     return ErrorKind(400, "error")
 
 
+def user_message(error: LogbookError) -> str:
+    """웹 화면에 보일 문구. core 오류에 웹 문구(버튼·화면 안내)가 있으면 그것을,
+    없으면 CLI 문구를 쓴다.
+
+    /api/ JSON 응답은 이 함수를 쓰지 않는다. API를 쓰는 쪽은 스크립트라 CLI 명령 안내가 맞다.
+    """
+    return error.web_message or str(error)
+
+
 def _flash_fragment(message: str) -> str:
     return f'<p class="flash flash--error" role="alert">{escape(message)}</p>'
 
@@ -176,7 +185,8 @@ def _http_kind_and_message(
 
 async def _handle_logbook_error(request: Request, exc: Exception) -> Response:
     error = cast(LogbookError, exc)
-    return error_response(request, classify(error), str(error))
+    message = str(error) if is_api_path(request.url.path) else user_message(error)
+    return error_response(request, classify(error), message)
 
 
 async def _handle_validation_error(request: Request, exc: Exception) -> Response:

@@ -65,6 +65,7 @@ from logbook.core.services.tasks import (
 from logbook.core.services.timer import (
     MAX_ROUND_MINUTES,
     NO_TIMER_MESSAGE,
+    NO_TIMER_WEB_MESSAGE,
     StartedTimer,
     TimerStopped,
     cancel_timer,
@@ -117,6 +118,7 @@ __all__ = [
     "update_task",
     "MAX_ROUND_MINUTES",
     "NO_TIMER_MESSAGE",
+    "NO_TIMER_WEB_MESSAGE",
     "StartedTimer",
     "TimerStopped",
     "cancel_timer",

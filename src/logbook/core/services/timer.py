@@ -29,6 +29,7 @@ MAX_ROUND_MINUTES = 60
 _TIMER_ID = 1
 _ONE_SECOND = timedelta(seconds=1)
 NO_TIMER_MESSAGE = "진행 중인 타이머가 없습니다. 'lb start \"메모\"'로 시작하세요."
+NO_TIMER_WEB_MESSAGE = "진행 중인 타이머가 없습니다. 빠른 기록의 타이머 시작으로 시작하세요."
 
 
 class StartedTimer(NamedTuple):
@@ -59,10 +60,13 @@ def start_timer(
     _check_aware(now)
     running = get_timer(s)
     if running is not None:
-        raise InvalidInputError(
+        what = (
             f"이미 진행 중인 타이머가 있습니다: {running.project.slug}/{running.category} "
             f"'{running.note}' ({_time_label(running.started_at, now)} 시작). "
-            "'lb stop'으로 저장하거나 'lb cancel'로 버리세요."
+        )
+        raise InvalidInputError(
+            what + "'lb stop'으로 저장하거나 'lb cancel'로 버리세요.",
+            web_message=what + "대시보드의 정지로 저장하거나 취소로 버리세요.",
         )
     task = load_task(s, task_id) if task_id is not None else None
     checked_note = task.title if note is None and task is not None else clean_note(note or "")
@@ -123,12 +127,15 @@ def stop_timer(
     elapsed = _round_to_minute(seconds)
     if elapsed == 0:
         raise InvalidInputError(
-            "1분이 지나지 않아 기록하지 않았습니다. 버리려면 'lb cancel'을 실행하세요."
+            "1분이 지나지 않아 기록하지 않았습니다. 버리려면 'lb cancel'을 실행하세요.",
+            web_message="1분이 지나지 않아 기록하지 않았습니다. 버리려면 취소를 누르세요.",
         )
     if elapsed > MAX_MINUTES:
+        what = f"타이머가 24시간을 넘었습니다 (시작 {_time_label(timer.started_at, now)}). "
         raise InvalidInputError(
-            f"타이머가 24시간을 넘었습니다 (시작 {_time_label(timer.started_at, now)}). "
-            "'lb cancel'로 버린 뒤 'lb add'로 날짜별로 나눠 기록하세요."
+            what + "'lb cancel'로 버린 뒤 'lb add'로 날짜별로 나눠 기록하세요.",
+            web_message=what
+            + "취소로 버린 뒤 빠른 기록으로 기록하고, 날짜는 기록 화면에서 고치세요.",
         )
     # 실제 경과가 24시간 이내인데 반올림으로만 넘으면 24시간으로 저장한다.
     minutes = elapsed if step is None else min(_rounded_minutes(seconds, step), MAX_MINUTES)
@@ -159,7 +166,7 @@ def cancel_timer(s: Session) -> ActiveTimer:
 def _require_timer(s: Session) -> ActiveTimer:
     timer = get_timer(s)
     if timer is None:
-        raise NotFoundError(NO_TIMER_MESSAGE)
+        raise NotFoundError(NO_TIMER_MESSAGE, web_message=NO_TIMER_WEB_MESSAGE)
     return timer
 
 

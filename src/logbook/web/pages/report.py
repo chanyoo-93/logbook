@@ -21,7 +21,7 @@ from logbook.core.errors import InvalidInputError
 from logbook.core.report import NO_VALUE
 from logbook.core.weeks import Week, parse_week, week_heading
 from logbook.web.context import Ctx, WebContext
-from logbook.web.errors import NOTES_CHANGED, ConflictError
+from logbook.web.errors import NOTES_CHANGED, ConflictError, user_message
 from logbook.web.htmx import is_htmx
 from logbook.web.pages.forms import FormText, QueryText
 from logbook.web.pages.panels import NO_CHANGE, RESULT_MARK
@@ -163,7 +163,7 @@ def _body_view(
     try:
         markdown = report_markdown(ctx, data)
     except InvalidInputError as error:  # 사용자 템플릿 오류: 페이지는 계속 쓸 수 있다
-        preview_error = str(error)
+        preview_error = user_message(error)
     return ReportBodyView(
         week=week.label,
         heading=week_heading(week),
@@ -208,7 +208,9 @@ def report_page(request: Request, ctx: Ctx, week: QueryText = "") -> HTMLRespons
         if is_htmx(request):
             raise  # 알림 영역에 쓴다 (공통 오류 처리)
         context = {"active": "report", "nav": _nav_view(None, week.strip()), "body": None}
-        return render_error(request, error, PAGE_TEMPLATE, {**context, "error": str(error)})
+        return render_error(
+            request, error, PAGE_TEMPLATE, {**context, "error": user_message(error)}
+        )
     with ctx.session() as s:
         data, note = _load(s, ctx, the_week, now)
         notes = _saved_values(note)
@@ -257,7 +259,7 @@ def _week_error_response(
         preview_error="",
         download_url="",
         notes=form,
-        message=str(error),
+        message=user_message(error),
         is_error=True,
     )
     headers = {"HX-Retarget": "#report-notes", "HX-Reswap": "outerHTML", "HX-Push-Url": "false"}
@@ -296,7 +298,7 @@ def save_notes(
     try:
         data, saved, changed = _save(ctx, the_week, now, form)
     except ConflictError as error:
-        return _conflict_response(request, ctx, the_week, now, form, str(error))
+        return _conflict_response(request, ctx, the_week, now, form, user_message(error))
     message = NOTES_SAVED.format(week=the_week.label) if changed else NO_CHANGE
     data, warnings = report_with_commits(ctx, data, the_week, now)
     body = _body_view(ctx, the_week, data, saved, message=message, warnings=warnings)

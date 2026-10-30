@@ -23,7 +23,7 @@ from logbook.core.ids import parse_id
 from logbook.core.taskstatus import TaskStatus, parse_status
 from logbook.core.weeks import parse_date, parse_week, week_of
 from logbook.web.context import TASK_LABEL, Ctx, WebContext
-from logbook.web.errors import TASK_CHANGED, ConflictError
+from logbook.web.errors import TASK_CHANGED, ConflictError, user_message
 from logbook.web.htmx import is_htmx
 from logbook.web.pages.forms import FormText, QueryText
 from logbook.web.pages.panels import NO_CHANGE, RESULT_MARK
@@ -107,7 +107,7 @@ def tasks_page(
             "filters": filters,
             "board": None,
             "plan": None,
-            "error": str(error),
+            "error": user_message(error),
         }
         return render_error(request, error, PAGE_TEMPLATE, context)
     if is_htmx(request):
@@ -252,7 +252,7 @@ def _form_error(
             values,
             filter_project=filter_project,
             task=task,
-            message=str(error),
+            message=user_message(error),
             is_error=True,
             reopen_url=reopen,
         )
@@ -435,7 +435,7 @@ def carry(request: Request, ctx: Ctx, ids: FormText = "", project: FormText = ""
     except ConflictError as error:
         with ctx.session() as s:
             page = {
-                "plan": plan_panel(s, ctx, selected, message=str(error), is_error=True),
+                "plan": plan_panel(s, ctx, selected, message=user_message(error), is_error=True),
                 "board": task_board(s, ctx, selected),
             }
         return render_error(request, error, PLAN_TEMPLATE, page, headers={"HX-Push-Url": "false"})

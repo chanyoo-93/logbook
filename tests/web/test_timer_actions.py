@@ -9,7 +9,7 @@ from sqlalchemy import Engine
 
 from logbook.core import db, services
 from logbook.core.models import ActiveTimer
-from logbook.core.services.timer import NO_TIMER_MESSAGE
+from logbook.core.services.timer import NO_TIMER_WEB_MESSAGE
 from logbook.core.taskstatus import TaskStatus
 from logbook.web.pages.views import timer_version
 from tests.helpers import FIXED_NOW, Clock
@@ -270,7 +270,7 @@ def test_cancel_without_timer(client: TestClient) -> None:
 
     html = response.text
     assert response.status_code == 404
-    assert by_id(html, "timer-result").text == NO_TIMER_MESSAGE
+    assert by_id(html, "timer-result").text == NO_TIMER_WEB_MESSAGE
     assert _idle(html)
 
 

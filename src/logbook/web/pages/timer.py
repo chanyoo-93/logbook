@@ -12,7 +12,7 @@ from logbook.core import services
 from logbook.core.errors import InvalidInputError, LogbookError, NotFoundError
 from logbook.core.ids import parse_id
 from logbook.web.context import TASK_LABEL, Ctx, WebContext
-from logbook.web.errors import TIMER_CHANGED, ConflictError
+from logbook.web.errors import TIMER_CHANGED, ConflictError, user_message
 from logbook.web.pages.forms import FormText
 from logbook.web.pages.panels import (
     CATEGORY_REQUIRED,
@@ -110,7 +110,7 @@ def start_timer(
     except LogbookError as error:
         # 실패해도 DB는 그대로다. 그사이 CLI가 시작했다면 진행 중 패널이 나온다.
         # 입력값은 빠른 기록 폼에 그대로 남으므로 타이머 영역만 바꾼다.
-        context = _panel(ctx, message=str(error), is_error=True)
+        context = _panel(ctx, message=user_message(error), is_error=True)
         return render_error(request, error, PANEL_TEMPLATE, context)
     return render(request, START_TEMPLATE, panel)
 
@@ -128,7 +128,7 @@ def stop_timer(request: Request, ctx: Ctx) -> HTMLResponse:
             }
     except LogbookError as error:
         # 실패해도 DB는 그대로이므로 현재 상태로 패널을 다시 그린다.
-        context = _panel(ctx, message=str(error), is_error=True)
+        context = _panel(ctx, message=user_message(error), is_error=True)
         return render_error(request, error, PANEL_TEMPLATE, context)
     return render(request, STOP_TEMPLATE, page)
 
@@ -139,7 +139,9 @@ def _cancel(ctx: WebContext, version: str) -> dict[str, Any]:
     with ctx.session() as s:
         timer = services.get_timer(s)
         if timer is None:
-            raise NotFoundError(services.NO_TIMER_MESSAGE)
+            raise NotFoundError(
+                services.NO_TIMER_MESSAGE, web_message=services.NO_TIMER_WEB_MESSAGE
+            )
         if timer_version(timer) != version:
             raise ConflictError(TIMER_CHANGED)
         view = timer_view(timer, now)
@@ -153,6 +155,6 @@ def cancel_timer(request: Request, ctx: Ctx, version: FormText = "") -> HTMLResp
     try:
         panel = _cancel(ctx, version)
     except LogbookError as error:
-        context = _panel(ctx, message=str(error), is_error=True)
+        context = _panel(ctx, message=user_message(error), is_error=True)
         return render_error(request, error, PANEL_TEMPLATE, context)
     return render(request, PANEL_TEMPLATE, panel)
