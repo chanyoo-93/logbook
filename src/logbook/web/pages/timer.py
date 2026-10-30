@@ -12,7 +12,7 @@ from logbook.core import services
 from logbook.core.errors import InvalidInputError, LogbookError, NotFoundError
 from logbook.core.ids import parse_id
 from logbook.web.context import TASK_LABEL, Ctx, WebContext
-from logbook.web.errors import TIMER_CHANGED, ConflictError
+from logbook.web.errors import TIMER_CHANGED, ConflictError, user_message
 from logbook.web.pages.forms import FormText
 from logbook.web.pages.panels import (
     CATEGORY_REQUIRED,
@@ -48,6 +48,12 @@ def _panel(ctx: WebContext, *, message: str = "", is_error: bool = False) -> dic
     """지금 DB 상태로 패널 값을 만든다(오류 응답에서 패널을 다시 그릴 때 쓴다)."""
     with ctx.session() as s:
         return timer_panel_context(s, ctx.now(), message=message, is_error=is_error)
+
+
+def _failed_action_panel(ctx: WebContext, error: LogbookError) -> dict[str, Any]:
+    """정지·취소 실패 뒤의 패널. 누른 버튼이 사라졌을 수 있으므로(CLI가 먼저 정지·취소)
+    포커스를 패널로 돌려받는다(timer_refocus → data-refocus). 시작 실패는 쓰지 않는다."""
+    return {**_panel(ctx, message=user_message(error), is_error=True), "timer_refocus": True}
 
 
 @router.get("/timer", response_class=HTMLResponse)
@@ -110,7 +116,7 @@ def start_timer(
     except LogbookError as error:
         # 실패해도 DB는 그대로다. 그사이 CLI가 시작했다면 진행 중 패널이 나온다.
         # 입력값은 빠른 기록 폼에 그대로 남으므로 타이머 영역만 바꾼다.
-        context = _panel(ctx, message=str(error), is_error=True)
+        context = _panel(ctx, message=user_message(error), is_error=True)
         return render_error(request, error, PANEL_TEMPLATE, context)
     return render(request, START_TEMPLATE, panel)
 
@@ -128,7 +134,7 @@ def stop_timer(request: Request, ctx: Ctx) -> HTMLResponse:
             }
     except LogbookError as error:
         # 실패해도 DB는 그대로이므로 현재 상태로 패널을 다시 그린다.
-        context = _panel(ctx, message=str(error), is_error=True)
+        context = _failed_action_panel(ctx, error)
         return render_error(request, error, PANEL_TEMPLATE, context)
     return render(request, STOP_TEMPLATE, page)
 
@@ -139,7 +145,9 @@ def _cancel(ctx: WebContext, version: str) -> dict[str, Any]:
     with ctx.session() as s:
         timer = services.get_timer(s)
         if timer is None:
-            raise NotFoundError(services.NO_TIMER_MESSAGE)
+            raise NotFoundError(
+                services.NO_TIMER_MESSAGE, web_message=services.NO_TIMER_WEB_MESSAGE
+            )
         if timer_version(timer) != version:
             raise ConflictError(TIMER_CHANGED)
         view = timer_view(timer, now)
@@ -153,6 +161,6 @@ def cancel_timer(request: Request, ctx: Ctx, version: FormText = "") -> HTMLResp
     try:
         panel = _cancel(ctx, version)
     except LogbookError as error:
-        context = _panel(ctx, message=str(error), is_error=True)
+        context = _failed_action_panel(ctx, error)
         return render_error(request, error, PANEL_TEMPLATE, context)
     return render(request, PANEL_TEMPLATE, panel)

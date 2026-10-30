@@ -12,6 +12,7 @@ from sqlalchemy import Engine
 from logbook.core import db, services
 from logbook.core.errors import InvalidInputError, NotFoundError
 from logbook.core.weeks import parse_week
+from logbook.web.errors import user_message
 from logbook.web.pages.views import worklog_version
 from tests.web.helpers import (
     add_log,
@@ -221,7 +222,7 @@ def test_history_restore_draws_filters_from_the_url(client: TestClient, web_engi
 def _bad_week_message() -> str:
     with pytest.raises(InvalidInputError) as caught:
         parse_week("x")
-    return str(caught.value)
+    return user_message(caught.value)
 
 
 def test_bad_week_full_page_shows_filters_and_error(client: TestClient) -> None:
@@ -249,7 +250,7 @@ def test_bad_week_htmx_writes_to_flash(client: TestClient) -> None:
 def _unknown_project_message(web_engine: Engine) -> str:
     with db.session_scope(web_engine) as s, pytest.raises(NotFoundError) as caught:
         services.get_project(s, "nope")
-    return str(caught.value)
+    return user_message(caught.value)
 
 
 def test_unknown_project_full_page_shows_filters_and_error(

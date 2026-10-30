@@ -270,6 +270,7 @@ class LogTableView:
     count: int
     message: str = ""  # 결과 줄
     is_error: bool = False
+    is_filtered: bool = False  # 프로젝트·카테고리 필터가 있으면 빈 표 안내가 달라진다
 
 
 @dataclass(frozen=True)
@@ -343,7 +344,12 @@ def log_filter_view(s: Session, cfg: Config, week: Week | None, values: LogFilte
 
 
 def log_table_view(
-    week: Week, logs: Sequence[WorkLog], *, message: str = "", is_error: bool = False
+    week: Week,
+    logs: Sequence[WorkLog],
+    *,
+    message: str = "",
+    is_error: bool = False,
+    is_filtered: bool = False,
 ) -> LogTableView:
     return LogTableView(
         heading=week_heading(week),
@@ -352,6 +358,7 @@ def log_table_view(
         count=len(logs),
         message=message,
         is_error=is_error,
+        is_filtered=is_filtered,
     )
 
 

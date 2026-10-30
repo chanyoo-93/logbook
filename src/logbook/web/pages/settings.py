@@ -17,7 +17,7 @@ from logbook.core import services
 from logbook.core.duration import format_duration
 from logbook.core.errors import InvalidInputError, NotFoundError
 from logbook.web.context import Ctx, WebContext
-from logbook.web.errors import CATEGORY_CHANGED, PROJECT_CHANGED, ConflictError
+from logbook.web.errors import CATEGORY_CHANGED, PROJECT_CHANGED, ConflictError, user_message
 from logbook.web.pages.forms import FormText
 from logbook.web.pages.panels import NO_CHANGE, RESULT_MARK
 from logbook.web.pages.templating import render, render_error
@@ -273,7 +273,7 @@ def add_project(
             section = section_view(s, message=message)
     except InvalidInputError as error:
         with ctx.session() as s:
-            section = section_view(s, values, message=str(error), is_error=True)
+            section = section_view(s, values, message=user_message(error), is_error=True)
         return _section_response(request, section, error=error)
     return _section_response(request, section)
 
@@ -351,7 +351,7 @@ def _edit_error(
     error: InvalidInputError | ConflictError,
 ) -> HTMLResponse:
     """입력 문제나 버전 충돌은 편집 행을 입력값 그대로 다시 그린다. 문구는 #flash에 넣는다."""
-    edit = ProjectEditView(slug, form, error=str(error))
+    edit = ProjectEditView(slug, form, error=user_message(error))
     headers = {"HX-Retarget": f"#project-{slug}", "HX-Reswap": "outerHTML", "HX-Push-Url": "false"}
     return render_error(request, error, EDIT_TEMPLATE, {"edit": edit}, headers=headers)
 

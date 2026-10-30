@@ -1,0 +1,17 @@
+{# 오류 페이지(web/errors.py가 그린다). DB·설정을 읽지 않으므로 이번 주 표기·설정 알림·카테고리 색은 없다. #}
+{% extends "base.html" %}
+{% from "partials/icons.html" import icon_alert %}
+{% block title %}오류{% endblock %}
+{% block colors %}{% endblock %}
+{% block content %}
+<section class="panel error-card">
+  <h2 class="error-card__title">{{ icon_alert() }}{{ title }}</h2>
+  <p class="error-card__message" role="alert">{{ message }}</p>
+  <p class="error-card__links">
+    {% if related %}
+    <a href="{{ related.href }}">{{ related.label }}</a>
+    {% endif %}
+    <a href="/">대시보드로</a>
+  </p>
+</section>
+{% endblock %}

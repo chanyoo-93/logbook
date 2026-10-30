@@ -11,6 +11,7 @@ from logbook.core import db, services
 from logbook.core.errors import NotFoundError
 from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import Week, parse_week
+from logbook.web.errors import user_message
 from logbook.web.pages.task_views import STATUS_LABELS, task_version
 from tests.web.helpers import (
     add_log,
@@ -252,7 +253,7 @@ def test_unknown_project_full_page_shows_error(client: TestClient, web_engine: E
         try:
             services.get_project(s, "nope")
         except NotFoundError as error:
-            message = str(error)
+            message = user_message(error)
 
     response = client.get("/tasks?project=nope")
 
@@ -308,7 +309,7 @@ def test_lists_carry_status_even_when_empty(client: TestClient) -> None:
 
     lists = [e for e in all_by_tag(html, "ul") if "board__cards" in str(e.attrs.get("class"))]
     assert [e.attrs["data-status"] for e in lists] == ["todo", "doing", "done", "dropped"]
-    assert [e.text for e in by_class(html, "empty")][:4] == ["없습니다."] * 4
+    assert len(by_class(html, "board__empty")) == 4  # 문구는 test_empty_states.py
 
 
 def test_empty_notice_is_the_first_item_inside_the_list(client: TestClient) -> None:
@@ -448,7 +449,8 @@ def test_board_has_new_task_link(client: TestClient) -> None:
     html = client.get("/tasks").text
 
     new = [e for e in parse_html(html) if e.tag == "a" and e.attrs.get("href") == "/tasks/new"]
-    assert [e.text for e in new] == ["새 태스크"]
+    # 보드 머리의 주 버튼 + 빈 상태 링크 둘(할 일 열, 다음 주 계획)
+    assert [e.text for e in new] == ["새 태스크"] * 3
     assert "btn--primary" in str(new[0].attrs["class"]).split()
 
 

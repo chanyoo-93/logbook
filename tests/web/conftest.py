@@ -65,6 +65,10 @@ RAISED_ERRORS = {
     "markup": InvalidInputError("<b>굵게</b> & '따옴표'"),
     "external": ExternalServiceError("명령이 실패했습니다: gh issue list (종료 코드 1)."),
     "conflict": ConflictError("다른 곳에서 기록이 바뀌었습니다: #7. 다시 시도하세요."),
+    "web": NotFoundError(
+        "기록을 찾을 수 없습니다: #7. 'lb log'로 확인하세요.",
+        web_message="기록을 찾을 수 없습니다: #7. 기록 화면에서 확인하세요.",
+    ),
 }
 
 

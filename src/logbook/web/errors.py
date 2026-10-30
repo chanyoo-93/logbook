@@ -4,6 +4,7 @@
 HTMX 오류 응답은 놓일 자리를 응답 헤더(HX-Retarget, HX-Reswap)로 정한다.
 """
 
+import logging
 from dataclasses import dataclass
 from typing import cast
 
@@ -27,6 +28,8 @@ from logbook.web.api.envelope import fail
 from logbook.web.assets import FONTS_CSS_URL, STATIC_CSS_URL, STYLESHEETS
 from logbook.web.htmx import is_htmx
 from logbook.web.security import is_api_path, security_headers
+
+logger = logging.getLogger(__name__)
 
 API_NOT_FOUND = "요청한 API가 없습니다: {method} {path}"
 PAGE_NOT_FOUND = "페이지를 찾을 수 없습니다: {path}"
@@ -63,6 +66,17 @@ _REASONS = {
 _DEFAULT_REASON = "값이 올바르지 않습니다"
 # 본문 전체가 없거나 객체가 아닐 때의 loc
 _WHOLE_BODY = ("body",)
+# 오류 페이지: 경로 첫 마디 -> 머리 메뉴의 현재 화면(base.html의 active)과 관련 화면 링크
+_SECTIONS = {
+    "logs": ("기록 화면으로", "/logs"),
+    "tasks": ("태스크 화면으로", "/tasks"),
+    "report": ("보고서 화면으로", "/report"),
+    "settings": ("설정 화면으로", "/settings"),
+}
+ERROR_TEMPLATE = "error.html"
+# 오류 카드 제목: HTTP 상태 -> 한눈에 보이는 한 줄(자세한 사유는 아래 문구가 말한다)
+_TITLES = {404: "찾을 수 없습니다", 500: "서버 오류가 났습니다", 503: "지금은 열 수 없습니다"}
+DEFAULT_TITLE = "요청을 처리할 수 없습니다"
 
 
 class ConflictError(LogbookError):
@@ -92,6 +106,15 @@ def classify(error: LogbookError) -> ErrorKind:
     return ErrorKind(400, "error")
 
 
+def user_message(error: LogbookError) -> str:
+    """웹 화면에 보일 문구. core 오류에 웹 문구(버튼·화면 안내)가 있으면 그것을,
+    없으면 CLI 문구를 쓴다.
+
+    /api/ JSON 응답은 이 함수를 쓰지 않는다. API를 쓰는 쪽은 스크립트라 CLI 명령 안내가 맞다.
+    """
+    return error.web_message or str(error)
+
+
 def _flash_fragment(message: str) -> str:
     return f'<p class="flash flash--error" role="alert">{escape(message)}</p>'
 
@@ -101,7 +124,8 @@ def _stylesheet_links() -> str:
     return "".join(f'<link rel="stylesheet" href="{href}">\n' for href in hrefs)
 
 
-def _error_page(message: str) -> str:
+def _plain_error_page(message: str) -> str:
+    """오류 페이지를 템플릿으로 그리지 못할 때의 최소 페이지."""
     return (
         "<!doctype html>\n"
         '<html lang="ko">\n'
@@ -123,10 +147,34 @@ def _error_page(message: str) -> str:
     )
 
 
+def _templated_error_page(path: str, status: int, message: str) -> str:
+    """머리 메뉴가 있는 오류 페이지. DB가 잠겨 있어도 뜨도록 DB·설정을 읽지 않는다."""
+    # pages.templating이 이 모듈(classify)을 import하므로 여기서 늦게 import한다.
+    from logbook.web.pages.templating import TEMPLATES
+
+    section = path.strip("/").split("/", 1)[0]
+    related = _SECTIONS.get(section)
+    context = {
+        "active": "dashboard" if section == "" else section,
+        "title": _TITLES.get(status, DEFAULT_TITLE),
+        "message": message,
+        "related": {"label": related[0], "href": related[1]} if related else None,
+    }
+    return TEMPLATES.get_template(ERROR_TEMPLATE).render(context)
+
+
+def _error_page(path: str, status: int, message: str) -> str:
+    try:
+        return _templated_error_page(path, status, message)
+    except Exception:  # 오류 처리 안에서 또 실패하면 최소 페이지로 대신하고 원인은 로그에 남긴다.
+        logger.exception("오류 페이지를 그리지 못해 최소 페이지로 대신했습니다.")
+        return _plain_error_page(message)
+
+
 def error_response(request: Request, kind: ErrorKind, message: str) -> Response:
     """요청 종류에 맞는 오류 응답을 만든다.
 
-    /api/는 JSON 봉투, HTMX 요청은 알림 조각(+HX 헤더), 그 밖은 최소 오류 페이지다.
+    /api/는 JSON 봉투, HTMX 요청은 알림 조각(+HX 헤더), 그 밖은 머리 메뉴가 있는 오류 페이지다.
     """
     if is_api_path(request.url.path):
         return fail(kind.status, kind.code, message)
@@ -136,7 +184,8 @@ def error_response(request: Request, kind: ErrorKind, message: str) -> Response:
             status_code=kind.status,
             headers={"HX-Retarget": "#flash", "HX-Reswap": "innerHTML", "HX-Push-Url": "false"},
         )
-    return HTMLResponse(_error_page(message), status_code=kind.status)
+    page = _error_page(request.url.path, kind.status, message)
+    return HTMLResponse(page, status_code=kind.status)
 
 
 def validation_message(error: RequestValidationError) -> str:
@@ -176,7 +225,8 @@ def _http_kind_and_message(
 
 async def _handle_logbook_error(request: Request, exc: Exception) -> Response:
     error = cast(LogbookError, exc)
-    return error_response(request, classify(error), str(error))
+    message = str(error) if is_api_path(request.url.path) else user_message(error)
+    return error_response(request, classify(error), message)
 
 
 async def _handle_validation_error(request: Request, exc: Exception) -> Response:

@@ -9,7 +9,7 @@ from sqlalchemy import Engine
 
 from logbook.core import db, services
 from logbook.core.models import ActiveTimer
-from logbook.core.services.timer import NO_TIMER_MESSAGE
+from logbook.core.services.timer import NO_TIMER_WEB_MESSAGE
 from logbook.core.taskstatus import TaskStatus
 from logbook.web.pages.views import timer_version
 from tests.helpers import FIXED_NOW, Clock
@@ -159,6 +159,8 @@ def test_start_validation_errors_leave_quick_form_alone(
     # 입력값은 빠른 기록 폼에 그대로 남는다. 응답은 타이머 영역만 바꾼다.
     assert 'id="quick-form"' not in html
     assert _idle(html)
+    # 시작 실패는 포커스를 옮기지 않는다(입력하던 칸에 남는다).
+    assert "data-refocus" not in by_id(html, "timer").attrs
     assert not _has_timer(web_engine)
 
 
@@ -268,8 +270,11 @@ def test_cancel_without_timer(client: TestClient) -> None:
 
     html = response.text
     assert response.status_code == 404
-    assert by_id(html, "timer-result").text == NO_TIMER_MESSAGE
+    assert by_id(html, "timer-result").text == NO_TIMER_WEB_MESSAGE
     assert _idle(html)
+    # CLI가 먼저 취소한 경우: 취소 버튼이 사라지므로 포커스는 결과 줄로 간다(app.js의 data-refocus).
+    assert "data-refocus" in by_id(html, "timer").attrs
+    assert "data-focus" in by_id(html, "timer-result").attrs
 
 
 def test_cancel_from_other_origin_is_forbidden(client: TestClient, web_engine: Engine) -> None:

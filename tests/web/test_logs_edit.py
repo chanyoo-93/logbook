@@ -12,7 +12,7 @@ from logbook.core.duration import parse_duration
 from logbook.core.errors import InvalidInputError, NotFoundError
 from logbook.core.taskstatus import TaskStatus
 from logbook.core.weeks import parse_week
-from logbook.web.errors import RECORD_CHANGED
+from logbook.web.errors import RECORD_CHANGED, user_message
 from logbook.web.pages.views import worklog_version
 from tests.helpers import hold_lock
 from tests.web.conftest import LockedApp
@@ -376,7 +376,7 @@ def test_patch_bad_duration_keeps_edit_row_and_flashes_error(
     assert "is-editing" in str(row.attrs["class"]).split()
     assert named_input(html, "duration").attrs["value"] == "abc"
     assert named_input(html, "note").attrs["value"] == "입력하던 메모"
-    assert _flash_error(html) == str(caught.value)
+    assert _flash_error(html) == user_message(caught.value)
     assert [e for e in parse_html(html) if e.tag == "tr"] == [row]
     assert _snapshot(web_engine, log_id) == before
 
@@ -434,7 +434,7 @@ def test_patch_bad_filter_week_is_400_and_leaves_db(client: TestClient, web_engi
     response = _patch(client, web_engine, log_id, duration="3h", week="x")
 
     assert response.status_code == 400
-    assert str(caught.value) in unescape(response.text)
+    assert user_message(caught.value) in unescape(response.text)
     assert _snapshot(web_engine, log_id) == before
 
 
@@ -449,7 +449,7 @@ def test_patch_unknown_filter_project_is_404_and_leaves_db(
     response = _patch(client, web_engine, log_id, duration="3h", project="nope")
 
     assert response.status_code == 404
-    assert str(caught.value) in unescape(response.text)
+    assert user_message(caught.value) in unescape(response.text)
     assert _snapshot(web_engine, log_id) == before
 
 

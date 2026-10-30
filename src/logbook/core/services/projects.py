@@ -34,7 +34,7 @@ def create_project(
     clean_name = _clean_name(name)
     validate_color(color)
     if _find_project(s, slug) is not None:
-        raise InvalidInputError(_duplicate_message(slug))
+        raise _duplicate_error(slug)
     project = Project(
         slug=slug,
         name=clean_name,
@@ -46,7 +46,7 @@ def create_project(
         s.flush()
     except IntegrityError as error:
         # 확인과 삽입 사이에 다른 프로세스가 같은 slug를 넣은 경우.
-        raise InvalidInputError(_duplicate_message(slug)) from error
+        raise _duplicate_error(slug) from error
     return project
 
 
@@ -54,7 +54,7 @@ def get_project(s: Session, slug: str) -> Project:
     """slug로 프로젝트를 찾는다 (보관된 프로젝트 포함). 없으면 NotFoundError."""
     project = _find_project(s, slug)
     if project is None:
-        raise NotFoundError(_not_found_message(slug))
+        raise _not_found_error(slug)
     return project
 
 
@@ -181,14 +181,20 @@ _UPDATE_VALIDATORS: dict[str, Callable[[Any], Any]] = {
 }
 
 
-def _not_found_message(slug: str) -> str:
+def _not_found_error(slug: str) -> NotFoundError:
     # 쓸 수 없는 slug로 만들라고 안내하지 않도록 자리표시자를 쓴다.
     hint = slug if is_valid_slug(slug) else "<slug>"
-    return (
-        f"프로젝트를 찾을 수 없습니다: '{slug}'. 'lb project list'로 확인하거나, "
-        f"새 프로젝트라면 'lb project add {hint} <이름>'으로 만드세요."
+    what = f"프로젝트를 찾을 수 없습니다: '{slug}'. "
+    return NotFoundError(
+        what + "'lb project list'로 확인하거나, "
+        f"새 프로젝트라면 'lb project add {hint} <이름>'으로 만드세요.",
+        web_message=what + "설정 화면의 프로젝트 목록에서 확인하거나 추가하세요.",
     )
 
 
-def _duplicate_message(slug: str) -> str:
-    return f"이미 존재하는 프로젝트입니다: '{slug}'. 'lb project list'로 확인하세요."
+def _duplicate_error(slug: str) -> InvalidInputError:
+    what = f"이미 존재하는 프로젝트입니다: '{slug}'. "
+    return InvalidInputError(
+        what + "'lb project list'로 확인하세요.",
+        web_message=what + "설정 화면의 프로젝트 목록에서 확인하세요.",
+    )

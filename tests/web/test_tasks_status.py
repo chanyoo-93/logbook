@@ -9,7 +9,7 @@ from sqlalchemy import Engine
 from logbook.core import db, services
 from logbook.core.errors import InvalidInputError, NotFoundError
 from logbook.core.taskstatus import TaskStatus, parse_status
-from logbook.web.errors import TASK_CHANGED
+from logbook.web.errors import TASK_CHANGED, user_message
 from logbook.web.pages.task_views import task_version
 from tests.helpers import Clock
 from tests.web.helpers import (
@@ -157,7 +157,7 @@ def test_invalid_status_is_rejected(client: TestClient, web_engine: Engine) -> N
     try:
         parse_status("x")
     except InvalidInputError as error:
-        message = str(error)
+        message = user_message(error)
 
     response = _post(client, web_engine, task_id, "x")
 
@@ -171,7 +171,7 @@ def test_unknown_task_is_not_found(client: TestClient, web_engine: Engine) -> No
         try:
             services.get_task(s, 999)
         except NotFoundError as error:
-            message = str(error)
+            message = user_message(error)
 
     response = client.post(
         "/tasks/999/status", data={"status": "doing", "version": "x", "project": ""}, headers=HTMX

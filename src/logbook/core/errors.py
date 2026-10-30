@@ -2,7 +2,15 @@
 
 
 class LogbookError(Exception):
-    """사용자에게 그대로 보여줄 수 있는 한국어 메시지를 가진 오류."""
+    """사용자에게 그대로 보여줄 수 있는 한국어 메시지를 가진 오류.
+
+    str(error)는 CLI 문구('lb ...' 명령 안내)다. 웹 화면의 동작(버튼·화면)으로 안내할 문구가
+    따로 있으면 web_message에 둔다. 웹 화면은 web_message를, 없으면 str(error)를 보인다.
+    """
+
+    def __init__(self, message: str, *, web_message: str | None = None) -> None:
+        super().__init__(message)
+        self.web_message = web_message
 
 
 class InvalidInputError(LogbookError, ValueError):

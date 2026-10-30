@@ -19,7 +19,7 @@ from logbook.core.errors import InvalidInputError, LogbookError, NotFoundError
 from logbook.core.ids import parse_id
 from logbook.core.weeks import Week, parse_date, parse_week
 from logbook.web.context import TASK_LABEL, Ctx, WebContext
-from logbook.web.errors import RECORD_CHANGED, ConflictError
+from logbook.web.errors import RECORD_CHANGED, ConflictError, user_message
 from logbook.web.htmx import is_htmx
 from logbook.web.pages.forms import FormText, QueryText
 from logbook.web.pages.panels import NO_CHANGE, RESULT_MARK
@@ -80,7 +80,9 @@ def _table_page(
         category=values.category or None,
     )
     return {
-        "table": log_table_view(week, logs, message=message),
+        "table": log_table_view(
+            week, logs, message=message, is_filtered=bool(values.project or values.category)
+        ),
         "filters": log_filter_view(s, ctx.cfg, week, values),
     }
 
@@ -113,7 +115,12 @@ def logs_page(
             raise  # 알림 영역에 쓴다 (공통 오류 처리)
         with ctx.session() as s:
             filters = log_filter_view(s, ctx.cfg, None, values)
-        context = {"active": "logs", "filters": filters, "table": None, "error": str(error)}
+        context = {
+            "active": "logs",
+            "filters": filters,
+            "table": None,
+            "error": user_message(error),
+        }
         return render_error(request, error, PAGE_TEMPLATE, context)
     if is_htmx(request):
         return render(request, TABLE_TEMPLATE, {**page, "oob": True})
@@ -190,7 +197,7 @@ def _edit_error(
     number = parse_id(log_id, LOG_LABEL)
     with ctx.session() as s:
         log = services.get_worklog(s, number)
-        edit = log_edit_view(s, ctx.cfg, log, form, error=str(error))
+        edit = log_edit_view(s, ctx.cfg, log, form, error=user_message(error))
     headers = {"HX-Retarget": f"#log-{number}", "HX-Reswap": "outerHTML", "HX-Push-Url": "false"}
     return render_error(request, error, EDIT_TEMPLATE, {"edit": edit}, headers=headers)
 

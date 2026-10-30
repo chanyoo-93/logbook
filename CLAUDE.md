@@ -44,7 +44,7 @@ src/logbook/
     report.py    # 보고서 데이터 클래스 + Markdown 렌더링 (조립은 services/report.py)
     templates/   # 기본 보고서 템플릿 (report.md.j2)
     config.py    # 설정 로드
-    errors.py    # 사용자에게 보여줄 한국어 오류 타입 (LogbookError 계열)
+    errors.py    # 사용자에게 보여줄 한국어 오류 타입 (LogbookError 계열, CLI 문구 + 선택 웹 문구 web_message)
     platform.py  # OS별 처리 (콘솔 인코딩, 클립보드, 데이터 디렉터리)
     external.py  # 외부 명령(git, gh) 실행 공용 함수 run_tool (shell=False, 시간 제한, 한국어 오류 문구)
     gitcollect.py# git 커밋 수집(`lb git-collect`와 보고서 커밋 부록, DB 접근 없음)
@@ -63,7 +63,7 @@ src/logbook/
     assets.py    # 스타일시트 목록 STYLESHEETS (base.html과 오류 페이지가 공유, 다른 web 모듈을 import하지 않음)
     htmx.py      # HTMX 요청 판별(is_htmx)과 헤더 상수
     security.py  # Host 검사, 교차 출처 쓰기 차단, 보안 헤더(CSP)
-    errors.py    # 오류 → HTTP 상태·JSON 봉투·HTMX 알림 변환
+    errors.py    # 오류 → HTTP 상태·JSON 봉투·HTMX 알림·오류 페이지(error.html) 변환, 웹 문구 선택 user_message()
     app.py       # FastAPI 앱 조립
     config_watch.py # 설정 파일 자동 반영(내용 해시로 변경을 감지하고 요청마다 설정 스냅숏을 돌려줌)
     fonts.py     # 설정 [web]의 글꼴 → /fonts.css 내용(CSS 변수 --font-heading·--font-document·--font-body)
@@ -72,7 +72,7 @@ src/logbook/
     server.py    # 루프백 소켓을 열고 uvicorn 실행 (`lb serve`가 호출)
     api/         # JSON API (/api/*): logs, tasks, stats, report, timer
     pages/       # 화면 라우트 (대시보드, 기록, 타이머, 태스크·보고서·설정), tasks.py·task_views.py(칸반·계획 패널, 태스크 등록·수정 화면, 상태 변경), report.py, report_polish.py(POST /report/polish 문장 다듬기), settings.py, panels.py(결과 줄·요약·최근 기록 갱신), forms.py(FormText·QueryText), fonts.py(GET /fonts.css), colors.py(GET /colors.css)
-    templates/   # Jinja2 + HTMX. task_new.html·task_edit.html·partials/task_form.html(태스크 등록·수정 화면). partials/marks.html에 공용 부품 매크로 pill(꼬리표)·project_mark(프로젝트 색 점)·category_pill(카테고리 꼬리표), partials/icons.html(인라인 SVG 아이콘 매크로), partials/menu.html(행 ⋮ 컨텍스트 메뉴 틀 row_menu)
+    templates/   # Jinja2 + HTMX. error.html(오류 페이지, 머리 메뉴·오류 카드). task_new.html·task_edit.html·partials/task_form.html(태스크 등록·수정 화면). partials/marks.html에 공용 부품 매크로 pill(꼬리표)·project_mark(프로젝트 색 점)·category_pill(카테고리 꼬리표), partials/icons.html(인라인 SVG 아이콘 매크로), partials/menu.html(행 ⋮ 컨텍스트 메뉴 틀 row_menu)
     static/      # 최소한의 CSS와 JS(js/app.js(htmx 공통 처리·행 ⋮ 메뉴), js/report.js, js/board.js(태스크 보드 끌어 놓기) 포함), vendor/에 htmx·Chart.js·SortableJS 로컬 파일 (CDN 없음)
                  # css/: app.css(디자인 토큰: 색 :root 두 벌은 여기에만, 글꼴·글자 크기·간격·모서리·그림자), dashboard·logs·components·tasks·report·settings·responsive.css (순서는 web/assets.py의 STYLESHEETS가 정하고 base.html·오류 페이지가 그대로 링크)
 tests/

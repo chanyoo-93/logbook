@@ -4,13 +4,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import Engine
 
 from logbook.core import db, services
-from logbook.core.services.timer import NO_TIMER_MESSAGE
+from logbook.core.services.timer import NO_TIMER_WEB_MESSAGE
 from tests.conftest import FIXED_TODAY
 from tests.helpers import FIXED_NOW, Clock
 from tests.web.helpers import add_log, add_project, all_by_tag, by_class, by_id, parse_html
 
 HTMX = {"HX-Request": "true"}
-ONE_MINUTE_MESSAGE = "1분이 지나지 않아 기록하지 않았습니다. 버리려면 'lb cancel'을 실행하세요."
+ONE_MINUTE_MESSAGE = "1분이 지나지 않아 기록하지 않았습니다. 버리려면 취소를 누르세요."
 
 
 def _start(engine: Engine) -> None:
@@ -199,10 +199,39 @@ def test_stop_without_timer(client: TestClient) -> None:
 
     html = response.text
     assert response.status_code == 404
-    assert by_id(html, "timer-result").text == NO_TIMER_MESSAGE
+    assert by_id(html, "timer-result").text == NO_TIMER_WEB_MESSAGE
     assert by_id(html, "timer-result").attrs["role"] == "alert"
     assert "timer--running" not in str(by_id(html, "timer").attrs["class"]).split()
     assert "timer-elapsed" not in _ids(html)
+
+
+def _refocus(html: str) -> bool:
+    return "data-refocus" in by_id(html, "timer").attrs
+
+
+def test_running_panel_refocuses_stop_after_failure(
+    client: TestClient, web_engine: Engine, clock: Clock
+) -> None:
+    # 진행 중이거나 정지·취소가 실패했을 때만 #timer에 data-refocus를 둔다.
+    # 실패 응답(4xx) 뒤에도 포커스가 정지 버튼으로 돌아온다(app.js).
+    assert not _refocus(client.get("/timer", headers=HTMX).text)
+
+    _start(web_engine)
+    assert _refocus(client.get("/timer", headers=HTMX).text)
+
+    clock.advance(seconds=29)
+    failed = client.post("/timer/stop", headers=HTMX)
+    assert failed.status_code == 400
+    assert _refocus(failed.text)
+
+    clock.advance(minutes=30)
+    stopped = client.post("/timer/stop", headers=HTMX).text
+    assert not _refocus(stopped)
+    # 타이머가 없는 정지 실패(CLI가 먼저 정지)는 정지 버튼이 없으므로 결과 줄로 포커스를 보낸다.
+    missing = client.post("/timer/stop", headers=HTMX)
+    assert missing.status_code == 404
+    assert _refocus(missing.text)
+    assert "data-focus" in by_id(missing.text, "timer-result").attrs
 
 
 def test_stop_from_other_origin_is_forbidden(
