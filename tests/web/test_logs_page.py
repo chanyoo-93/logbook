@@ -82,7 +82,15 @@ def test_page_lists_this_week_in_date_then_id_order(client: TestClient, web_engi
     nav = [e for e in parse_html(html) if e.tag == "a" and e.attrs.get("href") == "/logs"]
     assert [e.attrs.get("aria-current") for e in nav] == ["page"]
     headers = [e.text for e in all_by_tag(html, "th") if e.attrs.get("scope") == "col"]
-    assert headers == ["ID", "날짜", "프로젝트", "카테고리", "시간", "메모", "태스크", "동작"]
+    assert headers == [
+        "ID",
+        "프로젝트",
+        "카테고리",
+        "시간",
+        "메모",
+        "태스크",
+        "동작",
+    ]  # 날짜는 묶음 머리글
     assert '<span class="pill pill--cat-meeting">meeting</span>' in html
     assert html.count('<span class="pill pill--cat-dev">dev</span>') == 2
     assert html.count('aria-hidden="true"><circle cx="4" cy="4" r="4" fill="#') == 3
@@ -317,7 +325,7 @@ def test_table_head_stays_for_screen_readers_but_is_hidden_on_screen(
 
     head = all_by_tag(html, "thead")[0]
     assert "visually-hidden" in str(head.attrs["class"]).split()
-    labels = [th.text.strip() for th in all_by_tag(html, "th")]
+    labels = [th.text.strip() for th in all_by_tag(html, "th") if th.attrs.get("scope") == "col"]
     assert labels[0] == "ID"
     assert labels[-1] == "동작"
 

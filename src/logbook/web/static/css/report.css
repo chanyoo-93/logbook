@@ -2,7 +2,7 @@
 .report__title,
 .report-notes__title {
   font-family: var(--font-heading);
-  font-size: var(--text-md);
+  font-size: var(--text-title);
   font-weight: 700;
   letter-spacing: var(--tracking-title);
 }
