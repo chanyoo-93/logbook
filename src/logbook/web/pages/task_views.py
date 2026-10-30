@@ -21,7 +21,6 @@ from logbook.web.pages.views import (
     Choice,
     category_choices,
     content_version,
-    progress_percent,
     project_choices,
     project_color,
 )
@@ -188,6 +187,13 @@ def _week_tag(label: str | None, this_week: Week) -> str:
     if label == this_week.prev().label:
         return LAST_WEEK_TAG
     return ""
+
+
+def progress_percent(actual_minutes: int, estimate_minutes: int) -> int:
+    """실적/예상 비율을 0~100 정수로. 예상이 0이면 실적이 있을 때만 100."""
+    if estimate_minutes <= 0:
+        return 100 if actual_minutes > 0 else 0
+    return min(100, round(actual_minutes / estimate_minutes * 100))
 
 
 def task_card(task: Task, actual_minutes: int, this_week: Week) -> TaskCardView:

@@ -1,11 +1,6 @@
 /* 좁은 화면(머리·대시보드), 인쇄, 모션 줄이기: 앞 규칙을 덮어쓰므로 맨 뒤에 둔다 */
 /* 좁은 화면: 한 열 */
 @media (max-width: 719px) {
-  /* 기록 표는 좁은 화면에서 가로로 스크롤한다. 오른쪽 끝에 둔 하루 합계가 화면 밖으로 밀리지 않게 날짜 옆에 둔다 */
-  .log-day__line {
-    justify-content: flex-start;
-  }
-
   .masthead__week {
     width: 100%;
     margin-left: 0;

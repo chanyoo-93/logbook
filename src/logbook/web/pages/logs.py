@@ -81,11 +81,7 @@ def _table_page(
     )
     return {
         "table": log_table_view(
-            week,
-            logs,
-            daily_target_minutes=ctx.cfg.daily_target_minutes,
-            message=message,
-            is_filtered=bool(values.project or values.category),
+            week, logs, message=message, is_filtered=bool(values.project or values.category)
         ),
         "filters": log_filter_view(s, ctx.cfg, week, values),
     }

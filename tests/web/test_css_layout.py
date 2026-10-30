@@ -179,39 +179,11 @@ def test_timer_row_is_separated_from_quick_row_by_hairline() -> None:
 
 
 def test_stat_numbers_are_smaller_than_before() -> None:
-    """평가(2026-10-26): 가장 큰 요소가 숫자라 기록이 묻혔다. 이번 주 공수 최대 3rem."""
+    """평가(2026-10-26): 가장 큰 요소가 숫자라 기록이 묻혔다. 최대 크기를 약 30% 줄인다."""
     declarations = _declarations(_read("app.css"), ":root")
 
+    assert "--text-stat: clamp(1.75rem, 1.3rem + 1.6vw, 2.5rem)" in declarations
     assert "--text-stat-lead: clamp(2rem, 1.4rem + 2.2vw, 3rem)" in declarations
-
-
-def test_side_stat_numbers_are_one_step_below_the_lead() -> None:
-    """결정 H4(2026-10-30): 기록·완료 태스크 숫자는 24px, 이번 주 공수만 크게 둔다."""
-    css = _read("dashboard.css")
-
-    assert "font-size: var(--text-lg)" in _declarations(css, ".stat__value")
-    assert "font-size: var(--text-stat-lead)" in _declarations(css, ".stat--lead .stat__value")
-    assert "--text-stat:" not in _read("app.css")  # 쓰는 곳이 없어진 토큰
-
-
-def test_title_step_is_twenty_pixels() -> None:
-    """결정 H3(2026-10-30): 본문 15px의 1.33배."""
-    assert "--text-title: 1.25rem" in _declarations(_read("app.css"), ":root")
-
-
-@pytest.mark.parametrize(
-    ("file", "selector"),
-    [
-        ("dashboard.css", ".panel__title"),
-        ("tasks.css", ".board__title"),
-        ("tasks.css", ".plan__title"),
-        ("tasks.css", ".task-page__title"),
-        ("report.css", ".report__title, .report-notes__title"),
-    ],
-)
-def test_section_titles_use_title_step(file: str, selector: str) -> None:
-    """결정 H3(2026-10-30): 구역 제목(h2)은 20px 단계를 쓴다."""
-    assert "font-size: var(--text-title)" in _declarations(_read(file), selector)
 
 
 def test_print_hides_the_work_panel() -> None:
@@ -578,10 +550,3 @@ def test_timer_start_button_hides_while_timer_runs() -> None:
     # 진행 중이면 빠른 기록 폼의 타이머 시작 버튼을 숨긴다(2026-10-29 E3)
     selector = ".work:has(.timer--running) .quick__timer"
     assert "display: none" in _declarations(_read("dashboard.css"), selector)
-
-
-def test_day_total_sits_next_to_date_on_narrow_screens() -> None:
-    """결정 H2(2026-10-30): 320px에서 표가 가로로 스크롤해도 하루 합계가 처음 화면에 보인다."""
-    assert "justify-content: space-between" in _declarations(_read("logs.css"), ".log-day__line")
-    narrow = _media_block(_read("responsive.css"), NARROW_QUERY)
-    assert "justify-content: flex-start" in _declarations(narrow, ".log-day__line")

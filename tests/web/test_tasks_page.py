@@ -433,7 +433,7 @@ def test_card_progress_bar_is_decorative_svg_without_inline_style(
 
 
 def test_progress_percent_handles_zero_estimate_and_caps_at_100() -> None:
-    from logbook.web.pages.views import progress_percent
+    from logbook.web.pages.task_views import progress_percent
 
     assert progress_percent(0, 0) == 0
     assert progress_percent(10, 0) == 100

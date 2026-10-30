@@ -2,6 +2,7 @@
 {% from "partials/menu.html" import row_menu %}
         <tr id="log-{{ row.id }}">
           <td class="num">{{ row.id }}</td>
+          <td class="nowrap">{{ row.day }}</td>
           <td class="nowrap">{{ project_mark(row.project, row.project_color) }}</td>
           <td class="nowrap">{{ category_pill(row.category) }}</td>
           <td class="num nowrap">{{ row.duration }}</td>
