@@ -10,6 +10,7 @@ DB 없이 끝나는 검증을 먼저 하고, 나머지는 세션 하나 안에�
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter
@@ -34,6 +35,7 @@ from logbook.web.pages.task_views import (
     board_url,
     edit_url,
     edit_values,
+    new_task_values,
     plan_panel,
     task_board,
     task_filter_view,
@@ -264,6 +266,8 @@ def task_new_page(request: Request, ctx: Ctx, project: QueryText = "") -> HTMLRe
     selected = project.strip()
     with ctx.session() as s:
         form = task_form_view(s, ctx, TaskFormValues(), filter_project=selected)
+    # 선택지(보관하지 않은 프로젝트)를 다시 읽지 않으려고 폼을 만든 뒤 처음 값만 바꾼다.
+    form = replace(form, values=new_task_values(form.projects, selected))
     return render(request, NEW_TEMPLATE, {"active": "tasks", "form": form})
 
 

@@ -272,6 +272,13 @@ def task_form_view(
     )
 
 
+def new_task_values(projects: Sequence[Choice], filter_project: str) -> TaskFormValues:
+    """등록 화면의 처음 값. 보드 필터 프로젝트가 선택지에 있으면 골라 두고, 없으면 자동."""
+    if any(choice.value == filter_project for choice in projects):
+        return TaskFormValues(task_project=filter_project)
+    return TaskFormValues()
+
+
 def task_filter_view(s: Session, project: str) -> TaskFilterView:
     return TaskFilterView(project=project, projects=project_choices(s))
 

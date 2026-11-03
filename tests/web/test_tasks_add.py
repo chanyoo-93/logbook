@@ -139,6 +139,55 @@ def test_new_page_cancel_link_and_hidden_project_follow_filter(client: TestClien
     assert named_input(filtered, "project").attrs["value"] == "payment"
 
 
+def _selected_project(html: str) -> list[str]:
+    return [value for value, _, selected in select_options(html, "task_project") if selected]
+
+
+def test_new_page_preselects_the_filter_project(client: TestClient, web_engine: Engine) -> None:
+    add_project(web_engine, "payment", "결제 서버")
+
+    filtered = client.get("/tasks/new?project=payment").text
+    padded = client.get("/tasks/new?project=%20payment%20").text
+    plain = client.get("/tasks/new").text
+
+    assert _selected_project(filtered) == ["payment"]
+    assert _selected_project(padded) == ["payment"]
+    assert named_input(padded, "project").attrs["value"] == "payment"
+    assert _selected_project(plain) == []  # 아무것도 고르지 않으면 첫 항목 `자동`
+
+
+@pytest.mark.parametrize("slug", ["old", "nope"])
+def test_new_page_keeps_auto_for_archived_or_unknown_filter(
+    client: TestClient, web_engine: Engine, slug: str
+) -> None:
+    add_project(web_engine, "old", "보관")
+    with db.session_scope(web_engine) as s:
+        services.archive_project(s, "old")
+
+    html = client.get(f"/tasks/new?project={slug}").text
+
+    assert _selected_project(html) == []  # 아무것도 고르지 않으면 첫 항목 `자동`
+    assert named_input(html, "project").attrs["value"] == slug
+
+
+def test_saving_the_filtered_form_as_is_uses_the_filter_project(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "payment", "결제 서버")
+    html = client.get("/tasks/new?project=payment").text
+    [chosen] = _selected_project(html)
+
+    response = client.post(
+        "/tasks",
+        data={"title": "거른 채 추가", "task_project": chosen, "project": "payment"},
+        headers=HTMX,
+    )
+
+    [stored] = _tasks(web_engine)
+    assert stored.project == "payment"
+    assert response.headers["HX-Redirect"] == f"/tasks?added={stored.id}&project=payment"
+
+
 def test_add_saves_all_fields_and_redirects_to_board(
     client: TestClient, web_engine: Engine
 ) -> None:
