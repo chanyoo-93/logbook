@@ -235,8 +235,9 @@ def test_add_to_other_project_returns_to_that_project_board(
     assert response.headers["HX-Redirect"] == f"/tasks?added={stored.id}&project=billing"
 
 
-def test_add_auto_from_archived_filter_returns_to_default_project_board(
-    client: TestClient, web_engine: Engine
+@pytest.mark.parametrize("slug", ["old", "nope"])
+def test_add_auto_from_archived_or_unknown_filter_returns_to_default_project_board(
+    client: TestClient, web_engine: Engine, slug: str
 ) -> None:
     add_project(web_engine, "old", "보관")
     with db.session_scope(web_engine) as s:
@@ -244,7 +245,7 @@ def test_add_auto_from_archived_filter_returns_to_default_project_board(
 
     response = client.post(
         "/tasks",
-        data={"title": "보관 보드에서 추가", "task_project": "", "project": "old"},
+        data={"title": "보관 보드에서 추가", "task_project": "", "project": slug},
         headers=HTMX,
     )
 
