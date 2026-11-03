@@ -12,7 +12,7 @@ from logbook.core.config import load_config
 from logbook.web.app import create_app
 from logbook.web.config_watch import ConfigWatcher
 from logbook.web.context import WebContext
-from logbook.web.pages.settings import CATEGORY_NOTE, FONT_NOTE
+from logbook.web.pages.settings import CATEGORY_NOTE, FONT_NOTE, INFO_NOTE, SLUG_HINT
 from tests.web.conftest import LOCAL_BASE_URL
 from tests.web.helpers import (
     Element,
@@ -241,3 +241,62 @@ def test_settings_font_rows_follow_config(watched_client: TestClient, config_fil
 
     assert "나눔고딕" in html
     assert "Batang" in html
+
+
+def _info_key(html: str, label: str) -> str:
+    """정의 목록에서 글이 label인 dt 다음 dd 안의 설정 키(code.info__key) 글."""
+    elements = parse_html(html)
+    for index, element in enumerate(elements):
+        if element.tag == "dt" and element.text == label:
+            for e in elements[index + 1 :]:
+                if e.tag == "dt":
+                    break
+                if e.tag == "code" and "info__key" in str(e.attrs.get("class") or ""):
+                    return e.text
+            return ""
+    raise AssertionError(f"'{label}' 줄이 없습니다")
+
+
+def test_settings_info_shows_values_in_words(client: TestClient) -> None:
+    # 결정 C2: 설정 파일 값(monday, common)을 사람 말로 보이고 설정 키를 덧붙인다.
+    html = client.get("/settings").text
+
+    assert _font_row_value(html, "주 시작 요일").startswith("월요일")
+    assert _font_row_value(html, "기본 프로젝트").startswith("common (공통)")
+    assert _font_row_value(html, "하루 목표").startswith("8h")
+    assert _info_key(html, "주 시작 요일") == "week_start"
+    assert _info_key(html, "기본 프로젝트") == "default_project"
+    assert _info_key(html, "하루 목표") == "daily_target_minutes"
+    assert _info_key(html, "DB 파일") == "db_path"
+    assert _info_key(html, "설정 파일") == ""
+    assert ">monday<" not in html
+    assert INFO_NOTE in html
+    assert INFO_NOTE.startswith("이 값들은 설정 파일에서 바꿉니다.")
+
+
+def test_settings_info_follows_sunday_and_unknown_default_project(
+    watched_client: TestClient, config_file: Path
+) -> None:
+    config_file.write_text(
+        'week_start = "sunday"\ndefault_project = "ghost"\n[web]\nport = 8765\n',
+        encoding="utf-8",
+    )
+
+    html = watched_client.get("/settings").text
+
+    assert _font_row_value(html, "주 시작 요일").startswith("일요일")
+    value = _font_row_value(html, "기본 프로젝트")
+    assert value.startswith("ghost")
+    assert "(" not in value.removesuffix("default_project")
+
+
+def test_slug_field_has_rule_hint_and_unused_example(client: TestClient) -> None:
+    # 결정 C3: 규칙 한 줄 + 이미 있는 payment 대신 쓰이지 않는 예시.
+    html = client.get("/settings").text
+
+    slug = by_id(html, "project-slug")
+    assert slug.attrs["placeholder"] == "billing"
+    assert slug.attrs["aria-describedby"] == "project-slug-hint"
+    assert by_id(html, "project-slug-hint").text == SLUG_HINT
+    assert SLUG_HINT == "영문 소문자나 숫자로 시작, - _ 포함 32자까지. CLI에서 이 이름으로 씁니다."
+    assert by_id(html, "project-name").attrs["placeholder"] == "정산 서버"

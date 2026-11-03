@@ -105,6 +105,22 @@
   font-size: var(--text-sm);
 }
 
+/* 설정 파일에서 바꾸는 값의 키(week_start 등). 값 옆에 옅게 둔다 */
+.info__key {
+  margin-left: var(--space-2);
+  color: var(--ink-muted);
+  font-family: inherit;
+  font-size: var(--text-xs);
+}
+
+/* slug 규칙 안내: 폼 아래 한 줄 */
+.project-form__hint {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: var(--text-xs);
+}
+
 
 /* 카테고리·프로젝트 색 고르기 */
 .color-field {
