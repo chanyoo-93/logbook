@@ -9,6 +9,19 @@
     justify-content: flex-start;
   }
 
+  /* 카테고리 색 표가 320px에서 표 안 가로 스크롤 없이 들어오게 칸 여백·색 칸 간격·색 고르기 폭을 줄인다(PR #35 QA) */
+  .grid--categories td {
+    padding: 0 var(--space-2);
+  }
+
+  .grid--categories .color-field {
+    gap: var(--space-1);
+  }
+
+  .grid--categories .color-field input[type="color"] {
+    width: 2rem;
+  }
+
   .masthead__week {
     width: 100%;
     margin-left: 0;

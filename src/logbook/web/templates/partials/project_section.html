@@ -27,11 +27,11 @@
   <form id="project-add-form" class="project-form" aria-label="프로젝트 추가" hx-post="/settings/projects" hx-target="#project-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button">
     <div class="project-form__field">
       <label for="project-slug">slug</label>
-      <input id="project-slug" type="text" name="slug" autocomplete="off" placeholder="payment" value="{{ section.add_values.slug }}">
+      <input id="project-slug" type="text" name="slug" autocomplete="off" placeholder="billing" aria-describedby="project-slug-hint" value="{{ section.add_values.slug }}">
     </div>
     <div class="project-form__field">
       <label for="project-name">이름</label>
-      <input id="project-name" type="text" name="name" autocomplete="off" placeholder="결제 서버" value="{{ section.add_values.name }}">
+      <input id="project-name" type="text" name="name" autocomplete="off" placeholder="정산 서버" value="{{ section.add_values.name }}">
     </div>
     <div class="project-form__field">
       <label for="project-color">색</label>
@@ -41,5 +41,7 @@
       </span>
     </div>
     <button type="submit" class="btn btn--primary">추가</button>
+    {# 칸들이 아래쪽에 맞춰 늘어서므로 안내는 slug 칸 아래가 아니라 폼 아래 한 줄로 둔다 #}
+    <p id="project-slug-hint" class="project-form__hint">{{ section.slug_hint }}</p>
   </form>
 </section>

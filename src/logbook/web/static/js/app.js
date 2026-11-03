@@ -49,6 +49,8 @@
   // afterSwap이 아니라 afterSettle에서 본다. htmx는 id가 같은 요소를 교체하면 settle 전까지
   // 이전 요소의 속성(class 등)을 새 요소에 입혀 둔다. 그래서 표시 행(log-N)이 편집 행으로 바뀐
   // 직후에는 아직 is-editing class가 없다.
+  // 예외: 대상에 data-keep-focus가 있으면(바로 저장하는 카테고리 색 표) 옮기지 않는다.
+  // htmx가 교체 때 포커스가 있던 요소와 id가 같은 새 요소로 포커스를 돌려주므로, 방금 바꾼 칸에 남는다.
   var CHANGING_VERBS = ["post", "patch", "delete"];
 
   document.addEventListener("htmx:afterSettle", function (event) {
@@ -56,6 +58,9 @@
     var detail = event.detail || {};
     var xhr = detail.xhr;
     if (!target || !xhr) {
+      return;
+    }
+    if (target.hasAttribute && target.hasAttribute("data-keep-focus")) {
       return;
     }
     var isEditing = Boolean(target.classList && target.classList.contains("is-editing"));

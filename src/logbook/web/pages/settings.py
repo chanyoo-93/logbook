@@ -52,8 +52,9 @@ ARCHIVE_CONFIRM = (
     "보관할까요? 과거 기록은 집계에 계속 포함되고, 새 기록과 태스크는 추가할 수 없습니다."
 )
 CATEGORY_NOTE = (
+    "색을 바꾸면 바로 저장됩니다. "
     "카테고리 추가와 이름은 설정 파일 [categories]에서 바꿉니다. "
-    "저장한 뒤 화면을 새로 고치면 반영됩니다."
+    "설정 파일을 저장한 뒤 화면을 새로 고치면 반영됩니다."
 )
 CATEGORY_SAVED = f"{RESULT_MARK} {{key}} 색을 저장했습니다."
 CATEGORY_RESET = f"{RESULT_MARK} {{key}} 색을 자동으로 되돌렸습니다."
@@ -63,6 +64,15 @@ FONT_NOTE = (
     "(설정 [web]의 heading_font·document_font·body_font). "
     "설치되지 않은 글꼴이면 기본 글꼴로 보입니다."
 )
+INFO_NOTE = (
+    "이 값들은 설정 파일에서 바꿉니다. 저장하면 화면을 새로 고칠 때 반영됩니다. "
+    "DB 파일은 lb serve를 다시 시작해야 바뀝니다."
+)
+SLUG_HINT = (
+    "영문 소문자나 숫자로 시작하고 영문 소문자·숫자·-·_만 써서 32자까지. "
+    "CLI에서 이 이름으로 씁니다."
+)
+WEEK_START_LABELS = {"monday": "월요일", "sunday": "일요일"}
 DEFAULT_FONT_LABEL = "기본 글꼴"
 AUTO_LABEL = "자동"
 AUTO_ON = "1"  # 자동 체크가 켜졌을 때 폼이 보내는 값(꺼지면 키가 오지 않는다)
@@ -124,6 +134,7 @@ class ProjectSectionView:
     add_values: ProjectAddValues
     message: str = ""
     is_error: bool = False
+    slug_hint: str = SLUG_HINT
 
 
 @dataclass(frozen=True)
@@ -153,8 +164,8 @@ class FontRowView:
 class SettingsInfoView:
     config_file: str  # str(Path) 그대로(Windows 역슬래시)
     db_path: str  # 실제로 연 DB. 설정의 db_path는 다시 시작하기 전에는 다를 수 있다
-    default_project: str
-    week_start: str
+    default_project: str  # 'slug (이름)', 프로젝트가 없으면 slug만
+    week_start: str  # 사람 말(월요일·일요일)
     daily_target: str
     fonts: tuple[FontRowView, ...]
 
@@ -211,13 +222,25 @@ def section_view(
     return ProjectSectionView(rows, add_values or ProjectAddValues(), message, is_error)
 
 
-def info_view(ctx: WebContext) -> SettingsInfoView:
+def _project_label(s: Session, slug: str) -> str:
+    """설정 default_project를 'slug (이름)'으로.
+
+    아직 없는 프로젝트이거나 이름이 slug와 같으면 slug만.
+    """
+    try:
+        project = services.get_project(s, slug)
+    except NotFoundError:
+        return slug
+    return slug if project.name == slug else f"{slug} ({project.name})"
+
+
+def info_view(ctx: WebContext, s: Session) -> SettingsInfoView:
     cfg = ctx.cfg
     return SettingsInfoView(
         config_file=str(ctx.config_file),
         db_path=str(ctx.engine.url.database),
-        default_project=cfg.default_project,
-        week_start=cfg.week_start,
+        default_project=_project_label(s, cfg.default_project),
+        week_start=WEEK_START_LABELS.get(cfg.week_start, cfg.week_start),
         daily_target=format_duration(cfg.daily_target_minutes),
         fonts=(
             FontRowView(
@@ -244,11 +267,13 @@ def settings_page(request: Request, ctx: Ctx) -> HTMLResponse:
     with ctx.session() as s:
         section = section_view(s)
         categories = category_section_view(ctx, s)
+        info = info_view(ctx, s)
     context = {
         "active": "settings",
         "section": section,
         "categories": categories,
-        "info": info_view(ctx),
+        "info": info,
+        "info_note": INFO_NOTE,
         "font_note": FONT_NOTE,
     }
     return render(request, PAGE_TEMPLATE, context)
