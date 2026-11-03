@@ -65,6 +65,11 @@
 
 **CSS(`settings.css`):** `.project-form__hint`는 안내 글자 색(`--text-muted` 계열)·작은 글자. 폼이 가로로 늘어선 1280px에서 안내 줄 때문에 다른 칸이 밀리지 않는지 스크린샷으로 본다. `.info__key`도 같은 옅은 글씨.
 
+### 구현 중 바뀐 것(사용자 승인)
+
+- slug 규칙 안내는 slug 칸 바로 아래가 아니라 폼 아래 한 줄(`flex-basis: 100%`)로 두었다. 폼 칸들이 아래쪽에 맞춰 늘어서 있어 slug 칸 아래에 두면 칸 높이가 어긋난다. `aria-describedby`로 slug 칸과 잇는다.
+- 안내 문구는 `ProjectSectionView.slug_hint`로 넘긴다. 프로젝트 영역만 다시 그리는 응답에도 남게 하려고.
+
 ## Task 1: 카테고리 색 바로 저장(C1)
 
 **Files:** `templates/partials/category_section.html`, `static/js/app.js`, `pages/settings.py`(안내 문구), 테스트 `tests/web/test_settings_categories.py`
