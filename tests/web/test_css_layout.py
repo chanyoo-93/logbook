@@ -584,4 +584,9 @@ def test_day_total_sits_next_to_date_on_narrow_screens() -> None:
     """결정 H2(2026-10-30): 320px에서 표가 가로로 스크롤해도 하루 합계가 처음 화면에 보인다."""
     assert "justify-content: space-between" in _declarations(_read("logs.css"), ".log-day__line")
     narrow = _media_block(_read("responsive.css"), NARROW_QUERY)
-    assert "justify-content: flex-start" in _declarations(narrow, ".log-day__line")
+    declarations = _declarations(narrow, ".log-day__line")
+    assert "justify-content: flex-start" in declarations
+    # 편집 행 포커스 등으로 표가 오른쪽으로 스크롤돼도 날짜·합계가 왼쪽에 붙어 보인다(PR #33 QA)
+    assert "position: sticky" in declarations
+    assert "left: var(--space-4)" in declarations
+    assert "width: fit-content" in declarations
