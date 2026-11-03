@@ -3,9 +3,8 @@
   <div class="panel__head">
     <h2 id="category-section-title" class="panel__title" tabindex="-1" data-focus>카테고리 색</h2>
   </div>
-{% if categories.message %}
-  <p id="category-result" class="form-message" role="status">{{ categories.message }}</p>
-{% endif %}
+  {# 결과 줄 자리는 늘 둔다. 처음 저장할 때 표가 밀려 다음 클릭이 옆 행에 들어가지 않게 한다 #}
+  <p id="category-result" class="form-message form-message--slot" role="status">{{ categories.message }}</p>
   <div class="table-wrap">
     <table class="grid grid--categories">
       <thead class="visually-hidden">

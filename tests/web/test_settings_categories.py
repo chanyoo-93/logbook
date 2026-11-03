@@ -287,8 +287,18 @@ def test_save_response_keeps_auto_save_rows(client: TestClient, web_engine: Engi
     assert "data-keep-focus" in by_id(response.text, "category-section").attrs
 
 
-def test_app_js_restores_focus_by_id_in_keep_focus_targets() -> None:
+def test_app_js_skips_title_focus_in_keep_focus_targets() -> None:
+    # htmx가 같은 id 요소로 포커스를 돌려주므로 data-keep-focus 대상에서는 제목으로 옮기지만 않는다.
     script = APP_JS.read_text(encoding="utf-8")
 
-    assert "data-keep-focus" in script
-    assert "htmx:beforeSwap" in script
+    assert 'target.hasAttribute("data-keep-focus")' in script
+
+
+def test_result_slot_is_always_present(client: TestClient, web_engine: Engine) -> None:
+    # 처음 저장할 때 결과 줄이 새로 생겨 표가 밀리지 않게 자리를 늘 둔다.
+    empty = by_id(client.get("/settings").text, "category-result")
+    saved = by_id(_post(client, web_engine, "dev", color="#123456").text, "category-result")
+
+    assert empty.attrs["role"] == "status"
+    assert empty.text == ""
+    assert saved.text == CATEGORY_SAVED.format(key="dev")

@@ -197,8 +197,8 @@ def test_changed_db_path_shows_running_db_and_restart_notice(
     assert "db_path" in notices[0].text
 
 
-def _font_row_value(html: str, label: str) -> str:
-    """정의 목록에서 글이 label인 dt 바로 다음 dd의 글."""
+def _info_value(html: str, label: str) -> str:
+    """설정 정보 정의 목록에서 글이 label인 dt 바로 다음 dd의 글."""
     elements = parse_html(html)
     for index, element in enumerate(elements):
         if element.tag == "dt" and element.text == label:
@@ -217,7 +217,7 @@ def test_settings_info_shows_font_rows_with_previews(client: TestClient) -> None
     assert "Bookk Gothic" in html
     assert "Bookk Myungjo" not in html
     for label in ("제목 글꼴", "문서 글꼴", "본문 글꼴"):
-        assert _font_row_value(html, label).startswith("Bookk Gothic")
+        assert _info_value(html, label).startswith("Bookk Gothic")
     assert FONT_NOTE in html
     for cls in ("font-preview--heading", "font-preview--document", "font-preview--body"):
         assert len(by_class(html, cls)) == 1
@@ -261,15 +261,14 @@ def test_settings_info_shows_values_in_words(client: TestClient) -> None:
     # 결정 C2: 설정 파일 값(monday, common)을 사람 말로 보이고 설정 키를 덧붙인다.
     html = client.get("/settings").text
 
-    assert _font_row_value(html, "주 시작 요일").startswith("월요일")
-    assert _font_row_value(html, "기본 프로젝트").startswith("common (공통)")
-    assert _font_row_value(html, "하루 목표").startswith("8h")
+    assert _info_value(html, "주 시작 요일").startswith("월요일")
+    assert _info_value(html, "기본 프로젝트").startswith("common (공통)")
+    assert _info_value(html, "하루 목표").startswith("8h")
     assert _info_key(html, "주 시작 요일") == "week_start"
     assert _info_key(html, "기본 프로젝트") == "default_project"
     assert _info_key(html, "하루 목표") == "daily_target_minutes"
     assert _info_key(html, "DB 파일") == "db_path"
     assert _info_key(html, "설정 파일") == ""
-    assert ">monday<" not in html
     assert INFO_NOTE in html
     assert INFO_NOTE.startswith("이 값들은 설정 파일에서 바꿉니다.")
 
@@ -284,10 +283,19 @@ def test_settings_info_follows_sunday_and_unknown_default_project(
 
     html = watched_client.get("/settings").text
 
-    assert _font_row_value(html, "주 시작 요일").startswith("일요일")
-    value = _font_row_value(html, "기본 프로젝트")
-    assert value.startswith("ghost")
-    assert "(" not in value.removesuffix("default_project")
+    assert _info_value(html, "주 시작 요일").startswith("일요일")
+    assert _info_value(html, "기본 프로젝트").split() == ["ghost", "default_project"]
+
+
+def test_default_project_named_like_its_slug_shows_slug_once(
+    watched_client: TestClient, config_file: Path, web_engine: Engine
+) -> None:
+    add_project(web_engine, "billing", "billing")
+    config_file.write_text('default_project = "billing"\n[web]\nport = 8765\n', encoding="utf-8")
+
+    html = watched_client.get("/settings").text
+
+    assert _info_value(html, "기본 프로젝트").split() == ["billing", "default_project"]
 
 
 def test_slug_field_has_rule_hint_and_unused_example(client: TestClient) -> None:

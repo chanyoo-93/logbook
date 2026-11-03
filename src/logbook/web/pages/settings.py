@@ -54,7 +54,7 @@ ARCHIVE_CONFIRM = (
 CATEGORY_NOTE = (
     "색을 바꾸면 바로 저장됩니다. "
     "카테고리 추가와 이름은 설정 파일 [categories]에서 바꿉니다. "
-    "저장한 뒤 화면을 새로 고치면 반영됩니다."
+    "설정 파일을 저장한 뒤 화면을 새로 고치면 반영됩니다."
 )
 CATEGORY_SAVED = f"{RESULT_MARK} {{key}} 색을 저장했습니다."
 CATEGORY_RESET = f"{RESULT_MARK} {{key}} 색을 자동으로 되돌렸습니다."
@@ -64,7 +64,10 @@ FONT_NOTE = (
     "(설정 [web]의 heading_font·document_font·body_font). "
     "설치되지 않은 글꼴이면 기본 글꼴로 보입니다."
 )
-INFO_NOTE = "이 값들은 설정 파일에서 바꿉니다. 저장하면 화면을 새로 고칠 때 반영됩니다."
+INFO_NOTE = (
+    "이 값들은 설정 파일에서 바꿉니다. 저장하면 화면을 새로 고칠 때 반영됩니다. "
+    "DB 파일은 lb serve를 다시 시작해야 바뀝니다."
+)
 SLUG_HINT = "영문 소문자나 숫자로 시작, - _ 포함 32자까지. CLI에서 이 이름으로 씁니다."
 WEEK_START_LABELS = {"monday": "월요일", "sunday": "일요일"}
 DEFAULT_FONT_LABEL = "기본 글꼴"
@@ -217,12 +220,15 @@ def section_view(
 
 
 def _project_label(s: Session, slug: str) -> str:
-    """설정 default_project를 'slug (이름)'으로. 아직 없는 프로젝트면 slug만."""
+    """설정 default_project를 'slug (이름)'으로.
+
+    아직 없는 프로젝트이거나 이름이 slug와 같으면 slug만.
+    """
     try:
         project = services.get_project(s, slug)
     except NotFoundError:
         return slug
-    return f"{slug} ({project.name})"
+    return slug if project.name == slug else f"{slug} ({project.name})"
 
 
 def info_view(ctx: WebContext, s: Session) -> SettingsInfoView:
