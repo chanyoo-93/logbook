@@ -590,3 +590,16 @@ def test_day_total_sits_next_to_date_on_narrow_screens() -> None:
     assert "position: sticky" in declarations
     assert "left: var(--space-4)" in declarations
     assert "width: fit-content" in declarations
+
+
+def test_category_table_fits_narrow_screens() -> None:
+    """PR #35 QA: 320px에서 카테고리 색 표가 표 안에서 29px 가로로 스크롤돼 '자동'이 잘렸다.
+
+    좁은 화면에서만 칸 안쪽 여백, 색 칸 간격, 색 고르기 폭을 줄여 한 화면에 들인다.
+    """
+    narrow = _media_block(_read("responsive.css"), NARROW_QUERY)
+    assert "padding: 0 var(--space-2)" in _declarations(narrow, ".grid--categories td")
+    assert "gap: var(--space-1)" in _declarations(narrow, ".grid--categories .color-field")
+    assert "width: 2rem" in _declarations(
+        narrow, '.grid--categories .color-field input[type="color"]'
+    )

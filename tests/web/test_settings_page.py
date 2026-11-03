@@ -306,5 +306,8 @@ def test_slug_field_has_rule_hint_and_unused_example(client: TestClient) -> None
     assert slug.attrs["placeholder"] == "billing"
     assert slug.attrs["aria-describedby"] == "project-slug-hint"
     assert by_id(html, "project-slug-hint").text == SLUG_HINT
-    assert SLUG_HINT == "영문 소문자나 숫자로 시작, - _ 포함 32자까지. CLI에서 이 이름으로 씁니다."
+    assert SLUG_HINT == (
+        "영문 소문자나 숫자로 시작하고 영문 소문자·숫자·-·_만 써서 32자까지. "
+        "CLI에서 이 이름으로 씁니다."
+    )
     assert by_id(html, "project-name").attrs["placeholder"] == "정산 서버"

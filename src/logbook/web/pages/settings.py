@@ -68,7 +68,10 @@ INFO_NOTE = (
     "이 값들은 설정 파일에서 바꿉니다. 저장하면 화면을 새로 고칠 때 반영됩니다. "
     "DB 파일은 lb serve를 다시 시작해야 바뀝니다."
 )
-SLUG_HINT = "영문 소문자나 숫자로 시작, - _ 포함 32자까지. CLI에서 이 이름으로 씁니다."
+SLUG_HINT = (
+    "영문 소문자나 숫자로 시작하고 영문 소문자·숫자·-·_만 써서 32자까지. "
+    "CLI에서 이 이름으로 씁니다."
+)
 WEEK_START_LABELS = {"monday": "월요일", "sunday": "일요일"}
 DEFAULT_FONT_LABEL = "기본 글꼴"
 AUTO_LABEL = "자동"
