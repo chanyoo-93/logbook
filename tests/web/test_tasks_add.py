@@ -147,9 +147,12 @@ def test_new_page_preselects_the_filter_project(client: TestClient, web_engine: 
     add_project(web_engine, "payment", "결제 서버")
 
     filtered = client.get("/tasks/new?project=payment").text
+    padded = client.get("/tasks/new?project=%20payment%20").text
     plain = client.get("/tasks/new").text
 
     assert _selected_project(filtered) == ["payment"]
+    assert _selected_project(padded) == ["payment"]
+    assert named_input(padded, "project").attrs["value"] == "payment"
     assert _selected_project(plain) == []  # 아무것도 고르지 않으면 첫 항목 `자동`
 
 
@@ -163,7 +166,7 @@ def test_new_page_keeps_auto_for_archived_or_unknown_filter(
 
     html = client.get(f"/tasks/new?project={slug}").text
 
-    assert _selected_project(html) == []
+    assert _selected_project(html) == []  # 아무것도 고르지 않으면 첫 항목 `자동`
     assert named_input(html, "project").attrs["value"] == slug
 
 
