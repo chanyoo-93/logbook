@@ -1,4 +1,5 @@
-<section id="category-section" class="panel" aria-labelledby="category-section-title">
+{# 색을 고르거나 자동을 바꾸면 행(tr)의 change로 바로 저장한다. data-keep-focus: 다시 그린 뒤 방금 바꾼 칸에 포커스를 돌려준다(app.js) #}
+<section id="category-section" class="panel" aria-labelledby="category-section-title" data-keep-focus>
   <div class="panel__head">
     <h2 id="category-section-title" class="panel__title" tabindex="-1" data-focus>카테고리 색</h2>
   </div>
@@ -12,23 +13,19 @@
           <th scope="col">키</th>
           <th scope="col">이름</th>
           <th scope="col">색</th>
-          <th scope="col">동작</th>
         </tr>
       </thead>
       <tbody>
 {% for row in categories.rows %}
-        <tr id="category-{{ row.key }}">
+        <tr id="category-{{ row.key }}" hx-post="/settings/categories/{{ row.key }}/color" hx-trigger="change" hx-include="this" hx-target="#category-section" hx-swap="outerHTML" hx-sync="this:drop">
           <td class="nowrap">{{ row.key }}</td>
           <td class="nowrap">{{ row.label }}</td>
           <td class="nowrap">
             <span class="color-field" data-color-field>
-              <input type="color" name="color" value="{{ row.color }}" aria-label="{{ row.key }} 색">
-              <label class="color-field__auto"><input type="checkbox" name="auto" value="1"{% if row.is_auto %} checked{% endif %}> 자동</label>
+              <input id="category-color-{{ row.key }}" type="color" name="color" value="{{ row.color }}" aria-label="{{ row.key }} 색">
+              <label class="color-field__auto"><input id="category-auto-{{ row.key }}" type="checkbox" name="auto" value="1"{% if row.is_auto %} checked{% endif %}> 자동</label>
             </span>
             <input type="hidden" name="version" value="{{ row.version }}">
-          </td>
-          <td class="nowrap grid__actions">
-            <button type="button" class="btn btn--small" hx-post="/settings/categories/{{ row.key }}/color" hx-include="closest tr" hx-target="#category-section" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="this">저장</button>
           </td>
         </tr>
 {% endfor %}

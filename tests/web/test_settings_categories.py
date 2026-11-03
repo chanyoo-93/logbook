@@ -92,7 +92,7 @@ def test_label_cell_does_not_wrap_on_narrow_screens(client: TestClient) -> None:
 
     cells = _row_cells(html, "ops")
 
-    assert len(cells) == 4
+    assert len(cells) == 3
     assert "nowrap" in cells[1].split()
 
 
@@ -253,3 +253,42 @@ def test_app_js_clears_auto_checkbox_when_color_input_changes() -> None:
     assert 'input[type="color"]' in script
     assert "[data-color-field]" in script
     assert "checked = false" in script
+
+
+def test_rows_save_on_change_without_save_buttons(client: TestClient) -> None:
+    # 결정 C1: 색을 고르거나 자동을 바꾸면 그 행이 바로 저장된다. 행마다 있던 저장 버튼은 없다.
+    html = client.get("/settings").text
+    section = html[html.index('id="category-section"') :]
+
+    assert "저장</button>" not in section
+    row = by_id(html, "category-dev")
+    assert row.attrs["hx-post"] == "/settings/categories/dev/color"
+    assert row.attrs["hx-trigger"] == "change"
+    assert row.attrs["hx-include"] == "this"
+    assert row.attrs["hx-target"] == "#category-section"
+    assert row.attrs["hx-swap"] == "outerHTML"
+    heads = [e.text for e in parse_html(section) if e.tag == "th"]
+    assert heads == ["키", "이름", "색"]
+
+
+def test_inputs_have_ids_and_section_keeps_focus(client: TestClient) -> None:
+    html = client.get("/settings").text
+
+    assert by_id(html, "category-color-dev").attrs["name"] == "color"
+    assert by_id(html, "category-auto-dev").attrs["name"] == "auto"
+    assert "data-keep-focus" in by_id(html, "category-section").attrs
+    assert CATEGORY_NOTE.startswith("색을 바꾸면 바로 저장됩니다.")
+
+
+def test_save_response_keeps_auto_save_rows(client: TestClient, web_engine: Engine) -> None:
+    response = _post(client, web_engine, "dev", color="#123456")
+
+    assert by_id(response.text, "category-dev").attrs["hx-trigger"] == "change"
+    assert "data-keep-focus" in by_id(response.text, "category-section").attrs
+
+
+def test_app_js_restores_focus_by_id_in_keep_focus_targets() -> None:
+    script = APP_JS.read_text(encoding="utf-8")
+
+    assert "data-keep-focus" in script
+    assert "htmx:beforeSwap" in script
