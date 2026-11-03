@@ -220,6 +220,52 @@ def test_add_redirect_keeps_the_filter_project(client: TestClient, web_engine: E
     assert response.headers["HX-Redirect"] == f"/tasks?added={stored.id}&project=payment"
 
 
+def test_add_to_other_project_returns_to_that_project_board(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "payment", "결제 서버")
+    add_project(web_engine, "billing", "정산 서버")
+
+    response = client.post(
+        "/tasks", data={**FORM, "task_project": "billing", "project": "payment"}, headers=HTMX
+    )
+
+    [stored] = _tasks(web_engine)
+    assert stored.project == "billing"
+    assert response.headers["HX-Redirect"] == f"/tasks?added={stored.id}&project=billing"
+
+
+def test_add_auto_from_archived_filter_returns_to_default_project_board(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "old", "보관")
+    with db.session_scope(web_engine) as s:
+        services.archive_project(s, "old")
+
+    response = client.post(
+        "/tasks",
+        data={"title": "보관 보드에서 추가", "task_project": "", "project": "old"},
+        headers=HTMX,
+    )
+
+    [stored] = _tasks(web_engine)
+    assert stored.project == "common"
+    assert response.headers["HX-Redirect"] == f"/tasks?added={stored.id}&project=common"
+
+
+def test_add_without_filter_stays_on_the_whole_board(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_project(web_engine, "billing", "정산 서버")
+
+    response = client.post(
+        "/tasks", data={**FORM, "task_project": "billing", "project": ""}, headers=HTMX
+    )
+
+    [stored] = _tasks(web_engine)
+    assert response.headers["HX-Redirect"] == f"/tasks?added={stored.id}"
+
+
 def test_add_title_only_uses_default_project(client: TestClient, web_engine: Engine) -> None:
     response = client.post("/tasks", data={"title": "제목만"}, headers=HTMX)
 
