@@ -79,11 +79,13 @@ def _percent(minutes: int, total: int) -> str:
 
 
 def _part_widths(minutes: Sequence[int]) -> list[int]:
-    """조각 폭(1/100 단위, 합 10000).
+    """조각 폭(1/100 단위, 합 SCALE).
 
     경계는 누적 분의 비율로 구한다(조각마다 반올림하면 오차가 쌓여 마지막 폭이 음수가 될 수 있다).
-    MIN_PART보다 좁은 조각은 테두리 틈에 덮여 보이지 않으므로 MIN_PART로 넓히고
-    늘어난 만큼 가장 넓은 조각에서 뺀다. 글줄의 비율은 실제 값 그대로다.
+    최소 폭보다 좁은 조각은 테두리 틈에 덮여 보이지 않으므로 최소 폭으로 넓힌다.
+    늘어난 만큼은 최소 폭보다 넓은 조각들이 여유 폭에 비례해 나눠 낸다(한 조각에서 모두 빼면
+    음수가 될 수 있다). 조각이 많아 최소 폭 합이 막대를 넘으면 최소 폭을 SCALE // 개수로 줄인다.
+    글줄의 비율은 실제 값 그대로다.
     """
     if not minutes:
         return []
@@ -94,11 +96,21 @@ def _part_widths(minutes: Sequence[int]) -> list[int]:
         cumulative += value
         edges.append(round(cumulative * SCALE / total))
     widths = [edge - before for before, edge in zip([0, *edges], edges, strict=False)]
-    deficit = sum(MIN_PART - width for width in widths if width < MIN_PART)
-    widths = [max(width, MIN_PART) for width in widths]
-    widest = widths.index(max(widths))
-    widths[widest] -= deficit
-    return widths
+    floor = min(MIN_PART, SCALE // len(widths))
+    deficit = sum(floor - width for width in widths if width < floor)
+    if deficit == 0:
+        return widths
+    spare = {index: width - floor for index, width in enumerate(widths) if width > floor}
+    spare_total = sum(spare.values())  # 최소 폭 합 <= SCALE이라 deficit 이상이다
+    taken = {index: deficit * room // spare_total for index, room in spare.items()}
+    leftover = deficit - sum(taken.values())
+    by_room = sorted(spare, key=lambda index: spare[index] - taken[index], reverse=True)
+    for index in by_room[:leftover]:
+        taken[index] += 1
+    return [
+        width - taken[index] if index in taken else max(width, floor)
+        for index, width in enumerate(widths)
+    ]
 
 
 def share_rows(

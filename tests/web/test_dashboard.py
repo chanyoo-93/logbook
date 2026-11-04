@@ -13,7 +13,7 @@ from logbook.core.taskstatus import TaskStatus
 from logbook.web.app import create_app
 from logbook.web.assets import COLORS_CSS_URL, FONTS_CSS_URL
 from logbook.web.context import WebContext
-from logbook.web.pages.summary import share_rows
+from logbook.web.pages.summary import ShareRow, share_rows
 from logbook.web.pages.views import CHART_PALETTE
 from tests.helpers import Clock, hold_lock
 from tests.web.conftest import LOCAL_BASE_URL, LockedApp
@@ -305,13 +305,32 @@ def test_tiny_share_part_gets_a_minimum_width_taken_from_the_widest() -> None:
 
 @pytest.mark.parametrize(
     "minutes",
-    [[2879, 2671, 2045, 1858, 1687, 65, 29, 4, 1], [1, 1, 1], [3000, 1, 1, 1, 1, 1, 1, 1]],
+    [
+        [2879, 2671, 2045, 1858, 1687, 65, 29, 4, 1],
+        [1, 1, 1],
+        [3000, 1, 1, 1, 1, 1, 1, 1],
+        [100] * 10 + [1] * 11,  # macOS QA: 늘린 폭을 한 조각에서 모두 빼서 음수가 됐다
+        [100] * 10 + [1] * 15,
+    ],
 )
 def test_share_parts_never_go_negative_and_join_end_to_end(minutes: list[int]) -> None:
     """최종 리뷰 M1: 조각마다 반올림하면 오차가 쌓여 마지막 조각 폭이 음수가 될 수 있었다."""
     rows = share_rows([f"r{i}" for i in range(len(minutes))], ["#000000"] * len(minutes), minutes)
 
     assert all(float(row.width) >= 1 for row in rows)
+    _assert_parts_join_to_100(rows)
+
+
+def test_share_parts_shrink_the_minimum_when_too_many_to_fit() -> None:
+    """항목이 100개를 넘으면 최소 폭 1을 줄 수 없다. 줄인 최소 폭으로도 폭은 0보다 크고 끝은 100."""
+    minutes = [500] + [1] * 149
+    rows = share_rows([f"r{i}" for i in range(150)], ["#000000"] * 150, minutes)
+
+    assert all(float(row.width) > 0 for row in rows)
+    _assert_parts_join_to_100(rows)
+
+
+def _assert_parts_join_to_100(rows: tuple[ShareRow, ...]) -> None:
     for before, after in zip(rows, rows[1:], strict=False):
         assert float(before.x) + float(before.width) == pytest.approx(float(after.x))
     assert float(rows[-1].x) + float(rows[-1].width) == pytest.approx(100)
