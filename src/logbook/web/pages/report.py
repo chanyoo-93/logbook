@@ -95,6 +95,11 @@ class ReportBodyView:
     sheet: ReportSheetView | None = None  # 표 보기(사용자 템플릿 오류여도 있다)
     notes_unsaved: bool = False  # 입력값이 저장본과 다르다(충돌 응답). 안내를 채워 그린다
 
+    @property
+    def result_in_sheet(self) -> bool:
+        """특이사항 저장 성공 결과를 표 보기 3절에 보인다(포커스도 3절 제목). 아니면 폼에 둔다."""
+        return bool(self.message) and not self.is_error and self.sheet is not None
+
 
 @dataclass(frozen=True)
 class ReportNavView:

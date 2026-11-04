@@ -5,10 +5,10 @@
 <button type="button" class="btn btn--small sheet__copy" data-copy-rich="{{ target }}" data-copy-done="{{ done }}" aria-label="{{ name }} 복사"{% if target == "sheet-notes" %} data-copy-warn-unsaved{% endif %} data-copy-skip>복사</button>
 {%- endmacro %}
 {# jump가 있으면 복사 옆에 특이사항 입력 칸으로 가는 링크를 둔다(쓰기·고치기, report.js가 칸에 포커스). #}
-{# focus가 참이면 제목이 저장 뒤 포커스를 받는다(app.js의 [data-focus]). #}
+{# focus가 참이면 제목이 저장 뒤 포커스를 받고, 포커스 때 결과 줄(<target>-result)도 함께 읽힌다(app.js의 [data-focus]). #}
 {% macro section_head(target, number, name, done, jump="", focus=false) -%}
 <div class="sheet__section-head">
-      <h4 id="{{ target }}-title" class="sheet__heading"{% if focus %} tabindex="-1" data-focus{% endif %}>{{ number }}{{ name }}</h4>
+      <h4 id="{{ target }}-title" class="sheet__heading"{% if focus %} tabindex="-1" data-focus aria-describedby="{{ target }}-result"{% endif %}>{{ number }}{{ name }}</h4>
       {{ copy_button(target, name, done) }}
 {%- if jump %}
       <a href="#report-notes-text" class="btn btn--small sheet__notes-jump" data-notes-jump aria-label="{{ name }} {{ jump }}" data-copy-skip>{{ jump }}</a>
@@ -124,8 +124,8 @@
   </section>
 
   <section id="sheet-notes" class="sheet__section" aria-labelledby="sheet-notes-title">
-{# 특이사항 저장에 성공하면 결과 줄을 3절에 보이고 제목에 포커스를 준다. 오류는 폼에 남는다(report_notes_form.html). #}
-{% set notes_saved = body.message and not body.is_error %}
+{# 특이사항 저장에 성공하면(body.result_in_sheet) 결과 줄을 3절에 보이고 제목에 포커스를 준다. 오류는 폼에 남는다(report_notes_form.html). #}
+{% set notes_saved = body.result_in_sheet %}
     {{ section_head("sheet-notes", "3. ", "특이사항 / 리스크", "특이사항 / 리스크를 복사했습니다.", "고치기" if data.notes or data.risks else "쓰기", notes_saved) }}
 {% if notes_saved %}
     <p id="sheet-notes-result" class="form-message sheet__result" role="status" data-copy-skip>{{ body.message }}</p>
@@ -139,7 +139,7 @@
     <p id="sheet-risks-text" class="sheet__text">{{ lines(data.risks) }}</p>
 {% endif %}
 {% if not data.notes and not data.risks %}
-    <p class="sheet__empty" data-copy-skip><a href="#report-notes-text" data-notes-jump>(작성하세요)</a></p>
+    <p class="sheet__empty" data-copy-skip><a href="#report-notes-text" data-notes-jump aria-label="특이사항 / 리스크 쓰기">(작성하세요)</a></p>
 {% endif %}
   </section>
 

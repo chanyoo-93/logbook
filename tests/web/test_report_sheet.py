@@ -198,7 +198,7 @@ def _notes_jumps(html: str) -> list[tuple[str, str, str]]:
         if "data-notes-jump" in element.attrs:
             assert element.tag == "a"
             assert element.attrs.get("href") == "#report-notes-text"
-            jumps.append((section, element.text, str(element.attrs.get("aria-label"))))
+            jumps.append((section, element.text, str(element.attrs.get("aria-label") or "")))
     return jumps
 
 
@@ -207,7 +207,7 @@ def test_empty_notes_section_links_to_the_form(client: TestClient) -> None:
 
     assert _notes_jumps(html) == [
         ("sheet-notes", "쓰기", "특이사항 / 리스크 쓰기"),
-        ("sheet-notes", "(작성하세요)", "None"),
+        ("sheet-notes", "(작성하세요)", "특이사항 / 리스크 쓰기"),
     ]
     head_link = next(e for e in parse_html(html) if "data-notes-jump" in e.attrs)
     assert "data-copy-skip" in head_link.attrs  # 복사본에는 링크가 들어가지 않는다

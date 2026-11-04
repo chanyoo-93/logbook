@@ -91,6 +91,12 @@
     copy.querySelectorAll("[id]").forEach(function (node) {
       node.removeAttribute("id");
     });
+    // 저장 직후 3절 제목의 포커스용 속성도 화면 전용이다.
+    copy.querySelectorAll("[data-focus]").forEach(function (node) {
+      node.removeAttribute("data-focus");
+      node.removeAttribute("tabindex");
+      node.removeAttribute("aria-describedby");
+    });
     copy.querySelectorAll("table").forEach(function (table) {
       table.setAttribute("border", "1");
       table.setAttribute("cellpadding", "4");

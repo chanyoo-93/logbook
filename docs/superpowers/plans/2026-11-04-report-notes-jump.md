@@ -29,6 +29,7 @@
   - 결과 줄 `<p id="sheet-notes-result" class="form-message" role="status" data-copy-skip>`를 3절 머리 아래에 그린다. 폼 안의 `#report-notes-result`는 오류일 때만 그린다.
   - 오류 응답(주차 오류는 `#report-notes`로 다시 겨눔, 409는 본문 전체)은 지금과 같다: 폼 제목에 `data-focus`, 결과 줄은 폼 안.
 - 서버 코드(`pages/report.py`)는 바꾸지 않는다. 템플릿이 `body.message`·`body.is_error`로 고른다.
+  - 예외(구현 중 추가, 사용자 승인): `_save`가 저장 전 버전을 저장 뒤에 계산해 고쳐 저장해도 `바뀐 내용이 없습니다.`가 나오던 버그를 고쳤다. 최종 리뷰 M1에 따라 성공 판정은 `ReportBodyView.result_in_sheet` 한 곳에 둔다.
 - 표 보기가 없는 경우(`body.sheet` 없음)는 없다(사용자 템플릿이 깨져도 표 보기는 그려짐). 그래도 템플릿은 `body.sheet`가 없으면 지금처럼 폼에 결과를 그린다.
 
 ## Task 1: 3절 쓰기·고치기 링크(K1)

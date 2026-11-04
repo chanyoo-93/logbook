@@ -142,7 +142,9 @@ def test_saved_result_shows_in_sheet_section_with_focus(client: TestClient) -> N
     assert _inside(html, "sheet-notes-result", "sheet-notes")
     assert 'id="report-notes-result"' not in html
     assert _focus_ids(html) == ["sheet-notes-title"]
-    assert by_id(html, "sheet-notes-title").attrs.get("tabindex") == "-1"
+    title = by_id(html, "sheet-notes-title")
+    assert title.attrs.get("tabindex") == "-1"
+    assert title.attrs.get("aria-describedby") == "sheet-notes-result"  # 포커스 때 결과도 읽힌다
 
 
 def test_no_change_result_also_shows_in_sheet_section(client: TestClient) -> None:
