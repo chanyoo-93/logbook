@@ -9,7 +9,7 @@ from logbook.core.report import TEMPLATE_NAME
 from logbook.core.weeks import Week
 from logbook.web.pages.report import category_totals
 from tests.helpers import FIXED_NOW, FakeCollect
-from tests.web.helpers import add_log, add_project, add_task, by_id, parse_html
+from tests.web.helpers import add_log, add_project, add_task, by_class, by_id, parse_html
 
 W40 = Week(2026, 40)
 W41 = Week(2026, 41)
@@ -186,6 +186,46 @@ def test_saved_notes_appear_in_sheet(client: TestClient, web_engine: Engine) -> 
     assert (
         "(작성하세요)" not in html[html.index('id="report-sheet"') : html.index('id="panel-raw"')]
     )
+
+
+def _notes_jumps(html: str) -> list[tuple[str, str, str]]:
+    """특이사항 칸으로 가는 링크들의 (가장 가까운 절 id, 글자, aria-label)."""
+    jumps: list[tuple[str, str, str]] = []
+    section = ""
+    for element in parse_html(html):
+        if element.tag == "section" and str(element.attrs.get("id", "")).startswith("sheet-"):
+            section = str(element.attrs["id"])
+        if "data-notes-jump" in element.attrs:
+            assert element.tag == "a"
+            assert element.attrs.get("href") == "#report-notes-text"
+            jumps.append((section, element.text, str(element.attrs.get("aria-label") or "")))
+    return jumps
+
+
+def test_empty_notes_section_links_to_the_form(client: TestClient) -> None:
+    html = client.get("/report").text
+
+    assert _notes_jumps(html) == [
+        ("sheet-notes", "쓰기", "특이사항 / 리스크 쓰기"),
+        ("sheet-notes", "(작성하세요)", "특이사항 / 리스크 쓰기"),
+    ]
+    head_link = next(e for e in parse_html(html) if "data-notes-jump" in e.attrs)
+    assert "data-copy-skip" in head_link.attrs  # 복사본에는 링크가 들어가지 않는다
+    placeholder = next(e for e in by_class(html, "sheet__empty") if e.text == "(작성하세요)")
+    assert "data-copy-skip" in placeholder.attrs
+    assert html.index('id="sheet-notes"') < html.index('id="report-notes-text"')
+
+
+def test_filled_notes_section_links_to_edit(client: TestClient, web_engine: Engine) -> None:
+    client.post(
+        "/report/notes",
+        data={"week": "2026-W40", "version": "", "notes": "", "risks": "배포 지연"},
+        headers={"HX-Request": "true"},
+    )
+
+    html = client.get("/report").text
+
+    assert _notes_jumps(html) == [("sheet-notes", "고치기", "특이사항 / 리스크 고치기")]
 
 
 def test_sheet_survives_broken_user_template(client: TestClient, tmp_home: Path) -> None:

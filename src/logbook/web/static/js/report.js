@@ -2,6 +2,7 @@
 // - [data-copy-target]: 대상 요소의 글자를 그대로 복사한다(원문 Markdown).
 // - [data-copy-rich]: 표 보기의 절이나 보고서 전체를 서식 있는 HTML과 글(표는 탭 구분) 두 형식으로 함께 넣는다.
 //   엑셀·한글은 HTML 표를 셀로 받는다. 자리표시 문구와 버튼([data-copy-skip])은 복사본에서 뺀다.
+// - 3절의 쓰기·고치기 링크([data-notes-jump])는 특이사항 칸에 포커스를 준다.
 // - 특이사항·리스크 칸에 저장하지 않은 내용이 있으면 폼에 안내를 보이고,
 //   특이사항이 들어가는 복사([data-copy-warn-unsaved])의 결과 줄에 경고를 덧붙인다.
 (function () {
@@ -89,6 +90,12 @@
     copy.removeAttribute("id");
     copy.querySelectorAll("[id]").forEach(function (node) {
       node.removeAttribute("id");
+    });
+    // 저장 직후 3절 제목의 포커스용 속성도 화면 전용이다.
+    copy.querySelectorAll("[data-focus]").forEach(function (node) {
+      node.removeAttribute("data-focus");
+      node.removeAttribute("tabindex");
+      node.removeAttribute("aria-describedby");
     });
     copy.querySelectorAll("table").forEach(function (table) {
       table.setAttribute("border", "1");
@@ -251,6 +258,14 @@
       raw.open = true;
     }
     select(remembered(), false);
+    // 특이사항을 저장하면 결과 줄이 표 보기 3절에 온다. 원문 탭을 보던 중이어도 표 보기로 바꿔
+    // 3절 제목에 포커스를 준다(숨은 패널 안이라 app.js의 [data-focus] 처리가 닿지 못한다).
+    var saved = document.getElementById("sheet-notes-result");
+    var title = document.getElementById("sheet-notes-title");
+    if (saved && title) {
+      select("sheet", false);
+      title.focus();
+    }
   }
 
   document.addEventListener("click", function (event) {
@@ -284,6 +299,20 @@
       select(next, true);
       remember(next);
     }
+  });
+
+  // 3절의 쓰기·고치기 링크([data-notes-jump]): href(#report-notes-text)만으로는 스크롤만 되므로 칸에 포커스를 준다.
+  // 칸이 화면 아래에 조금만 걸쳐 있어도 브라우저는 스크롤하지 않으므로, 폼 전체(두 칸과 저장)를 화면 위쪽에 맞춘다.
+  document.addEventListener("click", function (event) {
+    var jump = event.target.closest && event.target.closest("[data-notes-jump]");
+    var form = document.getElementById("report-notes");
+    var field = document.getElementById("report-notes-text");
+    if (!jump || !form || !field) {
+      return;
+    }
+    event.preventDefault();
+    form.scrollIntoView({ block: "start" });
+    field.focus({ preventScroll: true });
   });
 
   document.addEventListener("DOMContentLoaded", setup);
