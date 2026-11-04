@@ -271,13 +271,14 @@ def _save(
 ) -> tuple[ReportData, NotesValues, bool]:
     """세션 하나에서 버전 확인 -> 저장 -> 보고서 데이터 다시 만들기. 다르면 ConflictError."""
     with ctx.session() as s:
-        before = services.get_week_note(s, the_week)
-        if notes_version(before) != form.version:
+        # 저장이 같은 세션의 행 객체를 고치므로 저장 전 버전은 미리 계산해 둔다.
+        before = notes_version(services.get_week_note(s, the_week))
+        if before != form.version:
             raise ConflictError(NOTES_CHANGED.format(week=the_week.label))
         after = services.save_week_note(s, the_week, notes=form.notes, risks=form.risks)
         data = report_data(s, ctx, the_week, now)
         saved = _saved_values(after)
-    return data, saved, saved.version != notes_version(before)
+    return data, saved, saved.version != before
 
 
 @router.post("/report/notes", response_class=HTMLResponse)

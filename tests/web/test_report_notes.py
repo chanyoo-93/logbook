@@ -75,6 +75,16 @@ def test_save_same_values_again_says_no_change(client: TestClient) -> None:
     assert NOTES_SAVED.format(week="2026-W40") not in second.text
 
 
+def test_changing_saved_notes_says_saved(client: TestClient, web_engine: Engine) -> None:
+    first = _post(client, notes="처음 내용")
+
+    second = _post(client, notes="고친 내용", version=_version(first.text))
+
+    assert NOTES_SAVED.format(week="2026-W40") in second.text
+    assert NO_CHANGE not in second.text
+    assert _stored(web_engine) == ("고친 내용", "")
+
+
 def test_save_with_stale_version_is_conflict(client: TestClient, web_engine: Engine) -> None:
     with db.session_scope(web_engine) as s:
         services.save_week_note(s, WEEK, notes="다른 탭", risks="")
