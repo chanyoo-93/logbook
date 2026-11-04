@@ -2,7 +2,8 @@
 등록 화면(GET /tasks/new)과 저장(POST /tasks), 수정 화면(GET /tasks/{id}/edit)과 저장
 (PATCH /tasks/{id}), 이월(POST /tasks/carry).
 
-등록·수정 화면은 전체 페이지의 폼이다. 저장에 성공하면 HX-Redirect로 보드(필터 유지)로 보낸다.
+등록·수정 화면은 전체 페이지의 폼이다. 저장에 성공하면 HX-Redirect로 보드(필터 유지,
+등록은 필터가 있었으면 저장한 프로젝트로 거른 보드)로 보낸다.
 상태 변경·수정은 화면이 본 태스크 버전(task_version)이 지금 태스크와 같을 때만 한다.
 DB 없이 끝나는 검증을 먼저 하고, 나머지는 세션 하나 안에서 한다. 중간에 오류가 나면
 모두 롤백되어 DB가 바뀌지 않는다.
@@ -215,8 +216,8 @@ def _parsed_inputs(
     return estimate, planned, due
 
 
-def _add_task(ctx: WebContext, values: TaskFormValues) -> int:
-    """폼 값을 검증해 태스크를 저장하고 ID를 돌려준다."""
+def _add_task(ctx: WebContext, values: TaskFormValues) -> tuple[int, str]:
+    """폼 값을 검증해 태스크를 저장하고 ID와 프로젝트 slug를 돌려준다."""
     estimate, planned, due = _parsed_inputs(ctx, values)
     with ctx.session() as s:
         task = services.create_task(
@@ -231,7 +232,7 @@ def _add_task(ctx: WebContext, values: TaskFormValues) -> int:
             description=values.description,
             allowed_categories=tuple(ctx.cfg.categories),
         )
-        return task.id
+        return task.id, task.project.slug
 
 
 def _form_error(
@@ -297,10 +298,12 @@ def add_task(
     )
     selected = project.strip()
     try:
-        task_id = _add_task(ctx, values)
+        task_id, saved_project = _add_task(ctx, values)
     except LogbookError as error:
         return _form_error(request, ctx, error, values, selected)
-    return _redirect(board_url(selected, added=task_id))
+    # 거른 보드에서 왔으면(필터가 보관·없는 slug여도) 새 카드가 보이도록
+    # 저장한 프로젝트로 거른 보드로 돌아간다.
+    return _redirect(board_url(saved_project if selected else "", added=task_id))
 
 
 @router.get("/tasks/{task_id}/edit", response_class=HTMLResponse)
