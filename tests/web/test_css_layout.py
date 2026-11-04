@@ -618,3 +618,4 @@ def test_share_bar_parts_are_split_by_surface_gaps() -> None:
     # 어두운 테마에서 짙은 색 점이 묻히지 않게 프로젝트 색 점과 같은 테두리
     assert "stroke: var(--dot-ring)" in _declarations(css, ".share__dot circle")
     assert "donut" not in css
+    assert "donut" not in _read("responsive.css")

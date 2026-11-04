@@ -35,33 +35,33 @@
 
 **Files:** `templates/partials/summary.html`, `static/css/dashboard.css`, 테스트 `tests/web/test_dashboard.py`, `tests/web/test_css_layout.py`
 
-- [ ] RED: 테스트를 쓰고 실패를 확인한다.
+- [x] RED: 테스트를 쓰고 실패를 확인한다.
   - 요약에 `.stat__value`가 하나(이번 주 공수)뿐이다.
   - 공수 칸 안에 `기록 3건 · 완료 태스크 1건` 보조 줄(`.stat__counts`)이 있다(시드 기준 값).
   - 기록 없는 주에도 `기록 0건 · 완료 태스크 N건`이 보인다.
   - CSS: `.stats` 3열 격자 선언이 없어지고, `.stat__counts`가 `--text-sm`·`--ink-muted`를 쓴다. 기존 `.stat__value` 글자 크기 테스트는 맞게 고친다.
-- [ ] 구현 → GREEN
-- [ ] 전후 스크린샷 → 비교 HTML → 사용자 승인 → 커밋 `feat: 대시보드 요약의 기록·완료 수를 공수 아래 한 줄로 낮춘다`
+- [x] 구현 → GREEN
+- [x] 전후 스크린샷 → 비교 HTML → 사용자 승인 → 커밋 `feat: 대시보드 요약의 기록·완료 수를 공수 아래 한 줄로 낮춘다`
 
 ## Task 2: 도넛 둘을 비율 막대와 글줄로(M2, M3)
 
 **Files:** `web/pages/summary.py`, `templates/partials/summary.html`, `static/css/dashboard.css`, `static/js/dashboard.js`, 테스트 `tests/web/test_dashboard.py`(+ 필요하면 `test_views.py`)
 
-- [ ] RED: 테스트를 쓰고 실패를 확인한다.
+- [x] RED: 테스트를 쓰고 실패를 확인한다.
   - `data-chart`에는 `daily`만 있다(`EXPECTED_CHART`에서 두 키 삭제).
   - 캔버스는 `chart-daily` 하나, `표로 보기`는 하나(요일별)뿐이다.
   - 비율 묶음 둘(`프로젝트별`, `카테고리별`): 행 이름·시간·비율이 시드 값과 같다(payment 3h 86%, common 30m 14% / 개발 3h 86%, 회의 30m 14%).
   - 막대 SVG의 rect `x`·`width`·`fill`이 순서대로 맞고 폭 합이 100이다. SVG는 `aria-hidden`.
   - 아주 작은 조각은 `<1%`로 표기한다(단위 테스트: 비율 계산 함수).
   - 지정한 프로젝트 색·카테고리 한글명 테스트(기존 352·454행)는 새 구조에서 같은 것을 확인하도록 옮긴다.
-- [ ] 구현 → GREEN
-- [ ] JS 도넛 코드 삭제 뒤 브라우저 콘솔 오류 없음(CDP로 확인)
-- [ ] 전후 스크린샷 → 비교 HTML → 사용자 승인 → 커밋 `feat: 대시보드 도넛 차트를 값이 보이는 비율 막대로 바꾼다`
+- [x] 구현 → GREEN
+- [x] JS 도넛 코드 삭제 뒤 브라우저 콘솔 오류 없음(CDP로 확인)
+- [x] 전후 스크린샷 → 비교 HTML → 사용자 승인 → 커밋 `feat: 대시보드 도넛 차트를 값이 보이는 비율 막대로 바꾼다`
 
 ## Task 3: 문서와 PR
 
-- [ ] SPEC 대시보드 절(459·461행 카드·도넛 문구, 428행 요약 숫자 결정, 556행 차트 팔레트의 도넛 언급)과 README 화면 표(333행)를 고친다
-- [ ] ROADMAP Phase 9 보완 줄을 더하고 체크한다
-- [ ] 전체 검증: `ruff check`, `ruff format --check`, `mypy src/logbook/core`, 전체 `pytest`
-- [ ] 최종 리뷰 1회(`final-reviewer`) → 지적 반영
+- [x] SPEC 대시보드 절(459·461행 카드·도넛 문구, 428행 요약 숫자 결정, 556행 차트 팔레트의 도넛 언급)과 README 화면 표(333행)를 고친다
+- [x] ROADMAP Phase 9 보완 줄을 더하고 체크한다
+- [x] 전체 검증: `ruff check`, `ruff format --check`, `mypy src/logbook/core`, 전체 `pytest`
+- [x] 최종 리뷰 1회(`final-reviewer`) → 지적 반영
 - [ ] PR(develop) 생성, "logbook QA" 세션에 점검 요청

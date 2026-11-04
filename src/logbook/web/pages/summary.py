@@ -70,24 +70,21 @@ def _percent(minutes: int, total: int) -> str:
 def share_rows(
     labels: Sequence[str], colors: Sequence[str], minutes: Sequence[int]
 ) -> tuple[ShareRow, ...]:
-    """주어진 순서대로 비율 막대 조각을 만든다. 마지막 조각이 끝(100)까지 채운다."""
+    """주어진 순서대로 비율 막대 조각을 만든다.
+
+    조각 경계는 누적 분의 비율을 반올림해 구한다. 조각마다 반올림하면 오차가 쌓여
+    마지막 조각 폭이 0이나 음수가 될 수 있다. 경계는 늘기만 하고 마지막 경계는 100이다.
+    """
     total = sum(minutes)
     rows: list[ShareRow] = []
-    x = 0.0
-    for index, (label, color, value) in enumerate(zip(labels, colors, minutes, strict=True)):
-        last = index == len(minutes) - 1
-        width = 100 - x if last else round(value * 100 / total, 2)
-        rows.append(
-            ShareRow(
-                label,
-                color,
-                format_duration(value),
-                _percent(value, total),
-                _number(x),
-                _number(width),
-            )
-        )
-        x = round(x + width, 2)
+    cumulative = 0
+    start = 0.0
+    for label, color, value in zip(labels, colors, minutes, strict=True):
+        cumulative += value
+        end = round(cumulative * 100 / total, 2)
+        time, percent = format_duration(value), _percent(value, total)
+        rows.append(ShareRow(label, color, time, percent, _number(start), _number(end - start)))
+        start = end
     return tuple(rows)
 
 

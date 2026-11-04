@@ -270,6 +270,20 @@ def test_share_percent_labels(minutes: list[int], expected: list[str]) -> None:
     assert sum(float(row.width) for row in rows) == pytest.approx(100)
 
 
+@pytest.mark.parametrize(
+    "minutes",
+    [[2879, 2671, 2045, 1858, 1687, 65, 29, 4, 1], [1, 1, 1], [3000, 1, 1, 1, 1, 1, 1, 1]],
+)
+def test_share_parts_never_go_negative_and_join_end_to_end(minutes: list[int]) -> None:
+    """최종 리뷰 M1: 조각마다 반올림하면 오차가 쌓여 마지막 조각 폭이 음수가 될 수 있었다."""
+    rows = share_rows([f"r{i}" for i in range(len(minutes))], ["#000000"] * len(minutes), minutes)
+
+    assert all(float(row.width) > 0 for row in rows)
+    for before, after in zip(rows, rows[1:], strict=False):
+        assert float(before.x) + float(before.width) == pytest.approx(float(after.x))
+    assert float(rows[-1].x) + float(rows[-1].width) == pytest.approx(100)
+
+
 def test_summary_without_logs_shows_empty_message(client: TestClient, web_engine: Engine) -> None:
     add_log(web_engine, minutes=45, note="지난주 작업", day=W39_THURSDAY)
 
@@ -502,8 +516,8 @@ def test_chart_color_follows_project_id_not_week_order(
     add_project(web_engine, "b", "둘째")
     add_log(web_engine, minutes=30, note="b만", project="b", day=W40_THURSDAY)
 
-    chart = json_attr(_get(client), "summary", "data-chart")
     html = _get(client)
+    chart = json_attr(html, "summary", "data-chart")
 
     assert isinstance(chart, dict)
     # common이 ID 1, a가 ID 2, b가 ID 3이다. b는 이번 주 첫 프로젝트여도 ID 3의 색이다.
