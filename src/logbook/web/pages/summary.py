@@ -57,6 +57,10 @@ class ShareGroup:
     rows: tuple[ShareRow, ...]
 
 
+SCALE = 10_000  # 막대 폭 100을 1/100 단위 정수로 다룬다
+MIN_PART = 100  # 가장 좁은 조각 폭(막대의 1%, 1280px에서 약 3px)
+
+
 def _number(value: float) -> str:
     """SVG 좌표 표기: 소수 둘째 자리, 끝의 0은 뺀다('0', '85.71', '14.3')."""
     return f"{value:.2f}".rstrip("0").rstrip(".")
@@ -67,24 +71,44 @@ def _percent(minutes: int, total: int) -> str:
     return f"{percent}%" if percent >= 1 else "<1%"
 
 
+def _part_widths(minutes: Sequence[int]) -> list[int]:
+    """조각 폭(1/100 단위, 합 10000).
+
+    경계는 누적 분의 비율로 구한다(조각마다 반올림하면 오차가 쌓여 마지막 폭이 음수가 될 수 있다).
+    MIN_PART보다 좁은 조각은 테두리 틈에 덮여 보이지 않으므로 MIN_PART로 넓히고
+    늘어난 만큼 가장 넓은 조각에서 뺀다. 글줄의 비율은 실제 값 그대로다.
+    """
+    if not minutes:
+        return []
+    total = sum(minutes)
+    edges: list[int] = []
+    cumulative = 0
+    for value in minutes:
+        cumulative += value
+        edges.append(round(cumulative * SCALE / total))
+    widths = [edge - before for before, edge in zip([0, *edges], edges, strict=False)]
+    deficit = sum(MIN_PART - width for width in widths if width < MIN_PART)
+    widths = [max(width, MIN_PART) for width in widths]
+    widest = widths.index(max(widths))
+    widths[widest] -= deficit
+    return widths
+
+
 def share_rows(
     labels: Sequence[str], colors: Sequence[str], minutes: Sequence[int]
 ) -> tuple[ShareRow, ...]:
-    """주어진 순서대로 비율 막대 조각을 만든다.
-
-    조각 경계는 누적 분의 비율을 반올림해 구한다. 조각마다 반올림하면 오차가 쌓여
-    마지막 조각 폭이 0이나 음수가 될 수 있다. 경계는 늘기만 하고 마지막 경계는 100이다.
-    """
+    """주어진 순서대로 비율 막대 조각을 만든다. 조각은 빈틈없이 이어지고 끝이 100이다."""
     total = sum(minutes)
     rows: list[ShareRow] = []
-    cumulative = 0
-    start = 0.0
-    for label, color, value in zip(labels, colors, minutes, strict=True):
-        cumulative += value
-        end = round(cumulative * 100 / total, 2)
+    start = 0
+    for label, color, value, width in zip(
+        labels, colors, minutes, _part_widths(minutes), strict=True
+    ):
         time, percent = format_duration(value), _percent(value, total)
-        rows.append(ShareRow(label, color, time, percent, _number(start), _number(end - start)))
-        start = end
+        rows.append(
+            ShareRow(label, color, time, percent, _number(start / 100), _number(width / 100))
+        )
+        start += width
     return tuple(rows)
 
 

@@ -619,3 +619,13 @@ def test_share_bar_parts_are_split_by_surface_gaps() -> None:
     assert "stroke: var(--dot-ring)" in _declarations(css, ".share__dot circle")
     assert "donut" not in css
     assert "donut" not in _read("responsive.css")
+
+
+def test_long_share_names_wrap_under_the_name_not_the_dot() -> None:
+    """QA L2: 긴 이름의 둘째 줄이 색 점 아래에서 시작했다. 내어쓰기로 이름 첫 글자에 맞춘다."""
+    declarations = _declarations(_read("dashboard.css"), ".share__rows .share__name")
+
+    assert "padding-left: 1.125rem" in declarations
+    assert "text-indent: -1.125rem" in declarations
+    assert "word-break: keep-all" in declarations  # 한글 이름을 낱자 중간에서 끊지 않는다
+    assert "overflow-wrap: anywhere" in declarations  # 띄어쓰기 없는 긴 slug는 끊는다

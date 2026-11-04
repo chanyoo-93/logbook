@@ -193,7 +193,11 @@
   color: var(--ink-muted);
 }
 
-.share__name {
+/* 긴 이름은 내어쓰기로 둘째 줄을 이름 첫 글자에 맞춘다(점 0.625rem + 간격 0.5rem). */
+.share__rows .share__name {
+  padding-left: 1.125rem;
+  text-indent: -1.125rem;
+  word-break: keep-all;
   overflow-wrap: anywhere;
 }
 

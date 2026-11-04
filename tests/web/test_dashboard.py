@@ -270,6 +270,14 @@ def test_share_percent_labels(minutes: list[int], expected: list[str]) -> None:
     assert sum(float(row.width) for row in rows) == pytest.approx(100)
 
 
+def test_tiny_share_part_gets_a_minimum_width_taken_from_the_widest() -> None:
+    """QA L1: 5m(0.25%) 조각은 막대에서 보이지 않았다. 최소 폭 1을 주고 가장 넓은 조각에서 뺀다."""
+    rows = share_rows(["big", "tiny"], ["#000000", "#111111"], [2000, 5])
+
+    assert [(row.x, row.width) for row in rows] == [("0", "99"), ("99", "1")]
+    assert [row.percent for row in rows] == ["100%", "<1%"]  # 글줄 비율은 실제 값 그대로
+
+
 @pytest.mark.parametrize(
     "minutes",
     [[2879, 2671, 2045, 1858, 1687, 65, 29, 4, 1], [1, 1, 1], [3000, 1, 1, 1, 1, 1, 1, 1]],
@@ -278,7 +286,7 @@ def test_share_parts_never_go_negative_and_join_end_to_end(minutes: list[int]) -
     """최종 리뷰 M1: 조각마다 반올림하면 오차가 쌓여 마지막 조각 폭이 음수가 될 수 있었다."""
     rows = share_rows([f"r{i}" for i in range(len(minutes))], ["#000000"] * len(minutes), minutes)
 
-    assert all(float(row.width) > 0 for row in rows)
+    assert all(float(row.width) >= 1 for row in rows)
     for before, after in zip(rows, rows[1:], strict=False):
         assert float(before.x) + float(before.width) == pytest.approx(float(after.x))
     assert float(rows[-1].x) + float(rows[-1].width) == pytest.approx(100)
