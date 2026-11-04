@@ -185,12 +185,16 @@ def test_stat_numbers_are_smaller_than_before() -> None:
     assert "--text-stat-lead: clamp(2rem, 1.4rem + 2.2vw, 3rem)" in declarations
 
 
-def test_side_stat_numbers_are_one_step_below_the_lead() -> None:
-    """결정 H4(2026-10-30): 기록·완료 태스크 숫자는 24px, 이번 주 공수만 크게 둔다."""
+def test_summary_keeps_one_big_number_and_a_quiet_counts_line() -> None:
+    """결정 M1(2026-11-04): 숫자 칸 3개 격자를 없애고 기록·완료 수는 보조 글자 한 줄."""
     css = _read("dashboard.css")
 
-    assert "font-size: var(--text-lg)" in _declarations(css, ".stat__value")
-    assert "font-size: var(--text-stat-lead)" in _declarations(css, ".stat--lead .stat__value")
+    assert "font-size: var(--text-stat-lead)" in _declarations(css, ".stat__value")
+    counts = _declarations(css, ".stat__counts")
+    assert {"font-size: var(--text-sm)", "color: var(--ink-muted)"} <= counts
+    assert ".stat--lead" not in css
+    assert "grid-template-columns: 1.5fr 1fr 1fr" not in css
+    assert ".stat {" not in _read("responsive.css")  # 좁은 폭에서 칸을 쌓던 규칙도 필요 없다
     assert "--text-stat:" not in _read("app.css")  # 쓰는 곳이 없어진 토큰
 
 

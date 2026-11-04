@@ -9,7 +9,7 @@
     <p class="panel__meta">{{ summary.heading }}</p>
   </div>
   <dl class="stats">
-    <div class="stat stat--lead">
+    <div class="stat">
       <dt class="stat__label">이번 주 공수</dt>
       <dd class="stat__value">{{ summary.total }}</dd>
       <dd class="stat__progress">
@@ -19,14 +19,7 @@
 {% endif %}
         <svg class="progress{% if summary.today_reached %} progress--done{% endif %}" viewBox="0 0 100 4" preserveAspectRatio="none" aria-hidden="true"><rect class="progress__track" width="100" height="4"/><rect class="progress__fill" width="{{ summary.today_percent }}" height="4"/></svg>
       </dd>
-    </div>
-    <div class="stat">
-      <dt class="stat__label">기록</dt>
-      <dd class="stat__value">{{ summary.count }}건</dd>
-    </div>
-    <div class="stat">
-      <dt class="stat__label">완료 태스크</dt>
-      <dd class="stat__value">{{ summary.done_count }}건</dd>
+      <dd class="stat__counts">기록 {{ summary.count }}건 · 완료 태스크 {{ summary.done_count }}건</dd>
     </div>
   </dl>
 {% if summary.has_logs %}

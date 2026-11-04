@@ -176,6 +176,27 @@ def test_summary_numbers(client: TestClient, web_engine: Engine) -> None:
     assert "완료 태스크 1건" in summary
 
 
+def test_summary_has_one_big_number_with_counts_line_below(
+    client: TestClient, web_engine: Engine
+) -> None:
+    """평가 P2(결정 M1): 큰 숫자는 이번 주 공수 하나, 기록·완료 수는 그 아래 보조 줄."""
+    _seed_week(web_engine)
+    html = _get(client)
+
+    assert [e.text for e in by_class(html, "stat__value")] == ["3h 30m"]
+    assert [e.text for e in by_class(html, "stat__counts")] == ["기록 3건 · 완료 태스크 1건"]
+
+
+def test_summary_counts_line_shows_in_a_week_without_logs(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_log(web_engine, minutes=45, note="지난주 작업", day=W39_THURSDAY)
+
+    html = _get(client)
+
+    assert [e.text for e in by_class(html, "stat__counts")] == ["기록 0건 · 완료 태스크 0건"]
+
+
 def test_summary_panel_title_is_weekly_summary(client: TestClient) -> None:
     title = by_id(_get(client), "summary-title")
 
@@ -518,11 +539,7 @@ def test_summary_progress_markup_has_no_inline_style_and_keeps_dl_structure(
     svg = next(e for e in all_by_tag(html, "svg") if "progress" in str(e.attrs.get("class")))
     assert svg.attrs["viewbox"] == "0 0 100 4"
     assert svg.attrs["aria-hidden"] == "true"
-    assert _dl_children(html) == [
-        ("div", ["dt", "dd", "dd"]),
-        ("div", ["dt", "dd"]),
-        ("div", ["dt", "dd"]),
-    ]
+    assert _dl_children(html) == [("div", ["dt", "dd", "dd", "dd"])]
 
 
 def test_quick_add_refreshes_today_progress(client: TestClient, web_engine: Engine) -> None:
