@@ -36,12 +36,6 @@
     return STEP_CHOICES[STEP_CHOICES.length - 1];
   }
 
-  function sum(values) {
-    return values.reduce(function (total, value) {
-      return total + value;
-    }, 0);
-  }
-
   // 지금 그려 둔 차트. OOB로 #summary가 통째로 바뀌면 새 canvas가 생겨 Chart.getChart(canvas)로는
   // 옛 인스턴스를 찾을 수 없으므로, 우리가 만든 인스턴스를 직접 들고 있다가 다시 그리기 전에 모두 없앤다.
   var charts = [];
@@ -128,38 +122,6 @@
     return { type: "bar", data: { labels: labels, datasets: bars.concat([targetLine]) }, options: options };
   }
 
-  function doughnutConfig(part) {
-    var total = sum(part.data);
-    var options = baseOptions();
-    options.cutout = "62%";
-    options.plugins = {
-      legend: { position: "right", labels: legendLabels() },
-      tooltip: {
-        callbacks: {
-          label: function (item) {
-            var percent = total === 0 ? 0 : Math.round((item.parsed / total) * 100);
-            return item.label + ": " + formatMinutes(item.parsed) + " (" + percent + "%)";
-          },
-        },
-      },
-    };
-    return {
-      type: "doughnut",
-      data: {
-        labels: part.labels,
-        datasets: [
-          {
-            data: part.data,
-            backgroundColor: part.colors,
-            borderColor: cssVariable("--surface"),
-            borderWidth: 2,
-          },
-        ],
-      },
-      options: options,
-    };
-  }
-
   function readChartData(summary) {
     try {
       return JSON.parse(summary.getAttribute("data-chart") || "");
@@ -181,16 +143,12 @@
     }
     var data = readChartData(summary);
     var daily = document.getElementById("chart-daily");
-    var projects = document.getElementById("chart-projects");
-    var categories = document.getElementById("chart-categories");
-    if (!data || !daily || !projects || !categories) {
+    if (!data || !daily) {
       return;
     }
     Chart.defaults.font.family = cssVariable("--font-body");
     Chart.defaults.color = cssVariable("--ink-muted");
     addChart(daily, dailyConfig(data.daily));
-    addChart(projects, doughnutConfig(data.projects));
-    addChart(categories, doughnutConfig(data.categories));
   }
 
   // 요약이 htmx로 바뀌면(OOB 교체 포함) 새 요소에 이전 차트가 남지 않게 다시 그린다.

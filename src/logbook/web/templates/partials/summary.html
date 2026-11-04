@@ -1,8 +1,6 @@
 {% from "partials/marks.html" import pill %}
 {% set chart = summary.chart %}
 {% set daily = chart["daily"] %}
-{% set projects = chart["projects"] %}
-{% set categories = chart["categories"] %}
 <section id="summary" class="panel summary" aria-labelledby="summary-title" data-chart='{{ chart|tojson }}'{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
   <div class="panel__head">
     <h2 id="summary-title" class="panel__title">주간 요약</h2>
@@ -65,50 +63,28 @@
       </details>
     </figure>
     <div class="charts__side">
-      <figure class="chart">
-        <figcaption class="chart__title"><span>프로젝트별</span></figcaption>
-        <div class="chart__frame chart__frame--donut">
-          <canvas id="chart-projects" role="img" aria-label="프로젝트별 공수 도넛 차트: {% for name in projects["labels"] %}{{ name }} {{ projects["data"][loop.index0]|duration }}{% if not loop.last %}, {% endif %}{% endfor %}"></canvas>
-        </div>
-        <details class="chart__table">
-          <summary>표로 보기</summary>
-          <div class="table-wrap">
-            <table class="grid">
-              <caption class="visually-hidden">프로젝트별 공수</caption>
-              <thead>
-                <tr><th scope="col">프로젝트</th><th scope="col" class="num">공수</th></tr>
-              </thead>
-              <tbody>
-{% for name in projects["labels"] %}
-                <tr><th scope="row">{{ name }}</th><td class="num">{{ projects["data"][loop.index0]|duration }}</td></tr>
+{% for group in summary.shares %}
+      <figure class="chart share">
+        <figcaption class="chart__title"><span class="share__title">{{ group.title }}</span></figcaption>
+        <svg class="share__bar" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
+{% for row in group.rows %}
+          <rect class="share__part" x="{{ row.x }}" width="{{ row.width }}" height="6" fill="{{ row.color }}"/>
 {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      </figure>
-      <figure class="chart">
-        <figcaption class="chart__title"><span>카테고리별</span></figcaption>
-        <div class="chart__frame chart__frame--donut">
-          <canvas id="chart-categories" role="img" aria-label="카테고리별 공수 도넛 차트: {% for name in categories["labels"] %}{{ name }} {{ categories["data"][loop.index0]|duration }}{% if not loop.last %}, {% endif %}{% endfor %}"></canvas>
-        </div>
-        <details class="chart__table">
-          <summary>표로 보기</summary>
-          <div class="table-wrap">
-            <table class="grid">
-              <caption class="visually-hidden">카테고리별 공수</caption>
-              <thead>
-                <tr><th scope="col">카테고리</th><th scope="col" class="num">공수</th></tr>
-              </thead>
-              <tbody>
-{% for name in categories["labels"] %}
-                <tr><th scope="row">{{ name }}</th><td class="num">{{ categories["data"][loop.index0]|duration }}</td></tr>
+        </svg>
+        <table class="share__rows">
+          <caption class="visually-hidden">{{ group.title }} 공수</caption>
+          <tbody>
+{% for row in group.rows %}
+            <tr>
+              <th scope="row" class="share__name"><svg class="share__dot" viewBox="0 0 10 10" fill="{{ row.color }}" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg>{{ row.label }}</th>
+              <td class="num share__time">{{ row.time }}</td>
+              <td class="num share__percent">{{ row.percent }}</td>
+            </tr>
 {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        </details>
+          </tbody>
+        </table>
       </figure>
+{% endfor %}
     </div>
   </div>
 {% else %}

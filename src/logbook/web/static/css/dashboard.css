@@ -106,7 +106,7 @@
   fill: var(--ok);
 }
 
-/* 차트: 막대 2 : 도넛 1(두 도넛을 세로로 쌓는다). 높이는 컨테이너가 정한다(Chart.js 반응형). */
+/* 차트: 요일별 막대 2 : 비율 막대 1(프로젝트별·카테고리별을 세로로 쌓는다). 막대 높이는 컨테이너가 정한다(Chart.js 반응형). */
 .charts {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
@@ -150,8 +150,65 @@
   height: 20rem;
 }
 
-.chart__frame--donut {
-  height: 9.5rem;
+/* 비율 막대(결정 M2): 서버가 그린 SVG 조각과 '이름 시간 비율' 글줄. 값은 글줄이 전한다. */
+.share__bar {
+  display: block;
+  width: 100%;
+  height: 0.75rem;
+}
+
+.share__part {
+  stroke: var(--surface);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.share__rows {
+  width: 100%;
+  margin-top: var(--space-2);
+  border-collapse: collapse;
+  font-size: var(--text-sm);
+}
+
+.share__rows th,
+.share__rows td {
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--rule);
+  font-weight: 400;
+  text-align: left;
+}
+
+.share__rows tr:last-child > * {
+  border-bottom: 0;
+}
+
+.share__rows .num {
+  padding-left: var(--space-3);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.share__percent {
+  width: 3.5em;
+  color: var(--ink-muted);
+}
+
+.share__name {
+  overflow-wrap: anywhere;
+}
+
+.share__dot {
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-right: var(--space-2);
+  overflow: visible;
+  vertical-align: baseline;
+}
+
+.share__dot circle {
+  stroke: var(--dot-ring);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
 }
 
 .chart__table {

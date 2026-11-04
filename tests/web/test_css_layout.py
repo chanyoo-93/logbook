@@ -607,3 +607,14 @@ def test_category_table_fits_narrow_screens() -> None:
     assert "width: 2rem" in _declarations(
         narrow, '.grid--categories .color-field input[type="color"]'
     )
+
+
+def test_share_bar_parts_are_split_by_surface_gaps() -> None:
+    """결정 M2: 비율 막대 조각 사이 틈은 바탕색 테두리라 두 테마를 따른다. 도넛 틀은 없다."""
+    css = _read("dashboard.css")
+
+    assert "stroke: var(--surface)" in _declarations(css, ".share__part")
+    assert "width: 100%" in _declarations(css, ".share__rows")
+    # 어두운 테마에서 짙은 색 점이 묻히지 않게 프로젝트 색 점과 같은 테두리
+    assert "stroke: var(--dot-ring)" in _declarations(css, ".share__dot circle")
+    assert "donut" not in css

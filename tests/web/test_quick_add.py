@@ -16,6 +16,7 @@ from tests.web.helpers import (
     add_project,
     add_task,
     all_by_tag,
+    by_class,
     by_id,
     json_attr,
     named_input,
@@ -181,9 +182,9 @@ def test_post_success_summary_chart_is_updated(client: TestClient, web_engine: E
 
     chart = json_attr(html, "summary", "data-chart")
     assert isinstance(chart, dict)
-    projects = chart["projects"]
-    assert isinstance(projects, dict)
-    assert (projects["labels"], projects["data"]) == (["payment"], [120])
+    datasets = chart["daily"]["datasets"]
+    assert [(d["label"], sum(d["data"])) for d in datasets] == [("payment", 120)]
+    assert [e.text for e in by_class(html, "share__name")][0] == "payment"
     assert "<script" not in html  # htmx가 지우는 script에 데이터를 싣지 않는다
 
 

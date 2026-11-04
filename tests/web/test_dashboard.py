@@ -13,6 +13,7 @@ from logbook.core.taskstatus import TaskStatus
 from logbook.web.app import create_app
 from logbook.web.assets import COLORS_CSS_URL, FONTS_CSS_URL
 from logbook.web.context import WebContext
+from logbook.web.pages.summary import share_rows
 from logbook.web.pages.views import CHART_PALETTE
 from tests.helpers import Clock, hold_lock
 from tests.web.conftest import LOCAL_BASE_URL, LockedApp
@@ -55,16 +56,6 @@ EXPECTED_CHART = {
             {"label": "payment", "color": INDIGO, "data": [60, 0, 0, 120, 0, 0, 0]},
             {"label": "common", "color": PALETTE_GRAY, "data": [0, 0, 30, 0, 0, 0, 0]},
         ],
-    },
-    "projects": {
-        "labels": ["payment", "common"],
-        "colors": [INDIGO, PALETTE_GRAY],
-        "data": [180, 30],
-    },
-    "categories": {
-        "labels": ["개발", "회의"],
-        "colors": [PALETTE_BLUE, PALETTE_GREEN],
-        "data": [180, 30],
     },
 }
 
@@ -209,21 +200,17 @@ def test_summary_chart_data(client: TestClient, web_engine: Engine) -> None:
     assert json_attr(_get(client), "summary", "data-chart") == EXPECTED_CHART
 
 
-def test_summary_has_three_labelled_canvases_with_table_alternatives(
+def test_summary_has_one_labelled_canvas_with_table_alternative(
     client: TestClient, web_engine: Engine
 ) -> None:
     _seed_week(web_engine)
     html = _get(client)
 
     canvases = all_by_tag(html, "canvas")
-    assert [c.attrs["id"] for c in canvases] == [
-        "chart-daily",
-        "chart-projects",
-        "chart-categories",
-    ]
-    assert all(c.attrs["role"] == "img" and c.attrs.get("aria-label") for c in canvases)
-    assert [e.text for e in all_by_tag(html, "summary")] == ["표로 보기"] * 3
-    assert len(all_by_tag(html, "details")) == 3
+    assert [c.attrs["id"] for c in canvases] == ["chart-daily"]
+    assert canvases[0].attrs["role"] == "img" and canvases[0].attrs.get("aria-label")
+    assert [e.text for e in all_by_tag(html, "summary")] == ["표로 보기"]
+    assert len(all_by_tag(html, "details")) == 1
 
 
 def test_summary_tables_repeat_the_chart_values(client: TestClient, web_engine: Engine) -> None:
@@ -235,6 +222,54 @@ def test_summary_tables_repeat_the_chart_values(client: TestClient, web_engine: 
         assert expected in summary
 
 
+def test_summary_shares_show_project_and_category_values_as_text(
+    client: TestClient, web_engine: Engine
+) -> None:
+    """결정 M2: 도넛 대신 비율 막대와 '이름 시간 비율' 글줄. 순서는 도넛과 같다."""
+    _seed_week(web_engine)
+    html = _get(client)
+
+    assert [e.text for e in by_class(html, "share__title")] == ["프로젝트별", "카테고리별"]
+    assert [e.text for e in by_class(html, "share__name")] == ["payment", "common", "개발", "회의"]
+    assert [e.text for e in by_class(html, "share__time")] == ["3h", "30m", "3h", "30m"]
+    assert [e.text for e in by_class(html, "share__percent")] == ["86%", "14%", "86%", "14%"]
+    captions = [e.text for e in all_by_tag(html, "caption")]
+    assert "프로젝트별 공수" in captions and "카테고리별 공수" in captions
+
+
+def test_summary_share_bars_are_svg_parts_filling_the_width(
+    client: TestClient, web_engine: Engine
+) -> None:
+    _seed_week(web_engine)
+    html = _get(client)
+
+    bars = by_class(html, "share__bar")
+    assert len(bars) == 2
+    assert all(b.tag == "svg" and b.attrs["aria-hidden"] == "true" for b in bars)
+    rects = by_class(html, "share__part")
+    parts = [(p.attrs["x"], p.attrs["width"], p.attrs["fill"]) for p in rects]
+    assert parts == [
+        ("0", "85.71", INDIGO),
+        ("85.71", "14.29", PALETTE_GRAY),
+        ("0", "85.71", PALETTE_BLUE),
+        ("85.71", "14.29", PALETTE_GREEN),
+    ]
+    dots = [d.attrs["fill"] for d in by_class(html, "share__dot")]
+    assert dots == [INDIGO, PALETTE_GRAY, PALETTE_BLUE, PALETTE_GREEN]
+
+
+@pytest.mark.parametrize(
+    ("minutes", "expected"),
+    [([180, 30], ["86%", "14%"]), ([1, 299], ["<1%", "100%"]), ([60], ["100%"])],
+)
+def test_share_percent_labels(minutes: list[int], expected: list[str]) -> None:
+    rows = share_rows([f"r{i}" for i in range(len(minutes))], ["#000000"] * len(minutes), minutes)
+
+    assert [row.percent for row in rows] == expected
+    assert rows[0].x == "0"
+    assert sum(float(row.width) for row in rows) == pytest.approx(100)
+
+
 def test_summary_without_logs_shows_empty_message(client: TestClient, web_engine: Engine) -> None:
     add_log(web_engine, minutes=45, note="지난주 작업", day=W39_THURSDAY)
 
@@ -242,6 +277,7 @@ def test_summary_without_logs_shows_empty_message(client: TestClient, web_engine
 
     assert "이번 주 기록이 없습니다." in by_id(html, "summary").text
     assert all_by_tag(html, "canvas") == []
+    assert by_class(html, "share__bar") == []
     assert "0m" in by_id(html, "summary").text
 
 
@@ -368,9 +404,7 @@ def test_dashboard_escapes_category_labels_in_chart_attribute_and_tables(
         html = _get(client)
 
     assert "<d>" not in html
-    chart = json_attr(html, "summary", "data-chart")
-    assert isinstance(chart, dict)
-    assert chart["categories"]["labels"] == [label]
+    assert [e.text for e in by_class(html, "share__name")][-1] == label
     assert "a&#34;b&#39;c&lt;d&gt;&amp;e" in html
 
 
@@ -469,10 +503,12 @@ def test_chart_color_follows_project_id_not_week_order(
     add_log(web_engine, minutes=30, note="b만", project="b", day=W40_THURSDAY)
 
     chart = json_attr(_get(client), "summary", "data-chart")
+    html = _get(client)
 
     assert isinstance(chart, dict)
     # common이 ID 1, a가 ID 2, b가 ID 3이다. b는 이번 주 첫 프로젝트여도 ID 3의 색이다.
-    assert chart["projects"]["colors"] == [CHART_PALETTE[7]]
+    assert [d["color"] for d in chart["daily"]["datasets"]] == [CHART_PALETTE[7]]
+    assert by_class(html, "share__part")[0].attrs["fill"] == CHART_PALETTE[7]
 
 
 def _summary_progress(html: str) -> tuple[str, int, bool]:
