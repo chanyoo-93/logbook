@@ -302,14 +302,17 @@
   });
 
   // 3절의 쓰기·고치기 링크([data-notes-jump]): href(#report-notes-text)만으로는 스크롤만 되므로 칸에 포커스를 준다.
+  // 칸이 화면 아래에 조금만 걸쳐 있어도 브라우저는 스크롤하지 않으므로, 폼 전체(두 칸과 저장)를 화면 위쪽에 맞춘다.
   document.addEventListener("click", function (event) {
     var jump = event.target.closest && event.target.closest("[data-notes-jump]");
+    var form = document.getElementById("report-notes");
     var field = document.getElementById("report-notes-text");
-    if (!jump || !field) {
+    if (!jump || !form || !field) {
       return;
     }
     event.preventDefault();
-    field.focus();
+    form.scrollIntoView({ block: "start" });
+    field.focus({ preventScroll: true });
   });
 
   document.addEventListener("DOMContentLoaded", setup);
