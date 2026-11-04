@@ -260,7 +260,7 @@ def test_summary_share_bars_are_svg_parts_filling_the_width(
 
 @pytest.mark.parametrize(
     ("minutes", "expected"),
-    [([180, 30], ["86%", "14%"]), ([1, 299], ["<1%", "100%"]), ([60], ["100%"])],
+    [([180, 30], ["86%", "14%"]), ([1, 299], ["<1%", ">99%"]), ([60], ["100%"])],
 )
 def test_share_percent_labels(minutes: list[int], expected: list[str]) -> None:
     rows = share_rows([f"r{i}" for i in range(len(minutes))], ["#000000"] * len(minutes), minutes)
@@ -270,12 +270,37 @@ def test_share_percent_labels(minutes: list[int], expected: list[str]) -> None:
     assert sum(float(row.width) for row in rows) == pytest.approx(100)
 
 
+@pytest.mark.parametrize(
+    ("part", "total", "expected"),
+    [
+        (4, 503, "<1%"),
+        (99, 10000, "<1%"),
+        (1, 100, "1%"),
+        (14, 1000, "1%"),
+        (15, 1000, "2%"),
+        (99, 100, "99%"),
+        (9901, 10000, ">99%"),
+        (2000, 2005, ">99%"),
+    ],
+)
+def test_share_percent_marks_below_one_and_above_ninety_nine_by_the_real_share(
+    part: int, total: int, expected: str
+) -> None:
+    """macOS QA: 0.8%가 반올림돼 '1%'로 보였다. 1% 미만·99% 초과는 반올림 전 실제 비율로 가린다.
+
+    99% 초과는 '>99%'다(사용자 결정, 2026-11-04). 다른 행이 있는데 '100%'로 보이지 않게 한다.
+    """
+    rows = share_rows(["part", "rest"], ["#000000", "#111111"], [part, total - part])
+
+    assert rows[0].percent == expected
+
+
 def test_tiny_share_part_gets_a_minimum_width_taken_from_the_widest() -> None:
     """QA L1: 5m(0.25%) 조각은 막대에서 보이지 않았다. 최소 폭 1을 주고 가장 넓은 조각에서 뺀다."""
     rows = share_rows(["big", "tiny"], ["#000000", "#111111"], [2000, 5])
 
     assert [(row.x, row.width) for row in rows] == [("0", "99"), ("99", "1")]
-    assert [row.percent for row in rows] == ["100%", "<1%"]  # 글줄 비율은 실제 값 그대로
+    assert [row.percent for row in rows] == [">99%", "<1%"]  # 글줄 비율은 실제 값 그대로
 
 
 @pytest.mark.parametrize(

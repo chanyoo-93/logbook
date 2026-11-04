@@ -67,8 +67,15 @@ def _number(value: float) -> str:
 
 
 def _percent(minutes: int, total: int) -> str:
-    percent = round(minutes * 100 / total)
-    return f"{percent}%" if percent >= 1 else "<1%"
+    """글줄 비율. 반올림 전 실제 비율로 1% 미만은 '<1%', 99% 초과는 '>99%'(100%는 그대로).
+
+    다른 행이 있는데 '0%'·'100%'로 보이지 않게 한다. 나머지는 반올림한 정수다.
+    """
+    if minutes * 100 < total:
+        return "<1%"
+    if 99 * total < minutes * 100 < 100 * total:
+        return ">99%"
+    return f"{round(minutes * 100 / total)}%"
 
 
 def _part_widths(minutes: Sequence[int]) -> list[int]:
