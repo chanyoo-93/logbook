@@ -2,6 +2,7 @@
 // - [data-copy-target]: 대상 요소의 글자를 그대로 복사한다(원문 Markdown).
 // - [data-copy-rich]: 표 보기의 절이나 보고서 전체를 서식 있는 HTML과 글(표는 탭 구분) 두 형식으로 함께 넣는다.
 //   엑셀·한글은 HTML 표를 셀로 받는다. 자리표시 문구와 버튼([data-copy-skip])은 복사본에서 뺀다.
+// - 3절의 쓰기·고치기 링크([data-notes-jump])는 특이사항 칸에 포커스를 준다.
 // - 특이사항·리스크 칸에 저장하지 않은 내용이 있으면 폼에 안내를 보이고,
 //   특이사항이 들어가는 복사([data-copy-warn-unsaved])의 결과 줄에 경고를 덧붙인다.
 (function () {
@@ -284,6 +285,17 @@
       select(next, true);
       remember(next);
     }
+  });
+
+  // 3절의 쓰기·고치기 링크([data-notes-jump]): href(#report-notes-text)만으로는 스크롤만 되므로 칸에 포커스를 준다.
+  document.addEventListener("click", function (event) {
+    var jump = event.target.closest && event.target.closest("[data-notes-jump]");
+    var field = document.getElementById("report-notes-text");
+    if (!jump || !field) {
+      return;
+    }
+    event.preventDefault();
+    field.focus();
   });
 
   document.addEventListener("DOMContentLoaded", setup);

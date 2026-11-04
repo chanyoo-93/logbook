@@ -293,11 +293,14 @@ a.btn {
 }
 
 .sheet__copy,
-.sheet__copy-all {
+.sheet__copy-all,
+.sheet__notes-jump {
   font-family: var(--font-body);
 }
 
-.sheet__copy {
+/* 3절의 쓰기·고치기 링크는 절 복사 버튼과 같은 모양이다. */
+.sheet__copy,
+.sheet__notes-jump {
   min-height: 1.5rem;
   padding: 0 var(--space-2);
   border-color: var(--rule);
@@ -305,7 +308,8 @@ a.btn {
   font-weight: 500;
 }
 
-.sheet__copy:hover {
+.sheet__copy:hover,
+.sheet__notes-jump:hover {
   color: var(--ink);
 }
 
