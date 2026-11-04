@@ -252,6 +252,14 @@
       raw.open = true;
     }
     select(remembered(), false);
+    // 특이사항을 저장하면 결과 줄이 표 보기 3절에 온다. 원문 탭을 보던 중이어도 표 보기로 바꿔
+    // 3절 제목에 포커스를 준다(숨은 패널 안이라 app.js의 [data-focus] 처리가 닿지 못한다).
+    var saved = document.getElementById("sheet-notes-result");
+    var title = document.getElementById("sheet-notes-title");
+    if (saved && title) {
+      select("sheet", false);
+      title.focus();
+    }
   }
 
   document.addEventListener("click", function (event) {

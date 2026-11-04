@@ -308,6 +308,12 @@ a.btn {
   font-weight: 500;
 }
 
+/* 특이사항 저장 결과 줄: 3절 머리 바로 아래. 보고서 글꼴이 아니라 화면 글꼴로 쓴다(복사본에서는 빠진다). */
+.sheet__result {
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-body);
+}
+
 .sheet__copy:hover,
 .sheet__notes-jump:hover {
   color: var(--ink);

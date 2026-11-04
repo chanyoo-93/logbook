@@ -119,6 +119,73 @@ def test_save_rejects_bad_week_keeping_input(client: TestClient) -> None:
     assert by_id(html, "report-notes-text").text == "남겨 둘 값"
 
 
+def _focus_ids(html: str) -> list[str]:
+    return [str(e.attrs.get("id")) for e in parse_html(html) if "data-focus" in e.attrs]
+
+
+def _inside(html: str, element_id: str, container_id: str) -> bool:
+    """element_id가 container_id 요소 안(여는 태그부터 닫는 태그 전)에 있는지."""
+    start = html.index(f'id="{container_id}"')
+    tag = html.rindex("<", 0, start) + 1
+    name = html[tag : html.index(" ", tag)]
+    end = html.index(f"</{name}>", start)
+    return start < html.index(f'id="{element_id}"') < end
+
+
+def test_saved_result_shows_in_sheet_section_with_focus(client: TestClient) -> None:
+    html = _post(client, notes="일정 지연").text
+
+    result = by_id(html, "sheet-notes-result")
+    assert result.text == NOTES_SAVED.format(week="2026-W40")
+    assert result.attrs.get("role") == "status"
+    assert "data-copy-skip" in result.attrs  # 복사본에는 결과 줄이 들어가지 않는다
+    assert _inside(html, "sheet-notes-result", "sheet-notes")
+    assert 'id="report-notes-result"' not in html
+    assert _focus_ids(html) == ["sheet-notes-title"]
+    assert by_id(html, "sheet-notes-title").attrs.get("tabindex") == "-1"
+
+
+def test_no_change_result_also_shows_in_sheet_section(client: TestClient) -> None:
+    first = _post(client, notes="내용")
+
+    html = _post(client, notes="내용", version=_version(first.text)).text
+
+    assert by_id(html, "sheet-notes-result").text == NO_CHANGE
+    assert _focus_ids(html) == ["sheet-notes-title"]
+
+
+def test_conflict_result_stays_in_form(client: TestClient, web_engine: Engine) -> None:
+    with db.session_scope(web_engine) as s:
+        services.save_week_note(s, WEEK, notes="다른 탭", risks="")
+
+    html = _post(client, notes="내 입력", version="").text
+
+    assert by_id(html, "report-notes-result").attrs.get("role") == "alert"
+    assert _inside(html, "report-notes-result", "report-notes")
+    assert 'id="sheet-notes-result"' not in html
+    assert _focus_ids(html) == ["report-notes-title"]
+
+
+def test_bad_week_result_stays_in_form(client: TestClient) -> None:
+    html = _post(client, week="abc", notes="값").text
+
+    assert by_id(html, "report-notes-result").attrs.get("role") == "alert"
+    assert 'id="sheet-notes-result"' not in html
+    assert _focus_ids(html) == ["report-notes-title"]
+
+
+def test_page_and_week_move_have_no_sheet_result(client: TestClient) -> None:
+    _post(client, notes="내용")
+
+    page = client.get("/report").text
+    moved = client.get("/report?week=2026-W39", headers=HTMX).text
+
+    for html in (page, moved):
+        assert 'id="sheet-notes-result"' not in html
+        assert 'id="report-notes-result"' not in html
+        assert "sheet-notes-title" not in _focus_ids(html)
+
+
 def test_cross_origin_post_is_forbidden(client: TestClient, web_engine: Engine) -> None:
     response = client.post(
         "/report/notes",
