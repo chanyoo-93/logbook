@@ -13,6 +13,7 @@ from logbook.core.taskstatus import TaskStatus
 from logbook.web.app import create_app
 from logbook.web.assets import COLORS_CSS_URL, FONTS_CSS_URL
 from logbook.web.context import WebContext
+from logbook.web.pages.summary import ShareRow, share_rows
 from logbook.web.pages.views import CHART_PALETTE
 from tests.helpers import Clock, hold_lock
 from tests.web.conftest import LOCAL_BASE_URL, LockedApp
@@ -55,16 +56,6 @@ EXPECTED_CHART = {
             {"label": "payment", "color": INDIGO, "data": [60, 0, 0, 120, 0, 0, 0]},
             {"label": "common", "color": PALETTE_GRAY, "data": [0, 0, 30, 0, 0, 0, 0]},
         ],
-    },
-    "projects": {
-        "labels": ["payment", "common"],
-        "colors": [INDIGO, PALETTE_GRAY],
-        "data": [180, 30],
-    },
-    "categories": {
-        "labels": ["개발", "회의"],
-        "colors": [PALETTE_BLUE, PALETTE_GREEN],
-        "data": [180, 30],
     },
 }
 
@@ -176,6 +167,27 @@ def test_summary_numbers(client: TestClient, web_engine: Engine) -> None:
     assert "완료 태스크 1건" in summary
 
 
+def test_summary_has_one_big_number_with_counts_line_below(
+    client: TestClient, web_engine: Engine
+) -> None:
+    """평가 P2(결정 M1): 큰 숫자는 이번 주 공수 하나, 기록·완료 수는 그 아래 보조 줄."""
+    _seed_week(web_engine)
+    html = _get(client)
+
+    assert [e.text for e in by_class(html, "stat__value")] == ["3h 30m"]
+    assert [e.text for e in by_class(html, "stat__counts")] == ["기록 3건 · 완료 태스크 1건"]
+
+
+def test_summary_counts_line_shows_in_a_week_without_logs(
+    client: TestClient, web_engine: Engine
+) -> None:
+    add_log(web_engine, minutes=45, note="지난주 작업", day=W39_THURSDAY)
+
+    html = _get(client)
+
+    assert [e.text for e in by_class(html, "stat__counts")] == ["기록 0건 · 완료 태스크 0건"]
+
+
 def test_summary_panel_title_is_weekly_summary(client: TestClient) -> None:
     title = by_id(_get(client), "summary-title")
 
@@ -188,21 +200,17 @@ def test_summary_chart_data(client: TestClient, web_engine: Engine) -> None:
     assert json_attr(_get(client), "summary", "data-chart") == EXPECTED_CHART
 
 
-def test_summary_has_three_labelled_canvases_with_table_alternatives(
+def test_summary_has_one_labelled_canvas_with_table_alternative(
     client: TestClient, web_engine: Engine
 ) -> None:
     _seed_week(web_engine)
     html = _get(client)
 
     canvases = all_by_tag(html, "canvas")
-    assert [c.attrs["id"] for c in canvases] == [
-        "chart-daily",
-        "chart-projects",
-        "chart-categories",
-    ]
-    assert all(c.attrs["role"] == "img" and c.attrs.get("aria-label") for c in canvases)
-    assert [e.text for e in all_by_tag(html, "summary")] == ["표로 보기"] * 3
-    assert len(all_by_tag(html, "details")) == 3
+    assert [c.attrs["id"] for c in canvases] == ["chart-daily"]
+    assert canvases[0].attrs["role"] == "img" and canvases[0].attrs.get("aria-label")
+    assert [e.text for e in all_by_tag(html, "summary")] == ["표로 보기"]
+    assert len(all_by_tag(html, "details")) == 1
 
 
 def test_summary_tables_repeat_the_chart_values(client: TestClient, web_engine: Engine) -> None:
@@ -214,6 +222,120 @@ def test_summary_tables_repeat_the_chart_values(client: TestClient, web_engine: 
         assert expected in summary
 
 
+def test_summary_shares_show_project_and_category_values_as_text(
+    client: TestClient, web_engine: Engine
+) -> None:
+    """결정 M2: 도넛 대신 비율 막대와 '이름 시간 비율' 글줄. 순서는 도넛과 같다."""
+    _seed_week(web_engine)
+    html = _get(client)
+
+    assert [e.text for e in by_class(html, "share__title")] == ["프로젝트별", "카테고리별"]
+    assert [e.text for e in by_class(html, "share__name")] == ["payment", "common", "개발", "회의"]
+    assert [e.text for e in by_class(html, "share__time")] == ["3h", "30m", "3h", "30m"]
+    assert [e.text for e in by_class(html, "share__percent")] == ["86%", "14%", "86%", "14%"]
+    captions = [e.text for e in all_by_tag(html, "caption")]
+    assert "프로젝트별 공수" in captions and "카테고리별 공수" in captions
+
+
+def test_summary_share_bars_are_svg_parts_filling_the_width(
+    client: TestClient, web_engine: Engine
+) -> None:
+    _seed_week(web_engine)
+    html = _get(client)
+
+    bars = by_class(html, "share__bar")
+    assert len(bars) == 2
+    assert all(b.tag == "svg" and b.attrs["aria-hidden"] == "true" for b in bars)
+    rects = by_class(html, "share__part")
+    parts = [(p.attrs["x"], p.attrs["width"], p.attrs["fill"]) for p in rects]
+    assert parts == [
+        ("0", "85.71", INDIGO),
+        ("85.71", "14.29", PALETTE_GRAY),
+        ("0", "85.71", PALETTE_BLUE),
+        ("85.71", "14.29", PALETTE_GREEN),
+    ]
+    dots = [d.attrs["fill"] for d in by_class(html, "share__dot")]
+    assert dots == [INDIGO, PALETTE_GRAY, PALETTE_BLUE, PALETTE_GREEN]
+
+
+@pytest.mark.parametrize(
+    ("minutes", "expected"),
+    [([180, 30], ["86%", "14%"]), ([1, 299], ["<1%", ">99%"]), ([60], ["100%"])],
+)
+def test_share_percent_labels(minutes: list[int], expected: list[str]) -> None:
+    rows = share_rows([f"r{i}" for i in range(len(minutes))], ["#000000"] * len(minutes), minutes)
+
+    assert [row.percent for row in rows] == expected
+    assert rows[0].x == "0"
+    assert sum(float(row.width) for row in rows) == pytest.approx(100)
+
+
+@pytest.mark.parametrize(
+    ("part", "total", "expected"),
+    [
+        (4, 503, "<1%"),
+        (99, 10000, "<1%"),
+        (1, 100, "1%"),
+        (14, 1000, "1%"),
+        (15, 1000, "2%"),
+        (99, 100, "99%"),
+        (9901, 10000, ">99%"),
+        (2000, 2005, ">99%"),
+    ],
+)
+def test_share_percent_marks_below_one_and_above_ninety_nine_by_the_real_share(
+    part: int, total: int, expected: str
+) -> None:
+    """macOS QA: 0.8%가 반올림돼 '1%'로 보였다. 1% 미만·99% 초과는 반올림 전 실제 비율로 가린다.
+
+    99% 초과는 '>99%'다(사용자 결정, 2026-11-04). 다른 행이 있는데 '100%'로 보이지 않게 한다.
+    """
+    rows = share_rows(["part", "rest"], ["#000000", "#111111"], [part, total - part])
+
+    assert rows[0].percent == expected
+
+
+def test_tiny_share_part_gets_a_minimum_width_taken_from_the_widest() -> None:
+    """QA L1: 5m(0.25%) 조각은 막대에서 보이지 않았다. 최소 폭 1을 주고 가장 넓은 조각에서 뺀다."""
+    rows = share_rows(["big", "tiny"], ["#000000", "#111111"], [2000, 5])
+
+    assert [(row.x, row.width) for row in rows] == [("0", "99"), ("99", "1")]
+    assert [row.percent for row in rows] == [">99%", "<1%"]  # 글줄 비율은 실제 값 그대로
+
+
+@pytest.mark.parametrize(
+    "minutes",
+    [
+        [2879, 2671, 2045, 1858, 1687, 65, 29, 4, 1],
+        [1, 1, 1],
+        [3000, 1, 1, 1, 1, 1, 1, 1],
+        [100] * 10 + [1] * 11,  # macOS QA: 늘린 폭을 한 조각에서 모두 빼서 음수가 됐다
+        [100] * 10 + [1] * 15,
+    ],
+)
+def test_share_parts_never_go_negative_and_join_end_to_end(minutes: list[int]) -> None:
+    """최종 리뷰 M1: 조각마다 반올림하면 오차가 쌓여 마지막 조각 폭이 음수가 될 수 있었다."""
+    rows = share_rows([f"r{i}" for i in range(len(minutes))], ["#000000"] * len(minutes), minutes)
+
+    assert all(float(row.width) >= 1 for row in rows)
+    _assert_parts_join_to_100(rows)
+
+
+def test_share_parts_shrink_the_minimum_when_too_many_to_fit() -> None:
+    """항목이 100개를 넘으면 최소 폭 1을 줄 수 없다. 줄인 최소 폭으로도 폭은 0보다 크고 끝은 100."""
+    minutes = [500] + [1] * 149
+    rows = share_rows([f"r{i}" for i in range(150)], ["#000000"] * 150, minutes)
+
+    assert all(float(row.width) > 0 for row in rows)
+    _assert_parts_join_to_100(rows)
+
+
+def _assert_parts_join_to_100(rows: tuple[ShareRow, ...]) -> None:
+    for before, after in zip(rows, rows[1:], strict=False):
+        assert float(before.x) + float(before.width) == pytest.approx(float(after.x))
+    assert float(rows[-1].x) + float(rows[-1].width) == pytest.approx(100)
+
+
 def test_summary_without_logs_shows_empty_message(client: TestClient, web_engine: Engine) -> None:
     add_log(web_engine, minutes=45, note="지난주 작업", day=W39_THURSDAY)
 
@@ -221,6 +343,7 @@ def test_summary_without_logs_shows_empty_message(client: TestClient, web_engine
 
     assert "이번 주 기록이 없습니다." in by_id(html, "summary").text
     assert all_by_tag(html, "canvas") == []
+    assert by_class(html, "share__bar") == []
     assert "0m" in by_id(html, "summary").text
 
 
@@ -347,9 +470,7 @@ def test_dashboard_escapes_category_labels_in_chart_attribute_and_tables(
         html = _get(client)
 
     assert "<d>" not in html
-    chart = json_attr(html, "summary", "data-chart")
-    assert isinstance(chart, dict)
-    assert chart["categories"]["labels"] == [label]
+    assert [e.text for e in by_class(html, "share__name")][-1] == label
     assert "a&#34;b&#39;c&lt;d&gt;&amp;e" in html
 
 
@@ -447,11 +568,13 @@ def test_chart_color_follows_project_id_not_week_order(
     add_project(web_engine, "b", "둘째")
     add_log(web_engine, minutes=30, note="b만", project="b", day=W40_THURSDAY)
 
-    chart = json_attr(_get(client), "summary", "data-chart")
+    html = _get(client)
+    chart = json_attr(html, "summary", "data-chart")
 
     assert isinstance(chart, dict)
     # common이 ID 1, a가 ID 2, b가 ID 3이다. b는 이번 주 첫 프로젝트여도 ID 3의 색이다.
-    assert chart["projects"]["colors"] == [CHART_PALETTE[7]]
+    assert [d["color"] for d in chart["daily"]["datasets"]] == [CHART_PALETTE[7]]
+    assert by_class(html, "share__part")[0].attrs["fill"] == CHART_PALETTE[7]
 
 
 def _summary_progress(html: str) -> tuple[str, int, bool]:
@@ -518,11 +641,7 @@ def test_summary_progress_markup_has_no_inline_style_and_keeps_dl_structure(
     svg = next(e for e in all_by_tag(html, "svg") if "progress" in str(e.attrs.get("class")))
     assert svg.attrs["viewbox"] == "0 0 100 4"
     assert svg.attrs["aria-hidden"] == "true"
-    assert _dl_children(html) == [
-        ("div", ["dt", "dd", "dd"]),
-        ("div", ["dt", "dd"]),
-        ("div", ["dt", "dd"]),
-    ]
+    assert _dl_children(html) == [("div", ["dt", "dd", "dd", "dd"])]
 
 
 def test_quick_add_refreshes_today_progress(client: TestClient, web_engine: Engine) -> None:

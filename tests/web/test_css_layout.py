@@ -185,12 +185,16 @@ def test_stat_numbers_are_smaller_than_before() -> None:
     assert "--text-stat-lead: clamp(2rem, 1.4rem + 2.2vw, 3rem)" in declarations
 
 
-def test_side_stat_numbers_are_one_step_below_the_lead() -> None:
-    """결정 H4(2026-10-30): 기록·완료 태스크 숫자는 24px, 이번 주 공수만 크게 둔다."""
+def test_summary_keeps_one_big_number_and_a_quiet_counts_line() -> None:
+    """결정 M1(2026-11-04): 숫자 칸 3개 격자를 없애고 기록·완료 수는 보조 글자 한 줄."""
     css = _read("dashboard.css")
 
-    assert "font-size: var(--text-lg)" in _declarations(css, ".stat__value")
-    assert "font-size: var(--text-stat-lead)" in _declarations(css, ".stat--lead .stat__value")
+    assert "font-size: var(--text-stat-lead)" in _declarations(css, ".stat__value")
+    counts = _declarations(css, ".stat__counts")
+    assert {"font-size: var(--text-sm)", "color: var(--ink-muted)"} <= counts
+    assert ".stat--lead" not in css
+    assert "grid-template-columns: 1.5fr 1fr 1fr" not in css
+    assert ".stat {" not in _read("responsive.css")  # 좁은 폭에서 칸을 쌓던 규칙도 필요 없다
     assert "--text-stat:" not in _read("app.css")  # 쓰는 곳이 없어진 토큰
 
 
@@ -603,3 +607,25 @@ def test_category_table_fits_narrow_screens() -> None:
     assert "width: 2rem" in _declarations(
         narrow, '.grid--categories .color-field input[type="color"]'
     )
+
+
+def test_share_bar_parts_are_split_by_surface_gaps() -> None:
+    """결정 M2: 비율 막대 조각 사이 틈은 바탕색 테두리라 두 테마를 따른다. 도넛 틀은 없다."""
+    css = _read("dashboard.css")
+
+    assert "stroke: var(--surface)" in _declarations(css, ".share__part")
+    assert "width: 100%" in _declarations(css, ".share__rows")
+    # 어두운 테마에서 짙은 색 점이 묻히지 않게 프로젝트 색 점과 같은 테두리
+    assert "stroke: var(--dot-ring)" in _declarations(css, ".share__dot circle")
+    assert "donut" not in css
+    assert "donut" not in _read("responsive.css")
+
+
+def test_long_share_names_wrap_under_the_name_not_the_dot() -> None:
+    """QA L2: 긴 이름의 둘째 줄이 색 점 아래에서 시작했다. 내어쓰기로 이름 첫 글자에 맞춘다."""
+    declarations = _declarations(_read("dashboard.css"), ".share__rows .share__name")
+
+    assert "padding-left: 1.125rem" in declarations
+    assert "text-indent: -1.125rem" in declarations
+    assert "word-break: keep-all" in declarations  # 한글 이름을 낱자 중간에서 끊지 않는다
+    assert "overflow-wrap: anywhere" in declarations  # 띄어쓰기 없는 긴 slug는 끊는다

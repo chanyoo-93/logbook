@@ -23,7 +23,6 @@ from tests.web.helpers import (
     by_id,
     flash_text,
     inline_code_violations,
-    json_attr,
     parse_html,
 )
 from tests.web.test_dashboard import W40_THURSDAY
@@ -231,10 +230,10 @@ def test_chart_follows_saved_color(client: TestClient, web_engine: Engine) -> No
     with db.session_scope(web_engine) as s:
         services.set_category_color(s, "meeting", "#010203")
 
-    chart = json_attr(client.get("/").text, "summary", "data-chart")
+    html = client.get("/").text
 
-    assert isinstance(chart, dict)
-    assert chart["categories"]["colors"] == ["#010203"]
+    parts = by_class(html, "share__part")
+    assert [p.attrs["fill"] for p in parts][-1] == "#010203"  # 카테고리별 막대(프로젝트별 뒤)
 
 
 def test_pill_class_is_added_to_log_rows(client: TestClient, web_engine: Engine) -> None:

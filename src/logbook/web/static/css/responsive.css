@@ -27,19 +27,6 @@
     margin-left: 0;
   }
 
-  .stats {
-    grid-template-columns: 1fr;
-  }
-
-  .stat {
-    border-left: 0;
-    border-top: 1px solid var(--rule);
-  }
-
-  .stat:first-child {
-    border-top: 0;
-  }
-
   .charts {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -53,9 +40,6 @@
     height: 16rem;
   }
 
-  .chart__frame--donut {
-    height: 11rem;
-  }
 }
 
 @media (max-width: 480px) {
