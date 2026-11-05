@@ -58,12 +58,12 @@
 
 **Files:** `static/css/app.css` 또는 `components.css`(공용 규칙 위치는 저장소 관례대로), `static/css/report.css`, `responsive.css`(인쇄), 테스트 `tests/web/test_css_layout.py`
 
-- [ ] RED: 테스트를 쓰고 실패를 확인한다.
+- [x] RED: 테스트를 쓰고 실패를 확인한다.
   - `.sheet__scroll`과 `.table-wrap`에 `background-attachment: local, local, scroll, scroll`과 그림자 그러데이션이 있다.
   - 인쇄 규칙에서 그 배경을 끈다.
-- [ ] 구현 → GREEN
-- [ ] CDP 확인: 375px 보고서 1절 표에서 처음엔 오른쪽 그림자만, 끝까지 밀면 왼쪽 그림자만 보인다(스크롤 위치별 캡처). 두 테마. 1280px은 변화 없음. 대비 검사 0건.
-- [ ] 전후 스크린샷 → 비교 HTML → 사용자 승인 → 커밋 `feat: 넘치는 표 상자 가장자리에 그림자로 밀 수 있다는 신호를 둔다`
+- [x] 구현 → GREEN (그림자 색은 `--scroll-shadow` 토큰: 밝음 0.2, 어두움 0.9. 어두운 테마에서 0.2는 거의 보이지 않았다)
+- [x] CDP 확인: 375px 보고서 1절 표에서 처음엔 오른쪽 그림자만, 끝까지 밀면 왼쪽 그림자만 보인다(스크롤 위치별 캡처). 두 테마. 1280px은 변화 없음. (글자 색은 바뀌지 않아 대비 검사는 해당 없음)
+- [x] 전후 스크린샷 → 비교 HTML → 사용자 승인 → 커밋 `feat: 넘치는 표 상자 가장자리에 그림자로 밀 수 있다는 신호를 둔다`
 
 ## Task 3: 문서와 PR
 

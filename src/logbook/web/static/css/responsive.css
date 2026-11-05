@@ -205,6 +205,11 @@
     break-inside: avoid;
     box-shadow: none;
   }
+
+  .table-wrap,
+  .sheet__scroll {
+    background: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

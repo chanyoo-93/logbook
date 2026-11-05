@@ -211,3 +211,32 @@ def test_recent_column_heads_hide_visually_on_narrow_screens() -> None:
 
     assert "position: absolute" in declarations
     assert "clip-path: inset(50%)" in declarations
+
+
+# 넘치는 표 상자 가장자리 그림자(2026-11-05 결정 N2). JS 없이 배경 네 겹:
+# 가림막 둘은 내용과 함께 움직이고(local), 그림자 둘은 상자 가장자리에 붙어 있다(scroll).
+SCROLL_BOXES = ".table-wrap, .sheet__scroll"
+
+
+def test_scroll_boxes_show_edge_shadows_where_content_is_hidden() -> None:
+    declarations = _declarations(_read("components.css"), SCROLL_BOXES)
+
+    assert "background-attachment: local, local, scroll, scroll" in declarations
+    image = next(d for d in declarations if d.startswith("background-image: "))
+    assert image.count("var(--surface)") == 2
+    assert image.count("var(--scroll-shadow)") == 2
+
+
+@pytest.mark.parametrize("dark", [False, True])
+def test_scroll_shadow_token_is_set_for_both_themes(dark: bool) -> None:
+    css = _read("app.css")
+    if dark:
+        css = _media_block(css, "@media screen and (prefers-color-scheme: dark)")
+
+    assert any(d.startswith("--scroll-shadow: ") for d in _declarations(css, ":root"))
+
+
+def test_print_drops_the_edge_shadows() -> None:
+    printed = _media_block(_read("responsive.css"), "@media print")
+
+    assert "background: none" in _declarations(printed, SCROLL_BOXES)

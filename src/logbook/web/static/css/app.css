@@ -19,6 +19,7 @@
   --ok-soft: #e8f5ec;
   --danger-soft: #fdecea;
   --accent-soft: #e6f0fb;
+  --scroll-shadow: rgba(0, 0, 0, 0.2); /* 넘치는 표 상자 가장자리 그림자 */
   --shadow-soft: 0 0.2px 1px rgba(0, 0, 0, 0.01), 0 0.8px 3px rgba(0, 0, 0, 0.02),
     0 2px 8px rgba(0, 0, 0, 0.027), 0 4px 18px rgba(0, 0, 0, 0.04);
   --shadow-raised: 0 1px 3px rgba(0, 0, 0, 0.02), 0 3px 9px rgba(0, 0, 0, 0.03),
@@ -85,6 +86,7 @@
     --ok-soft: #1f3428;
     --danger-soft: #3a2422;
     --accent-soft: #1d2c3d;
+    --scroll-shadow: rgba(0, 0, 0, 0.9);
     --dot-ring: #a3a09b; /* 짙은 점 색이 바탕에 묻히지 않게(바탕과 비글자 대비 3:1 이상) */
     --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 14px rgba(0, 0, 0, 0.25);
     --shadow-raised: 0 2px 6px rgba(0, 0, 0, 0.35), 0 16px 40px rgba(0, 0, 0, 0.4);
