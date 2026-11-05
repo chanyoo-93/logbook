@@ -7,22 +7,22 @@
 {% endif %}
 {% if table.days %}
   <div class="table-wrap">
-    <table class="grid grid--logs grid--records">
-      <thead class="visually-hidden">
-        <tr>
-          <th scope="col" class="num">ID</th>
-          <th scope="col">프로젝트</th>
-          <th scope="col">카테고리</th>
-          <th scope="col" class="num">시간</th>
-          <th scope="col">메모</th>
-          <th scope="col">태스크</th>
-          <th scope="col">동작</th>
+    <table class="grid grid--logs grid--records" role="table">
+      <thead class="visually-hidden" role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader" class="num">ID</th>
+          <th scope="col" role="columnheader">프로젝트</th>
+          <th scope="col" role="columnheader">카테고리</th>
+          <th scope="col" role="columnheader" class="num">시간</th>
+          <th scope="col" role="columnheader">메모</th>
+          <th scope="col" role="columnheader">태스크</th>
+          <th scope="col" role="columnheader">동작</th>
         </tr>
       </thead>
 {% for day in table.days %}
-      <tbody class="log-day">
-        <tr class="log-day__head">
-          <th scope="rowgroup" colspan="7">
+      <tbody class="log-day" role="rowgroup">
+        <tr class="log-day__head" role="row">
+          <th scope="rowgroup" colspan="7" role="rowheader">
             <div class="log-day__line">
               <span class="log-day__date">{{ day.day }}</span>
               <span class="log-day__total">{{ day.total }}{% if day.target %}<span class="log-day__target"> / {{ day.target }}</span>{% endif %}</span>
@@ -37,9 +37,9 @@
 {% endfor %}
       </tbody>
 {% endfor %}
-      <tfoot>
-        <tr>
-          <td id="log-total" colspan="7">합계 {{ table.total }} / 기록 {{ table.count }}건</td>
+      <tfoot role="rowgroup">
+        <tr role="row">
+          <td id="log-total" colspan="7" role="cell">합계 {{ table.total }} / 기록 {{ table.count }}건</td>
         </tr>
       </tfoot>
     </table>
