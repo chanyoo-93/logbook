@@ -1,0 +1,28 @@
+{# 공용 필터 줄 부품(2026-11-05 결정 F1). 기록·태스크·보고서가 카드 위 form.filters 안에서 같이 쓴다. #}
+{% macro filter_select(id, name, label, empty_label, choices, current) %}
+  <div class="filters__field">
+    <label for="{{ id }}">{{ label }}</label>
+    <select id="{{ id }}" name="{{ name }}">
+      <option value=""{% if not current %} selected{% endif %}>{{ empty_label }}</option>
+{% for choice in choices %}
+      <option value="{{ choice.value }}"{% if choice.value == current %} selected{% endif %}>{{ choice.label }}</option>
+{% endfor %}
+    </select>
+  </div>
+{% endmacro %}
+
+{# 주 이동 묶음: ◀ 이전 주 · 주차 칸 · 다음 주 ▶. target은 링크가 바꿀 영역, nav_id·oob는 기록 화면의 OOB 갱신용 #}
+{% macro week_nav(target, input_id, week, prev_url, next_url, nav_id=none, oob=false) %}
+<div{% if nav_id %} id="{{ nav_id }}"{% endif %} class="week-nav"{% if oob %} hx-swap-oob="true"{% endif %}>
+{% if prev_url %}
+  <a class="week-nav__link" href="{{ prev_url }}" hx-get="{{ prev_url }}" hx-target="{{ target }}" hx-swap="outerHTML" hx-push-url="true">◀ 이전 주</a>
+{% endif %}
+  <div class="filters__field">
+    <label for="{{ input_id }}">주차</label>
+    <input id="{{ input_id }}" name="week" type="text" autocomplete="off" value="{{ week }}" placeholder="2026-W40">
+  </div>
+{% if next_url %}
+  <a class="week-nav__link" href="{{ next_url }}" hx-get="{{ next_url }}" hx-target="{{ target }}" hx-swap="outerHTML" hx-push-url="true">다음 주 ▶</a>
+{% endif %}
+</div>
+{% endmacro %}

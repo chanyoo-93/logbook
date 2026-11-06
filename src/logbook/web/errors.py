@@ -24,8 +24,10 @@ from logbook.core.errors import (
     LogbookError,
     NotFoundError,
 )
+from logbook.core.weeks import week_heading, week_of
 from logbook.web.api.envelope import fail
 from logbook.web.assets import FONTS_CSS_URL, STATIC_CSS_URL, STYLESHEETS
+from logbook.web.context import get_context
 from logbook.web.htmx import is_htmx
 from logbook.web.security import is_api_path, security_headers
 
@@ -147,8 +149,21 @@ def _plain_error_page(message: str) -> str:
     )
 
 
-def _templated_error_page(path: str, status: int, message: str) -> str:
-    """머리 메뉴가 있는 오류 페이지. DB가 잠겨 있어도 뜨도록 DB·설정을 읽지 않는다."""
+def _current_week(request: Request) -> str | None:
+    """머리에 보일 이번 주 표기. 시계와 설정의 week_start만 쓰고 DB는 읽지 않는다.
+
+    설정을 읽지 못하는 등 계산할 수 없으면 None(이번 주 표기 없이 그린다).
+    """
+    try:
+        ctx = get_context(request)
+        return week_heading(week_of(ctx.today(), ctx.cfg.week_start))
+    except Exception:  # 오류 페이지를 그리는 중이므로 머리 표기 하나 때문에 실패하지 않는다
+        logger.warning("오류 페이지의 이번 주 표기를 계산하지 못했습니다.", exc_info=True)
+        return None
+
+
+def _templated_error_page(path: str, status: int, message: str, current_week: str | None) -> str:
+    """머리 메뉴가 있는 오류 페이지. DB가 잠겨 있어도 뜨도록 DB를 읽지 않는다."""
     # pages.templating이 이 모듈(classify)을 import하므로 여기서 늦게 import한다.
     from logbook.web.pages.templating import TEMPLATES
 
@@ -160,12 +175,14 @@ def _templated_error_page(path: str, status: int, message: str) -> str:
         "message": message,
         "related": {"label": related[0], "href": related[1]} if related else None,
     }
+    if current_week is not None:  # base.html은 값이 있을 때만(is defined) 이번 주를 그린다
+        context["current_week"] = current_week
     return TEMPLATES.get_template(ERROR_TEMPLATE).render(context)
 
 
-def _error_page(path: str, status: int, message: str) -> str:
+def _error_page(path: str, status: int, message: str, current_week: str | None = None) -> str:
     try:
-        return _templated_error_page(path, status, message)
+        return _templated_error_page(path, status, message, current_week)
     except Exception:  # 오류 처리 안에서 또 실패하면 최소 페이지로 대신하고 원인은 로그에 남긴다.
         logger.exception("오류 페이지를 그리지 못해 최소 페이지로 대신했습니다.")
         return _plain_error_page(message)
@@ -184,7 +201,7 @@ def error_response(request: Request, kind: ErrorKind, message: str) -> Response:
             status_code=kind.status,
             headers={"HX-Retarget": "#flash", "HX-Reswap": "innerHTML", "HX-Push-Url": "false"},
         )
-    page = _error_page(request.url.path, kind.status, message)
+    page = _error_page(request.url.path, kind.status, message, _current_week(request))
     return HTMLResponse(page, status_code=kind.status)
 
 

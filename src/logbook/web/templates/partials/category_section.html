@@ -2,9 +2,9 @@
 <section id="category-section" class="panel" aria-labelledby="category-section-title" data-keep-focus>
   <div class="panel__head">
     <h2 id="category-section-title" class="panel__title" tabindex="-1" data-focus>카테고리 색</h2>
+    {# 결과 줄은 머리 줄 안에 늘 둔다. 비어 있으면 자리를 차지하지 않고, 처음 저장해도 표가 밀리지 않아 다음 클릭이 옆 행에 들어가지 않는다 #}
+    <p id="category-result" class="form-message" role="status">{{ categories.message }}</p>
   </div>
-  {# 결과 줄 자리는 늘 둔다. 처음 저장할 때 표가 밀려 다음 클릭이 옆 행에 들어가지 않게 한다 #}
-  <p id="category-result" class="form-message form-message--slot" role="status">{{ categories.message }}</p>
   <div class="table-wrap">
     <table class="grid grid--categories">
       <thead class="visually-hidden">
