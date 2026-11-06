@@ -165,7 +165,7 @@ def _narrow() -> str:
         (
             ".grid--records tbody tr:not(.log-day__head, .is-editing)",
             '"id project project time menu" ". category category task task" '
-            '". note note note note"',
+            '"note note note note note"',
         ),
     ],
 )
