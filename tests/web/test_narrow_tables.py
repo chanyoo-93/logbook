@@ -81,7 +81,7 @@ def test_recent_table_keeps_table_roles_and_names_each_cell(
     _assert_table_roles(elements)
     row = next(e for e in elements if e.tag == "tr" and e.attrs.get("id", "").startswith("log-"))
     names = [cell.split()[0] if cell else "" for cell in _cell_classes(row, elements)]
-    assert [n for n in names] == [
+    assert names == [
         "grid__id",
         "grid__day",
         "grid__mark",
@@ -211,6 +211,22 @@ def test_recent_column_heads_hide_visually_on_narrow_screens() -> None:
 
     assert "position: absolute" in declarations
     assert "clip-path: inset(50%)" in declarations
+
+
+def test_first_and_last_cells_drop_wide_screen_side_padding_on_narrow_screens() -> None:
+    # 넓은 화면의 첫·끝 칸 여백(.grid--logs td:first-child, 명시도 0,2,1)이 남으면
+    # 행 안쪽 여백과 겹쳐 ID는 두 배로 들여 쓰이고 끝 칸은 시간 칸과 오른쪽이 어긋난다.
+    declarations = _declarations(
+        _narrow(), ".grid--logs tbody td:first-child, .grid--logs tbody td:last-child"
+    )
+
+    assert "padding-inline: 0" in declarations
+
+
+def test_day_head_keeps_its_strong_rule_on_narrow_screens() -> None:
+    declarations = _declarations(_narrow(), ".grid--logs tbody tr.log-day__head")
+
+    assert "border-bottom-color: var(--rule-strong)" in declarations
 
 
 # 넘치는 표 상자 가장자리 그림자(2026-11-05 결정 N2). JS 없이 배경 네 겹:

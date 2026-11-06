@@ -109,8 +109,19 @@
     padding: 0;
   }
 
+  /* 칸 머리 선을 지웠으므로 날짜 머리 아래 진한 선은 행이 긋는다 */
+  .grid--logs tbody tr.log-day__head {
+    border-bottom-color: var(--rule-strong);
+  }
+
   .grid--logs .log-day__head th {
     padding: var(--space-2) var(--space-4);
+  }
+
+  /* 넓은 화면의 첫·끝 칸 여백(dashboard.css)은 행 안쪽 여백과 겹치므로 뺀다 */
+  .grid--logs tbody td:first-child,
+  .grid--logs tbody td:last-child {
+    padding-inline: 0;
   }
 
   .grid--logs tfoot td {
