@@ -67,10 +67,10 @@
 
 ## Task 3: 문서와 PR
 
-- [ ] SPEC을 고친다: 383행 보고서 표 보기의 `좁은 화면에서는 표가 옆으로 스크롤된다`에 가장자리 그림자를 더하고, 466행 기록 날짜 묶음의 좁은 화면 sticky 설명을 두 줄 행으로 바꾼다(대시보드 최근 기록도 함께). README 화면 표는 필요할 때만 고친다
-- [ ] ROADMAP Phase 9 보완 줄을 더하고 체크한다
-- [ ] 전체 검증: `ruff check`, `ruff format --check`, `mypy src/logbook/core`, 전체 `pytest`
-- [ ] 최종 리뷰 1회(`final-reviewer`) → 지적 반영
+- [x] SPEC을 고친다: 383행 보고서 표 보기의 `좁은 화면에서는 표가 옆으로 스크롤된다`에 가장자리 그림자를 더하고, 466행 기록 날짜 묶음의 좁은 화면 sticky 설명을 두 줄 행으로 바꾼다(대시보드 최근 기록도 함께). README 화면 표는 필요할 때만 고친다
+- [x] ROADMAP Phase 9 보완 줄을 더하고 체크한다
+- [x] 전체 검증: `ruff check`, `ruff format --check`, `mypy src/logbook/core`, 전체 `pytest`
+- [x] 최종 리뷰 1회(`final-reviewer`) → 지적 반영 (MEDIUM 첫·끝 칸 여백 명시도, LOW 날짜 머리 선·SPEC 문구 반영)
 - [ ] PR(develop) 생성, "logbook QA" 세션에 점검 요청
 
 ## 다음 PR (이 계획 밖)
