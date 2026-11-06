@@ -47,6 +47,12 @@
   outline-offset: 4px;
 }
 
+/* 머리 줄 안의 결과 줄(설정 카테고리 색): 제목 옆에 글 폭만큼 둔다 */
+.panel__head .form-message {
+  width: auto;
+  margin: 0;
+}
+
 .panel__meta,
 .panel__link {
   color: var(--ink-muted);

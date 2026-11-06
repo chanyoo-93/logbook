@@ -1,4 +1,4 @@
-{# 오류 페이지(web/errors.py가 그린다). DB·설정을 읽지 않으므로 이번 주 표기·설정 알림·카테고리 색은 없다. #}
+{# 오류 페이지(web/errors.py가 그린다). DB를 읽지 않으므로 설정 알림·카테고리 색은 없다. 이번 주 표기는 시계와 설정으로 계산할 수 있을 때만 있다. #}
 {% extends "base.html" %}
 {% from "partials/icons.html" import icon_alert %}
 {% block title %}오류{% endblock %}

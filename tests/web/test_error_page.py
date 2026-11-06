@@ -1,11 +1,16 @@
 """오류 페이지(2026-10-29 G3): 다른 화면과 같은 머리, 오류 카드, 관련 화면·대시보드 링크."""
 
+import dataclasses
+
 import pytest
 from fastapi.testclient import TestClient
 
+from logbook.core.weeks import week_heading, week_of
 from logbook.web import errors
+from logbook.web.app import create_app
+from logbook.web.context import WebContext
 from tests.helpers import hold_lock
-from tests.web.conftest import RAISED_ERRORS, LockedApp
+from tests.web.conftest import LOCAL_BASE_URL, RAISED_ERRORS, LockedApp
 from tests.web.helpers import all_by_tag, by_class, inline_code_violations
 
 
@@ -89,12 +94,42 @@ def test_related_screen_follows_first_path_segment(
     assert _card_links(html) == [*related, ("대시보드로", "/")]
 
 
-def test_error_page_has_no_week_or_inline_code(client: TestClient) -> None:
+def _week(html: str) -> list[str]:
+    return [e.text for e in by_class(html, "masthead__week")]
+
+
+def test_error_page_shows_this_week_like_other_screens(client: TestClient) -> None:
+    # 2026-11-05 결정 F3: 이번 주는 시계와 설정만으로 계산한다(DB는 읽지 않는다)
     html = client.get("/tasks/99/edit").text
 
-    assert by_class(html, "masthead__week") == []  # DB 없이 그리므로 이번 주 표기는 뺀다
+    assert _week(html) == _week(client.get("/").text)
+    assert len(_week(html)) == 1
     assert "/colors.css" not in html  # 카테고리 색은 DB를 읽는다
     assert inline_code_violations(html) == []
+
+
+def test_error_page_week_follows_week_start(web_ctx: WebContext) -> None:
+    ctx = dataclasses.replace(web_ctx, cfg=dataclasses.replace(web_ctx.cfg, week_start="sunday"))
+
+    with TestClient(create_app(ctx), base_url=LOCAL_BASE_URL) as client:
+        html = client.get("/nope").text
+
+    assert _week(html) == [f"이번 주 {week_heading(week_of(ctx.today(), 'sunday'))}"]
+
+
+def test_error_page_drops_the_week_when_it_cannot_be_worked_out(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(_request: object) -> None:
+        raise RuntimeError("설정을 읽지 못함")
+
+    monkeypatch.setattr(errors, "get_context", broken)
+
+    response = client.get("/nope")
+
+    assert response.status_code == 404
+    assert _week(response.text) == []
+    assert _title(response.text) == "찾을 수 없습니다"
 
 
 def test_locked_database_page_has_same_masthead(locked_client: LockedApp) -> None:
@@ -107,6 +142,7 @@ def test_locked_database_page_has_same_masthead(locked_client: LockedApp) -> Non
     assert "사용 중" in _card(response.text)
     assert _title(response.text) == "지금은 열 수 없습니다"
     assert _card_links(response.text) == [("태스크 화면으로", "/tasks"), ("대시보드로", "/")]
+    assert len(_week(response.text)) == 1  # DB가 잠겨도 이번 주는 보인다
 
 
 def test_htmx_and_api_errors_have_no_masthead(probe_client: TestClient) -> None:
