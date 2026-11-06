@@ -43,13 +43,13 @@
 
   .grid--recent tbody tr {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(3ch, auto) auto minmax(0, 1fr) auto;
     grid-template-areas: "id day mark time" "note note note task";
   }
 
   .grid--records tbody tr:not(.log-day__head, .is-editing) {
     display: grid;
-    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(3ch, auto) auto minmax(0, 1fr) auto auto;
     grid-template-areas: "id project project time menu" ". category category task task" ". note note note note";
   }
 

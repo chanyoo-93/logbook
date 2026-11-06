@@ -176,6 +176,19 @@ def test_record_rows_stack_into_two_lines_on_narrow_screens(selector: str, areas
     assert f"grid-template-areas: {areas}" in declarations
 
 
+@pytest.mark.parametrize(
+    "selector",
+    [".grid--recent tbody tr", ".grid--records tbody tr:not(.log-day__head, .is-editing)"],
+)
+def test_id_column_keeps_a_minimum_width_so_rows_line_up(selector: str) -> None:
+    # 행마다 grid라 ID 자릿수(9 → 10)가 바뀌면 뒤 칸 시작 위치가 어긋난다. 999까지는 맞춘다.
+    columns = next(
+        d for d in _declarations(_narrow(), selector) if d.startswith("grid-template-columns: ")
+    )
+
+    assert columns.startswith("grid-template-columns: minmax(3ch, auto) ")
+
+
 def test_note_takes_the_second_line_and_may_shrink_on_narrow_screens() -> None:
     declarations = _declarations(_narrow(), ".grid--logs .grid__note")
 
