@@ -47,7 +47,7 @@
 - **공용 필터 줄(F1):**
   - 마크업: 세 화면 모두 `<form class="filters">` 하나에 `주 이동 묶음(있으면) → select들` 순서. 주 이동은 `week_nav.html` 하나로 합치고 대상(`#log-table`·`#report-body`)과 이름을 인자로 받는 매크로로 만든다. 보고서의 따로 만든 `report_nav.html` 주 이동 마크업은 이 매크로를 쓴다. 태스크의 select도 기록의 `filter_select` 매크로를 같이 쓴다(공용 파일 `partials/filters.html`로 옮김).
   - 폭: select는 내용 폭을 따르되 최대 16rem(`max-width`), 넘는 선택지 이름은 브라우저가 줄임표로 자른다. 주차 칸은 지금 폭.
-  - 좁은 폭(720px 미만): 주 이동 묶음이 한 줄, 그 아래 select들은 두 열 격자(`repeat(auto-fit, minmax(9rem, 1fr))`)로 나란히. select 폭은 칸에 맞춘다(100%). 320px에서도 페이지 가로 넘침 0.
+  - 좁은 폭(720px 미만): 주 이동 묶음이 한 줄, 그 아래 select들은 두 열 격자(`repeat(auto-fit, minmax(7.5rem, 1fr))`)로 나란히. select 폭은 칸에 맞춘다(100%). 320px에서도 페이지 가로 넘침 0.
   - HTMX 동작(`hx-get`, `hx-target`, `hx-push-url`, OOB로 주 이동 갱신)은 바꾸지 않는다. id(`log-filters`, `task-filters`, `report-nav`, `filter-week`, `report-week`, `week-nav`)도 그대로 둔다(테스트·JS가 쓴다).
 - **카드 머리 안 제목(F2):**
   - 태스크 보드: `section#task-board`를 `panel`로, 머리를 `panel__head`(h2 `panel__title` + 오른쪽 `새 태스크` 버튼)로. 열 네 개는 카드 안쪽 여백 안에 둔다. 끌어 놓기(SortableJS)·포커스(`data-focus`) 동작은 그대로.
@@ -64,14 +64,14 @@
 
 **Files:** `templates/partials/filters.html`(새), `log_filters.html`, `task_filters.html`, `week_nav.html`, `report_nav.html`, `static/css/logs.css`(필터 규칙을 `components.css`로 옮길지 저장소 관례대로), `responsive.css`, 테스트 `tests/web/test_filter_row.py`(새)와 기존 필터·주 이동 테스트
 
-- [ ] RED: 테스트를 쓰고 실패를 확인한다.
+- [x] RED: 테스트를 쓰고 실패를 확인한다.
   - 기록·태스크·보고서의 필터 form이 모두 `filters` 클래스이고, 주 이동이 같은 구조(`.week-nav` 안 이전·주차·다음)다.
   - 세 화면의 select가 같은 매크로 결과(라벨-select 짝, `filters__field`)다.
   - CSS: `.filters select`에 `max-width`, 좁은 폭에서 select 묶음이 격자이고 select가 `width: 100%`.
   - 기존 HTMX 속성·id가 그대로다(기존 테스트가 지킨다).
-- [ ] 구현 → GREEN
-- [ ] CDP 확인: 세 화면 필터 줄 높이·간격이 같다. 375·320px 페이지 `scrollWidth == innerWidth`(32자 slug 프로젝트가 있는 DB). 주 이동·필터 변경이 지금처럼 동작한다(표·보드·보고서 갱신, 주소 변경).
-- [ ] 전후 스크린샷 → 비교 HTML → 사용자 승인 → 커밋 `feat: 기록·태스크·보고서의 필터 줄을 한 모양으로 맞춘다`
+- [x] 구현 → GREEN (좁은 폭 격자 최소 칸은 320px에서 두 칸이 들어가게 9rem 대신 7.5rem)
+- [x] CDP 확인: 세 화면 필터 줄 높이·간격이 같다. 375·320px 페이지 `scrollWidth == innerWidth`(32자 slug 프로젝트가 있는 DB). 주 이동·필터 변경이 지금처럼 동작한다(표·보드·보고서 갱신, 주소 변경).
+- [x] 전후 스크린샷 → 비교 HTML → 사용자 승인 → 커밋 `feat: 기록·태스크·보고서의 필터 줄을 한 모양으로 맞춘다`
 
 ## Task 2: 제목을 모두 카드 머리 안으로(F2)
 
