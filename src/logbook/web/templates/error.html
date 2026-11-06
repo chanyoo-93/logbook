@@ -5,7 +5,9 @@
 {% block colors %}{% endblock %}
 {% block content %}
 <section class="panel error-card">
-  <h2 class="error-card__title">{{ icon_alert() }}{{ title }}</h2>
+  <div class="panel__head">
+    <h2 class="panel__title error-card__title">{{ icon_alert() }}{{ title }}</h2>
+  </div>
   <p class="error-card__message" role="alert">{{ message }}</p>
   <p class="error-card__links">
     {% if related %}

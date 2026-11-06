@@ -40,6 +40,11 @@
   font-weight: 700;
   letter-spacing: var(--tracking-title);
   line-height: 1.3;
+  text-wrap: balance;
+}
+
+.panel__title:focus-visible {
+  outline-offset: 4px;
 }
 
 .panel__meta,

@@ -1,6 +1,8 @@
 {% from "partials/marks.html" import pill %}
 <section id="task-plan" class="panel plan" aria-labelledby="task-plan-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
-  <h2 id="task-plan-title" class="plan__title" tabindex="-1" data-focus>{{ plan.heading }}</h2>
+  <div class="panel__head">
+    <h2 id="task-plan-title" class="panel__title" tabindex="-1" data-focus>{{ plan.heading }}</h2>
+  </div>
 {% if plan.message %}
   <p id="plan-result" class="form-message{% if plan.is_error %} form-message--error{% endif %}" role="{{ 'alert' if plan.is_error else 'status' }}">{{ plan.message }}</p>
 {% endif %}

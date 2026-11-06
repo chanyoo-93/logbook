@@ -77,13 +77,13 @@
 
 **Files:** `templates/partials/task_board.html`, `task_plan.html`, `task_new.html`, `task_edit.html`, `partials/task_form.html`, `partials/report_body.html`, `error.html`, `static/css/tasks.css`·`report.css`·`dashboard.css`(`.panel__title`)·`components.css`(오류 카드), 테스트 `tests/web/test_tasks*.py`·`test_errors*.py` 등(이름은 저장소에 맞춤)
 
-- [ ] RED: 테스트를 쓰고 실패를 확인한다.
+- [x] RED: 테스트를 쓰고 실패를 확인한다.
   - 태스크 보드·다음 주 계획·새 태스크·태스크 수정·보고서·404의 h2가 `.panel` 안 `.panel__head` 안의 `panel__title`이다.
   - 태스크 보드 머리에 `새 태스크` 버튼이 h2와 같은 머리 줄에 있다.
   - CSS: `.panel__title`에 `text-wrap: balance`. 폼(`.task-form`)이 카드 안에서 테두리·그림자를 따로 갖지 않는다.
-- [ ] 구현 → GREEN
-- [ ] CDP 확인: 각 화면 h2 글자 크기가 같다(20px). 태스크 끌어 놓기·카드 열기·이월 버튼이 동작한다. 320px 기록 제목이 한 글자만 넘어가지 않는다. 대비 검사 0건.
-- [ ] 전후 스크린샷 → 비교 HTML → 사용자 승인 → 커밋 `feat: 태스크·새 태스크·오류 화면 제목도 카드 머리 안에 둔다`
+- [x] 구현 → GREEN
+- [x] CDP 확인: 각 화면 h2 글자 크기가 같다(20px), 페이지 넘침 없음. 320px 기록 제목은 Task 1 뒤 한 줄에 들어가 재현되지 않음(balance는 넣어 둠). 끌어 놓기는 자동 확인하지 못해 PR QA에서 수동 확인 요청
+- [x] 전후 스크린샷 → 비교 HTML → 사용자 승인 → 커밋 `feat: 태스크·새 태스크·오류 화면 제목도 카드 머리 안에 둔다`
 
 ## Task 3: 잔손질 셋(F3·F4)
 

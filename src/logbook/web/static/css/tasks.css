@@ -1,24 +1,12 @@
 /* 태스크 화면: 등록·수정 화면, 칸반 보드, 카드, 다음 주 계획 패널 */
+/* 등록·수정 화면: 카드(.panel) 하나에 머리 제목과 폼. 폭은 읽기 좋은 48rem(2026-11-06 F4) */
 .task-page {
   max-width: 48rem;
-  margin-top: var(--space-5);
 }
 
-.task-page__title {
-  font-family: var(--font-heading);
-  font-size: var(--text-title);
-  font-weight: 700;
-  letter-spacing: var(--tracking-title);
-  line-height: 1.3;
-}
-
+/* 폼은 카드 안에 바로 둔다(카드 안 카드 없음) */
 .task-form {
-  margin-top: var(--space-3);
-  padding: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
+  padding: 0 var(--space-4) var(--space-4);
 }
 
 .task-form__fields {
@@ -92,7 +80,7 @@
 }
 
 .task-form__actions .btn,
-.board__head .btn {
+.board .panel__head .btn {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
@@ -102,35 +90,16 @@
   font-weight: 600;
 }
 
-.board {
-  margin-top: var(--space-5);
-}
-
-.board__head {
-  display: flex;
-  flex-wrap: wrap;
+/* 보드 카드 머리: 제목과 새 태스크 버튼을 가운데 맞춤으로 한 줄에 */
+.board .panel__head {
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2) var(--space-3);
-}
-
-.board__title {
-  font-family: var(--font-heading);
-  font-size: var(--text-title);
-  font-weight: 700;
-  letter-spacing: var(--tracking-title);
-  line-height: 1.3;
-}
-
-.board__title:focus-visible {
-  outline-offset: 4px;
 }
 
 .board__columns {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
-  margin-top: var(--space-3);
+  padding: 0 var(--space-4) var(--space-4);
 }
 
 .board__col {
@@ -284,20 +253,13 @@
 }
 
 .plan {
-  margin-top: var(--space-5);
-  padding: var(--space-3);
+  padding: 0 var(--space-4) var(--space-4);
 }
 
-.plan__title {
-  font-family: var(--font-heading);
-  font-size: var(--text-title);
-  font-weight: 700;
-  letter-spacing: var(--tracking-title);
-  line-height: 1.3;
-}
-
-.plan__title:focus-visible {
-  outline-offset: 4px;
+/* 계획 카드는 카드 자체가 좌우 여백을 가지므로 머리·결과 줄의 좌우 여백은 뺀다(제목이 다른 카드와 같은 위치) */
+.plan > .panel__head,
+.plan > .form-message {
+  padding-inline: 0;
 }
 
 .plan__group {
