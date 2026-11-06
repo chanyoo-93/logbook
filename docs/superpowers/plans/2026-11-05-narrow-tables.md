@@ -71,7 +71,7 @@
 - [x] ROADMAP Phase 9 보완 줄을 더하고 체크한다
 - [x] 전체 검증: `ruff check`, `ruff format --check`, `mypy src/logbook/core`, 전체 `pytest`
 - [x] 최종 리뷰 1회(`final-reviewer`) → 지적 반영 (MEDIUM 첫·끝 칸 여백 명시도, LOW 날짜 머리 선·SPEC 문구 반영)
-- [ ] PR(develop) 생성, "logbook QA" 세션에 점검 요청
+- [x] PR(develop) 생성(#40), "logbook QA" 세션에 점검 요청
 
 ## 다음 PR (이 계획 밖)
 
