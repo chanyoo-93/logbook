@@ -1,11 +1,162 @@
 /* 좁은 화면(머리·대시보드), 인쇄, 모션 줄이기: 앞 규칙을 덮어쓰므로 맨 뒤에 둔다 */
 /* 좁은 화면: 한 열 */
 @media (max-width: 719px) {
-  /* 기록 표는 좁은 화면에서 가로로 스크롤한다. 하루 합계를 날짜 옆에 두고, 표가 스크롤돼도(편집 행 포커스 등) 날짜·합계 줄은 왼쪽에 붙여 둔다 */
+  /* 기록 표 두 곳(대시보드 최근 기록, 기록 화면)은 행을 두 줄로 쌓아 가로 스크롤 없이 들어오게 한다(2026-11-05 N1).
+     최근 기록은 1줄 ID·날짜·프로젝트/카테고리·시간, 2줄 메모·태스크.
+     기록 화면은 1줄 ID·프로젝트·시간·⋮, 2줄 카테고리·태스크, 3줄 메모(320px에서 1줄이 넘치지 않게 카테고리를 내리고, 메모는 좁은 칸에 갇히지 않게 왼쪽 끝부터 한 줄을 다 쓴다).
+     표 의미는 템플릿의 role이 지킨다. */
+  .grid--logs,
+  .grid--logs tbody,
+  .grid--logs tfoot {
+    display: block;
+  }
+
+  .grid--logs td,
+  .grid--logs th {
+    display: block;
+    height: auto;
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .grid--recent thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .grid--logs tbody tr,
+  .grid--logs tfoot tr {
+    display: grid;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .grid--logs tbody tr:last-child {
+    border-bottom: 0;
+  }
+
+  .grid--recent tbody tr {
+    display: grid;
+    grid-template-columns: minmax(3ch, auto) auto minmax(0, 1fr) auto;
+    grid-template-areas: "id day mark time" "note note note task";
+  }
+
+  .grid--records tbody tr:not(.log-day__head, .is-editing) {
+    display: grid;
+    grid-template-columns: minmax(3ch, auto) auto minmax(0, 1fr) auto auto;
+    grid-template-areas: "id project project time menu" ". category category task task" "note note note note note";
+  }
+
+  .grid--logs .grid__id {
+    grid-area: id;
+    color: var(--ink-muted);
+  }
+
+  .grid--logs .grid__day {
+    grid-area: day;
+  }
+
+  .grid--logs .grid__mark {
+    grid-area: mark;
+  }
+
+  .grid--logs .grid__project {
+    grid-area: project;
+  }
+
+  .grid--logs .grid__category {
+    grid-area: category;
+  }
+
+  .grid--logs .grid__time {
+    grid-area: time;
+  }
+
+  .grid--logs .grid__menu-cell {
+    grid-area: menu;
+    width: auto;
+    padding: 0;
+  }
+
+  .grid--logs .grid__note {
+    grid-area: note;
+    min-width: 0;
+    padding: 0;
+  }
+
+  .grid--logs .grid__task {
+    grid-area: task;
+    text-align: right;
+  }
+
+  /* 긴 slug는 1줄 안에서 줄바꿈한다(시간은 한 줄) */
+  .grid--logs .grid__mark,
+  .grid--logs .grid__project {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .grid--logs tbody tr.log-day__head,
+  .grid--logs tfoot tr {
+    display: block;
+    padding: 0;
+  }
+
+  /* 칸 머리 선을 지웠으므로 날짜 머리 아래 진한 선은 행이 긋는다 */
+  .grid--logs tbody tr.log-day__head {
+    border-bottom-color: var(--rule-strong);
+  }
+
+  .grid--logs .log-day__head th {
+    padding: var(--space-2) var(--space-4);
+  }
+
+  /* 넓은 화면의 첫·끝 칸 여백(dashboard.css)은 행 안쪽 여백과 겹치므로 뺀다 */
+  .grid--logs tbody td:first-child,
+  .grid--logs tbody td:last-child {
+    padding-inline: 0;
+  }
+
+  .grid--logs tfoot td {
+    padding: var(--space-2) var(--space-4);
+  }
+
+  /* 편집 행: 칸을 두 열로 접는다. ID(날짜 입력)·메모·저장/취소는 한 줄 전체를 쓴다 */
+  .grid--records .is-editing {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grid--records .is-editing .grid__id,
+  .grid--records .is-editing .grid__project,
+  .grid--records .is-editing .grid__category,
+  .grid--records .is-editing .grid__time,
+  .grid--records .is-editing .grid__note,
+  .grid--records .is-editing .grid__task {
+    grid-area: auto;
+  }
+
+  .grid--records .is-editing .grid__id,
+  .grid--records .is-editing .grid__note,
+  .grid--records .is-editing .grid__actions {
+    grid-column: 1 / -1;
+  }
+
+  .grid--records .is-editing input,
+  .grid--records .is-editing select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* 하루 합계는 날짜 옆에 둔다 */
   .log-day__line {
-    position: sticky;
-    left: var(--space-4);
-    width: fit-content;
     justify-content: flex-start;
   }
 
@@ -64,6 +215,11 @@
   .panel {
     break-inside: avoid;
     box-shadow: none;
+  }
+
+  .table-wrap,
+  .sheet__scroll {
+    background: none;
   }
 }
 

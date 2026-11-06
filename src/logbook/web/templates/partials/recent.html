@@ -6,26 +6,26 @@
   </div>
 {% if rows %}
   <div class="table-wrap">
-    <table class="grid grid--logs">
-      <thead>
-        <tr>
-          <th scope="col" class="num">ID</th>
-          <th scope="col">날짜</th>
-          <th scope="col">프로젝트/카테고리</th>
-          <th scope="col" class="num">시간</th>
-          <th scope="col">메모</th>
-          <th scope="col">태스크</th>
+    <table class="grid grid--logs grid--recent" role="table">
+      <thead role="rowgroup">
+        <tr role="row">
+          <th scope="col" role="columnheader" class="num">ID</th>
+          <th scope="col" role="columnheader">날짜</th>
+          <th scope="col" role="columnheader">프로젝트/카테고리</th>
+          <th scope="col" role="columnheader" class="num">시간</th>
+          <th scope="col" role="columnheader">메모</th>
+          <th scope="col" role="columnheader">태스크</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody role="rowgroup">
 {% for row in rows %}
-        <tr id="log-{{ row.id }}">
-          <td class="num">{{ row.id }}</td>
-          <td class="nowrap">{{ row.day }}</td>
-          <td class="nowrap">{{ project_mark(row.project, row.project_color) }} {{ category_pill(row.category) }}</td>
-          <td class="num nowrap">{{ row.duration }}</td>
-          <td class="grid__note">{{ row.note }}</td>
-          <td class="nowrap">{{ row.task }}</td>
+        <tr id="log-{{ row.id }}" role="row">
+          <td class="grid__id num" role="cell">{{ row.id }}</td>
+          <td class="grid__day nowrap" role="cell">{{ row.day }}</td>
+          <td class="grid__mark nowrap" role="cell">{{ project_mark(row.project, row.project_color) }} {{ category_pill(row.category) }}</td>
+          <td class="grid__time num nowrap" role="cell">{{ row.duration }}</td>
+          <td class="grid__note" role="cell">{{ row.note }}</td>
+          <td class="grid__task nowrap" role="cell">{{ row.task }}</td>
         </tr>
 {% endfor %}
       </tbody>
