@@ -87,7 +87,4 @@ def test_task_form_is_not_a_card_inside_the_card() -> None:
 
 @pytest.mark.parametrize("selector", [".board__title", ".plan__title", ".task-page__title"])
 def test_old_title_rules_are_gone(selector: str) -> None:
-    css = _read("tasks.css")
-
-    with pytest.raises(AssertionError):
-        _declarations(css, selector)
+    assert selector not in _read("tasks.css")

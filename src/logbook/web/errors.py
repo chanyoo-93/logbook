@@ -158,7 +158,7 @@ def _current_week(request: Request) -> str | None:
         ctx = get_context(request)
         return week_heading(week_of(ctx.today(), ctx.cfg.week_start))
     except Exception:  # 오류 페이지를 그리는 중이므로 머리 표기 하나 때문에 실패하지 않는다
-        logger.debug("오류 페이지의 이번 주 표기를 계산하지 못했습니다.", exc_info=True)
+        logger.warning("오류 페이지의 이번 주 표기를 계산하지 못했습니다.", exc_info=True)
         return None
 
 
