@@ -270,6 +270,7 @@
   margin: 0;
   font-size: var(--text-base);
   font-weight: 700;
+  text-wrap: balance; /* 긴 slug에서 마지막 줄에 조각만 남지 않게(카드 제목과 같은 방법) */
 }
 
 .plan__items {
