@@ -1,3 +1,4 @@
+{% from "partials/marks.html" import keep_dates %}
 <!doctype html>
 <html lang="ko">
 <head>
@@ -31,7 +32,7 @@
       <a href="/settings"{% if active == "settings" %} aria-current="page"{% endif %}>설정</a>
     </nav>
     {% if current_week is defined %}
-    <p class="masthead__week">이번 주 {{ current_week }}</p>
+    <p class="masthead__week">이번 주 {{ keep_dates(current_week) }}</p>
     {% endif %}
   </div>
 </header>
