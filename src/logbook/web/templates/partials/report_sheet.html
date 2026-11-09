@@ -25,7 +25,8 @@
   <header class="sheet__head">
     <div class="sheet__head-text">
       <h3 id="sheet-title" class="sheet__title">{{ data.title }}</h3>
-      <p id="sheet-meta" class="sheet__meta">{% if data.author %}작성자 {{ data.author }} · {% endif %}{{ data.week_label }} · {{ data.start }} ~ {{ data.end }}</p>
+      {# 주차·기간 조각 안에서는 줄을 바꾸지 않아 줄은 " · " 자리에서 바뀐다(작성자는 길이를 몰라 조각 안에서도 바뀔 수 있음). 복사본 글자는 그대로다. #}
+      <p id="sheet-meta" class="sheet__meta">{% if data.author %}<span class="sheet__meta-part sheet__meta-part--author">작성자 {{ data.author }}</span> · {% endif %}<span class="sheet__meta-part">{{ data.week_label }}</span> · <span class="sheet__meta-part">{{ data.start }} ~ {{ data.end }}</span></p>
     </div>
     <button type="button" class="btn btn--small sheet__copy-all" data-copy-rich="report-sheet" data-copy-done="보고서 전체를 복사했습니다." aria-label="보고서 전체 복사" data-copy-warn-unsaved data-copy-skip>{{ icon_copy() }}전체 복사</button>
   </header>

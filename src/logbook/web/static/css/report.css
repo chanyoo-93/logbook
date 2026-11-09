@@ -331,6 +331,16 @@ a.btn {
   font-size: var(--text-sm);
 }
 
+/* 작성자·주차·기간 조각 안에서는 줄을 바꾸지 않는다(마지막 줄에 날짜 조각만 남지 않게, 2026-11-09 D2) */
+.sheet__meta-part {
+  white-space: nowrap;
+}
+
+/* 작성자는 길이를 모르므로 조각 안에서도 줄을 바꾼다(좁은 폭에서 머리 글 묶음과 제목을 넓히지 않게) */
+.sheet__meta-part--author {
+  white-space: normal;
+}
+
 .sheet__section {
   margin-top: var(--space-6);
 }
