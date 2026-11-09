@@ -82,6 +82,16 @@ def test_narrow_filter_row_puts_selects_side_by_side_under_week_moves() -> None:
 
     row = _declarations(narrow, ".filters")
     assert "display: grid" in row
-    assert "grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr))" in row
+    # 두 열 고정: select가 하나뿐인 태스크도 기록과 같은 폭이다(auto-fit이면 화면마다 폭이 달랐다)
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr))" in row
     assert "grid-column: 1 / -1" in _declarations(narrow, ".filters > .week-nav")
     assert {"width: 100%", "max-width: none"} <= _declarations(narrow, ".filters select")
+
+
+def test_narrow_week_moves_stay_on_one_line() -> None:
+    # 320px에서 `다음 주 ▶`가 둘째 줄로 내려가지 않게 주차 칸이 남는 폭만 쓴다
+    narrow = _media_block(_read("responsive.css"), NARROW_QUERY)
+
+    assert "flex-wrap: nowrap" in _declarations(narrow, ".week-nav")
+    assert {"flex: 0 1 10rem", "min-width: 0"} <= _declarations(narrow, ".week-nav .filters__field")
+    assert "width: 100%" in _declarations(narrow, ".week-nav input")
