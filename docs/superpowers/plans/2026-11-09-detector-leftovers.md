@@ -28,7 +28,8 @@
 | ID | 제안 |
 |---|---|
 | D3 | **계획 패널 프로젝트 소제목은 `text-wrap: balance`.** 카드 제목과 같은 방법이라 따로 묻지 않았다. |
-| D4 | **미리보기 문구:** 제목 `이번 주 공수 38h 20m`, 문서 `결제 승인 오류 수정 · 2026-W46`, 본문 `기록 7건 · 8h 55m`. 고정 문구(실제 데이터 아님). |
+| D4 | **미리보기 문구:** 제목 `이번 주 공수 38h 20m`, 문서 `결제 승인 오류 수정 · 3h`(처음 제안 `… · 2026-W46`은 375px에서 하이픈 뒤로 쪼개져 줄임), 본문 `기록 7건 · 8h 55m`. 고정 문구(실제 데이터 아님). 좁은 폭에서는 미리보기를 글꼴 이름 아래 줄에 둔다(320px 끝 조각 방지). |
+| D5 | **(Task 1·2 중 발견, 2026-11-09 사용자 확정) 제목의 날짜·주차는 하이픈 뒤에서 쪼개지 않는다.** 다음 주 계획 제목이 375px에서 `2026-` / `W47`, 보고서 제목이 320px에서 `(2026-` / `11-09 ~ …`로 나뉜다. 이번 PR에 Task 5로 넣는다. |
 
 ## 설계
 
@@ -40,18 +41,24 @@
 ## Task
 
 ### Task 1: 계획 패널 소제목 균형 (D3)
-- [ ] 테스트(RED): `tests/web/test_card_titles.py`에 `.plan__project` 선언에 `text-wrap: balance`가 있는지.
-- [ ] 구현 → GREEN, 전후 스크린샷(태스크 320·375px, 긴 프로젝트 이름) → 승인 → 커밋 `fix: 다음 주 계획 프로젝트 소제목 줄을 고르게 나눈다`
+- [x] 테스트(RED): `tests/web/test_card_titles.py`에 `.plan__project` 선언에 `text-wrap: balance`가 있는지.
+- [x] 구현 → GREEN, 전후 스크린샷(태스크 320·375px, 긴 프로젝트 이름) → 승인 → 커밋 `fix: 다음 주 계획 프로젝트 소제목 줄을 고르게 나눈다`
 
 ### Task 2: 보고서 메타 줄 조각 줄바꿈 (D2)
-- [ ] 테스트(RED): `tests/web/test_report_sheet.py`에 `#sheet-meta` 안에 `sheet__meta-part` 조각(작성자 있으면 셋, 없으면 둘), 메타 줄 전체 텍스트는 지금과 같음, `report.css`의 `.sheet__meta-part`에 `white-space: nowrap`.
-- [ ] 구현 → GREEN, 전후 스크린샷(보고서 320·375px, 작성자 있음) → 승인 → 커밋 `fix: 보고서 메타 줄은 조각 사이에서만 줄을 바꾼다`
+- [x] 테스트(RED): `tests/web/test_report_sheet.py`에 `#sheet-meta` 안에 `sheet__meta-part` 조각(작성자 있으면 셋, 없으면 둘), 메타 줄 전체 텍스트는 지금과 같음, `report.css`의 `.sheet__meta-part`에 `white-space: nowrap`.
+- [x] 구현 → GREEN, 전후 스크린샷(보고서 320·375px, 작성자 있음) → 승인 → 커밋 `fix: 보고서 메타 줄은 조각 사이에서만 줄을 바꾼다`
 
 ### Task 3: 글꼴 미리보기 쓰임별 문구 (D1·D4)
-- [ ] 테스트(RED): `tests/web/test_settings_page.py`의 미리보기 문구 기대값을 세 줄 각각의 문구로 바꾸고, 세 문구가 서로 다름을 확인.
-- [ ] 구현 → GREEN, 전후 스크린샷(설정 1280·375px) → 승인 → 커밋 `fix: 설정 글꼴 미리보기를 글꼴별 쓰임 문구로 바꾼다`
+- [x] 테스트(RED): `tests/web/test_settings_page.py`의 미리보기 문구 기대값을 세 줄 각각의 문구로 바꾸고, 세 문구가 서로 다름을 확인.
+- [x] 구현 → GREEN, 전후 스크린샷(설정 1280·375px) → 승인 → 커밋 `fix: 설정 글꼴 미리보기를 글꼴별 쓰임 문구로 바꾼다`
+
+### Task 5: 제목의 날짜·주차 쪼개짐 막기 (D5)
+- 설계: `templating.py`에 필터 `date_parts(text)`(글을 `(글, 날짜인가)` 조각 목록으로 나눔, 날짜·주차는 `2026-W47`·`2026-11-09`·`11-16`과 붙은 괄호까지). 템플릿은 `|safe`·`Markup()`을 쓰지 않으므로 공용 매크로 `keep_dates(text)`(`partials/marks.html`)가 날짜 조각만 `<span class="date-chunk">`로 감싸 자동 이스케이프로 그린다. `.date-chunk { white-space: nowrap; }`. 줄은 날짜 사이 공백(`~` 앞뒤)에서만 바뀐다.
+- 적용: 기록 표 제목, 다음 주 계획 제목, 보고서 제목(`#report-heading`), 보고서 표 보기 제목(`#sheet-title`, 사용자 `title_format`도 같은 필터), 머리 `이번 주 …`, 대시보드 요약 머리 줄. 글자는 그대로라 복사·화면 읽기는 같다.
+- [x] 테스트(RED): `date_parts` 단위 테스트(주차, 날짜, 괄호, 날짜 없는 글, 이스케이프할 글자), 화면 제목마다 `date-chunk` 조각과 전체 글자가 그대로인지, CSS `white-space: nowrap`
+- [x] 구현 → GREEN, 전후 스크린샷(태스크·보고서·기록·대시보드 320·375px) → 승인 → 커밋 `fix: 제목의 날짜·주차는 하이픈 뒤에서 줄을 바꾸지 않는다`
 
 ### Task 4: 문서·검증·리뷰·PR
-- [ ] SPEC(설정 화면 글꼴 줄 문장, 보고서 표 보기 메타 줄), ROADMAP 보완 항목 한 줄
-- [ ] 전체 pytest·ruff·mypy(core), 대비 검사로 세 지적이 사라졌는지 확인
+- [x] SPEC(설정 화면 글꼴 줄 문장, 보고서 표 보기 메타 줄), ROADMAP 보완 항목 한 줄
+- [x] 전체 pytest·ruff·mypy(core), 대비 검사로 세 지적이 사라졌는지 확인(develop 기준선은 설정 반복 문구·375px 계획 소제목을 잡고, 브랜치는 0건. 메타 줄 straggler는 확인용 데이터로는 develop에서도 안 잡힘)
 - [ ] `final-reviewer` 1회 → 반영 → PR(develop) → "logbook QA" 세션 점검 요청
