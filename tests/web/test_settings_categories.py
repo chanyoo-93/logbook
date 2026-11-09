@@ -25,6 +25,7 @@ from tests.web.helpers import (
     inline_code_violations,
     parse_html,
 )
+from tests.web.test_css_layout import NARROW_QUERY, _declarations, _media_block, _read
 from tests.web.test_dashboard import W40_THURSDAY
 
 HTMX = {"HX-Request": "true"}
@@ -301,3 +302,36 @@ def test_result_slot_is_always_present(client: TestClient, web_engine: Engine) -
     assert empty.attrs["role"] == "status"
     assert empty.text == ""
     assert saved.text == CATEGORY_SAVED.format(key="dev")
+
+
+def test_result_line_sits_in_the_card_head(client: TestClient) -> None:
+    # 2026-11-05 결정 F3: 비어 있는 결과 줄이 제목과 표 사이에 한 줄을 차지하지 않게
+    # 머리 줄 안에 둔다
+    html = client.get("/settings").text
+    elements = parse_html(html)
+    result = next(e for e in elements if e.attrs.get("id") == "category-result")
+    head = next(
+        e
+        for e in reversed(elements[: elements.index(result)])
+        if e.tag == "div" and "panel__head" in str(e.attrs.get("class"))
+    )
+    title = next(e for e in elements if e.attrs.get("id") == "category-section-title")
+
+    assert elements.index(head) < elements.index(title) < elements.index(result)
+    assert "form-message--slot" not in str(result.attrs.get("class"))
+    assert result.attrs["role"] == "status"
+
+
+def test_result_line_in_a_card_head_keeps_its_own_width() -> None:
+    declarations = _declarations(_read("dashboard.css"), ".panel__head .form-message")
+
+    assert {"width: auto", "margin: 0"} <= declarations
+
+
+def test_narrow_card_head_keeps_a_line_for_the_result() -> None:
+    # 좁은 폭에서는 결과 문구가 제목 옆에 들어가지 않아 둘째 줄로 내려간다.
+    # 처음 저장할 때 표가 밀리지 않게 그 줄 자리를 늘 둔다(넓은 폭은 제목 옆이라 자리가 필요 없다).
+    narrow = _media_block(_read("responsive.css"), NARROW_QUERY)
+
+    assert "flex-basis: 100%" in _declarations(narrow, ".panel__head .form-message")
+    assert r'content: "\00a0"' in _declarations(narrow, ".panel__head .form-message:empty::before")

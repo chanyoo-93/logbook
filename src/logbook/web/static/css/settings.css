@@ -113,11 +113,6 @@
   font-size: var(--text-xs);
 }
 
-/* 카테고리 색 결과 줄: 비어 있어도 글이 있을 때와 같은 한 줄 높이를 차지한다(공백 한 칸) */
-.form-message--slot:empty::before {
-  content: "\00a0";
-}
-
 /* slug 규칙 안내: 폼 아래 한 줄 */
 .project-form__hint {
   flex-basis: 100%;

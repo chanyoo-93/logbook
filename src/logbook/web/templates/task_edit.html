@@ -1,8 +1,10 @@
 {% extends "base.html" %}
 {% block title %}태스크 #{{ form.task_id }} 수정{% endblock %}
 {% block content %}
-<section class="task-page" aria-labelledby="task-page-title">
-  <h2 id="task-page-title" class="task-page__title">태스크 #{{ form.task_id }} 수정</h2>
+<section class="panel task-page" aria-labelledby="task-page-title">
+  <div class="panel__head">
+    <h2 id="task-page-title" class="panel__title">태스크 #{{ form.task_id }} 수정</h2>
+  </div>
 {% include "partials/task_form.html" %}
 </section>
 {% endblock %}

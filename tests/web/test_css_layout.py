@@ -62,7 +62,7 @@ TASK_CONTROLS = ".task-form input, .task-form select, .task-form textarea"
         ("logs.css", ".week-nav", "flex-wrap: wrap"),
         ("dashboard.css", ".charts", "grid-template-columns: minmax(0, 2fr) minmax(0, 1fr)"),
         ("dashboard.css", ".chart", "min-width: 0"),
-        ("tasks.css", ".plan", "padding: var(--space-3)"),
+        ("tasks.css", ".plan", "padding: 0 var(--space-4) var(--space-4)"),
         ("tasks.css", TASK_CONTROLS, "min-height: 2.25rem"),
         (
             "tasks.css",
@@ -149,7 +149,6 @@ HEAVY_TOP_RULE = "border-top: 2px solid var(--ink)"
     ("file_name", "selector"),
     [
         ("dashboard.css", ".panel"),
-        ("tasks.css", ".task-form"),
     ],
 )
 def test_surfaces_use_soft_shadow_instead_of_heavy_top_rule(file_name: str, selector: str) -> None:
@@ -207,10 +206,7 @@ def test_title_step_is_twenty_pixels() -> None:
     ("file", "selector"),
     [
         ("dashboard.css", ".panel__title"),
-        ("tasks.css", ".board__title"),
-        ("tasks.css", ".plan__title"),
-        ("tasks.css", ".task-page__title"),
-        ("report.css", ".report__title, .report-notes__title"),
+        ("report.css", ".report-notes__title"),
     ],
 )
 def test_section_titles_use_title_step(file: str, selector: str) -> None:
@@ -317,7 +313,6 @@ def test_old_single_radius_token_is_gone() -> None:
         ("components.css", ".btn", "var(--radius-sm)"),
         ("tasks.css", ".task-card", "var(--radius-sm)"),
         ("dashboard.css", ".panel", "var(--radius-md)"),
-        ("tasks.css", ".task-form", "var(--radius-md)"),
         ("tasks.css", ".board__col-head", "var(--radius-md)"),
         ("app.css", ".config-notice", "var(--radius-md)"),
         ("report.css", ".report__preview", "var(--radius-md)"),
@@ -381,10 +376,8 @@ def test_button_press_effect_and_transition() -> None:
 _HEADING_SELECTORS = [
     ("app.css", ".masthead__brand", "letter-spacing: var(--tracking-display)"),
     ("dashboard.css", ".panel__title", "letter-spacing: var(--tracking-title)"),
-    ("tasks.css", ".board__title", "letter-spacing: var(--tracking-title)"),
     ("tasks.css", ".board__col-title", "letter-spacing: var(--tracking-title)"),
-    ("tasks.css", ".plan__title", "letter-spacing: var(--tracking-title)"),
-    ("report.css", ".report__title, .report-notes__title", "letter-spacing: var(--tracking-title)"),
+    ("report.css", ".report-notes__title", "letter-spacing: var(--tracking-title)"),
     ("dashboard.css", ".stat__value", "letter-spacing: var(--tracking-display)"),
 ]
 

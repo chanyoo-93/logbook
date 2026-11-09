@@ -54,6 +54,12 @@
   font-weight: 400;
 }
 
+/* 긴 프로젝트 이름(32자 slug + 이름)이 필터 줄을 늘리지 않게 한다. 넘는 이름은 줄임표 */
+.filters select {
+  max-width: 16rem;
+  text-overflow: ellipsis;
+}
+
 .filters input:focus-visible,
 .filters select:focus-visible,
 .grid .is-editing input:focus-visible,

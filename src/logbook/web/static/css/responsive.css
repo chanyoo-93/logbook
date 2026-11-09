@@ -155,6 +155,50 @@
     min-width: 0;
   }
 
+  /* 필터 줄(2026-11-05 F1): 주 이동은 한 줄 전체, 그 아래 select들은 두 열로 나란히(페이지 가로 넘침 0).
+     두 열 고정이라 select가 하나뿐인 태스크도 기록과 같은 폭이다 */
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters > .week-nav {
+    grid-column: 1 / -1;
+  }
+
+  /* 주 이동은 한 줄: 링크 둘은 글 폭, 주차 칸은 10rem에서 남는 폭까지 줄어든다(320px에서 다음 주가 아랫줄로 내려가지 않게) */
+  .week-nav {
+    flex-wrap: nowrap;
+  }
+
+  .week-nav .filters__field {
+    flex: 0 1 10rem;
+    min-width: 0;
+  }
+
+  .week-nav input {
+    width: 100%;
+  }
+
+  .filters > .filters__field {
+    min-width: 0;
+  }
+
+  .filters select {
+    width: 100%;
+    max-width: none;
+  }
+
+  /* 머리 줄 안 결과 줄(설정 카테고리 색): 좁은 폭에서는 제목 옆에 들어가지 않으므로 아랫줄 자리를 늘 둔다.
+     처음 저장할 때 표가 밀려 다음 클릭이 옆 행에 들어가지 않게 한다 */
+  .panel__head .form-message {
+    flex-basis: 100%;
+  }
+
+  .panel__head .form-message:empty::before {
+    content: "\00a0";
+  }
+
   /* 하루 합계는 날짜 옆에 둔다 */
   .log-day__line {
     justify-content: flex-start;

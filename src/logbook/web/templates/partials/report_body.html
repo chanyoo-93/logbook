@@ -1,7 +1,7 @@
 {% from "partials/icons.html" import icon_copy, icon_download %}
 <section id="report-body" class="panel report" aria-labelledby="report-heading">
   <div class="panel__head">
-    <h2 id="report-heading" class="report__title">{{ body.heading }}</h2>
+    <h2 id="report-heading" class="panel__title">{{ body.heading }}</h2>
 {% if not body.preview_error %}
     <div class="report__actions">
       <a class="btn btn--small report__download" href="{{ body.download_url }}" download aria-label="Markdown 내려받기">{{ icon_download() }}내려받기</a>

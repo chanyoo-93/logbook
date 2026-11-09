@@ -1,8 +1,8 @@
 {# 빈 열 안내(2026-10-29 G2): 할 일 열은 새 태스크 링크, 나머지는 끌어 오라는 안내 #}
 {% set DROP_HINTS = {"doing": "진행할 태스크를 여기로 끌어 오면 진행 중이 됩니다.", "done": "완료한 태스크를 여기로 끌어 오세요.", "dropped": "중단할 태스크를 여기로 끌어 오세요."} %}
-<section id="task-board" class="board" aria-labelledby="task-board-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
-  <div class="board__head">
-    <h2 id="task-board-title" class="board__title" tabindex="-1" data-focus>태스크 보드</h2>
+<section id="task-board" class="panel board" aria-labelledby="task-board-title"{% if oob|default(false) %} hx-swap-oob="true"{% endif %}>
+  <div class="panel__head">
+    <h2 id="task-board-title" class="panel__title" tabindex="-1" data-focus>태스크 보드</h2>
     <a class="btn btn--primary" href="/tasks/new{% if board.project %}?project={{ board.project|urlencode }}{% endif %}">새 태스크</a>
   </div>
 {% if board.message %}
