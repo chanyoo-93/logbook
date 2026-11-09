@@ -199,6 +199,12 @@
     content: "\00a0";
   }
 
+  /* 설정 글꼴 미리보기는 글꼴 이름 아래 줄을 쓴다(320px에서 끝 조각만 다음 줄로 넘어가지 않게, 2026-11-09 D1) */
+  .font-preview {
+    display: block;
+    margin-left: 0;
+  }
+
   /* 하루 합계는 날짜 옆에 둔다 */
   .log-day__line {
     justify-content: flex-start;

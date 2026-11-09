@@ -23,6 +23,7 @@ from tests.web.helpers import (
     inline_code_violations,
     parse_html,
 )
+from tests.web.test_css_layout import NARROW_QUERY, _declarations, _media_block, _read
 
 
 def _row_ids(html: str) -> list[str]:
@@ -221,8 +222,16 @@ def test_settings_info_shows_font_rows_with_previews(client: TestClient) -> None
     assert FONT_NOTE in html
     for cls in ("font-preview--heading", "font-preview--document", "font-preview--body"):
         assert len(by_class(html, cls)) == 1
-    body_row = by_class(html, "font-preview--body")[0]
-    assert body_row.text == "가나다 ABC 123 · 8h 55m"
+    # 미리보기는 글꼴마다 쓰이는 곳의 문구다(2026-11-09 D1·D4). 셋 다 한글·영문·숫자를 담는다
+    previews = {
+        cls: by_class(html, f"font-preview--{cls}")[0].text
+        for cls in ("heading", "document", "body")
+    }
+    assert previews == {
+        "heading": "이번 주 공수 38h 20m",
+        "document": "결제 승인 오류 수정 · 3h",
+        "body": "기록 7건 · 8h 55m",
+    }
 
 
 def test_settings_info_shows_default_font_label_for_empty_body_font(client: TestClient) -> None:
@@ -311,3 +320,11 @@ def test_slug_field_has_rule_hint_and_unused_example(client: TestClient) -> None
         "CLI에서 이 이름으로 씁니다."
     )
     assert by_id(html, "project-name").attrs["placeholder"] == "정산 서버"
+
+
+def test_narrow_font_previews_get_their_own_line() -> None:
+    """좁은 폭에서는 미리보기가 글꼴 이름 아래 줄을 쓴다(320px에서 끝 조각만 넘어가지 않게)."""
+
+    narrow = _declarations(_media_block(_read("responsive.css"), NARROW_QUERY), ".font-preview")
+    assert "display: block" in narrow
+    assert "margin-left: 0" in narrow
