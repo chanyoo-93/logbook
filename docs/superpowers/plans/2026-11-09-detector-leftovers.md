@@ -34,7 +34,7 @@
 ## 설계
 
 - **D3:** `tasks.css`의 `.plan__project`에 `text-wrap: balance`. 지원하지 않는 브라우저는 지금과 같다.
-- **D2:** `report_sheet.html`의 `#sheet-meta` 안을 `<span class="sheet__meta-part">작성자 …</span> · <span …>주차</span> · <span …>시작 ~ 끝</span>`로 감싼다. `report.css`에 `.sheet__meta-part { white-space: nowrap; }`. 조각 하나가 줄보다 길 일은 없다(가장 긴 기간 조각 약 23자, 320px 줄 폭에 들어감, 작성자 이름이 아주 길면 그 조각만 넘칠 수 있어 작성자 조각은 nowrap에서 뺄지 구현 때 320px로 확인).
+- **D2:** `report_sheet.html`의 `#sheet-meta` 안을 `<span class="sheet__meta-part">작성자 …</span> · <span …>주차</span> · <span …>시작 ~ 끝</span>`로 감싼다. `report.css`에 `.sheet__meta-part { white-space: nowrap; }`. 주차·기간 조각은 줄보다 길 일이 없다(가장 긴 기간 조각 약 23자). 작성자는 길이를 모르므로 `sheet__meta-part--author` 수식어로 조각 안 줄바꿈을 허용했다(구현 때 320px에서 아주 긴 작성자가 넘쳐 제목까지 밀어내는 것을 확인).
   - 복사: `report.js`는 `<p>`를 `textContent` 한 줄로 가져가므로 복사본 글자는 그대로다(테스트로 확인: 메타 줄 텍스트가 지금과 같음).
 - **D1·D4:** `FontRowView`에 `preview: str`을 더하고 `info_view`가 세 문구를 넣는다. `settings.html`은 `{{ font.preview }}`를 쓴다. SPEC의 설정 화면 글꼴 줄 문장도 고친다.
 
@@ -61,4 +61,4 @@
 ### Task 4: 문서·검증·리뷰·PR
 - [x] SPEC(설정 화면 글꼴 줄 문장, 보고서 표 보기 메타 줄), ROADMAP 보완 항목 한 줄
 - [x] 전체 pytest·ruff·mypy(core), 대비 검사로 세 지적이 사라졌는지 확인(develop 기준선은 설정 반복 문구·375px 계획 소제목을 잡고, 브랜치는 0건. 메타 줄 straggler는 확인용 데이터로는 develop에서도 안 잡힘)
-- [ ] `final-reviewer` 1회 → 반영 → PR(develop) → "logbook QA" 세션 점검 요청
+- [x] `final-reviewer` 1회(병합 가능, MEDIUM 1·LOW 4) → 반영(제목 테스트는 렌더 결과 비교로, 날짜 정규식에 숫자·하이픈 경계, 작성자 테스트 도우미, 계획서 문구. 복사 HTML의 class는 그대로) → PR(develop) → "logbook QA" 세션 점검 요청

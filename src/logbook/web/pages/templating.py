@@ -31,8 +31,11 @@ def category_class(key: object) -> str:
 
 
 # 제목 속 주차·날짜(2026-W47, 2026-11-09, 11-16)와 붙은 괄호.
-# 하이픈 뒤에서 줄이 바뀌지 않게 한 조각으로 둔다
-_DATE_CHUNK = re.compile(r"\(?(?:\d{4}-W\d{2}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2})\)?")
+# 하이픈 뒤에서 줄이 바뀌지 않게 한 조각으로 둔다. 더 긴 숫자열(100-20-30 등) 한가운데는
+# 날짜로 보지 않도록 앞뒤가 숫자·하이픈이 아니어야 한다(ASCII 숫자만)
+_DATE_CHUNK = re.compile(
+    r"\(?(?<![\d-])(?:\d{4}-W\d{2}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2})(?![\d-])\)?", re.ASCII
+)
 
 
 def date_parts(text: str) -> list[tuple[str, bool]]:

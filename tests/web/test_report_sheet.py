@@ -115,13 +115,17 @@ def _meta_parts(html: str) -> list[str]:
     return [e.text for e in by_class(html, "sheet__meta-part")]
 
 
+def _report_with_author(web_ctx: WebContext, author: str) -> str:
+    """설정 작성자를 author로 바꾼 앱에서 2026-W40 보고서 화면 HTML."""
+    report = dataclasses.replace(web_ctx.cfg.report, author=author)
+    ctx = dataclasses.replace(web_ctx, cfg=dataclasses.replace(web_ctx.cfg, report=report))
+    with TestClient(create_app(ctx), base_url=LOCAL_BASE_URL) as client:
+        return client.get("/report?week=2026-W40").text
+
+
 def test_sheet_meta_breaks_only_between_parts(web_ctx: WebContext) -> None:
     """메타 줄은 작성자·주차·기간 조각 사이(` · `)에서만 줄이 바뀐다(D2). 글자는 그대로."""
-    report = dataclasses.replace(web_ctx.cfg.report, author="김개발")
-    ctx = dataclasses.replace(web_ctx, cfg=dataclasses.replace(web_ctx.cfg, report=report))
-
-    with TestClient(create_app(ctx), base_url=LOCAL_BASE_URL) as client:
-        html = client.get("/report?week=2026-W40").text
+    html = _report_with_author(web_ctx, "김개발")
 
     assert _meta_parts(html) == ["작성자 김개발", "2026-W40", "2026-09-28 ~ 2026-10-04"]
     assert by_id(html, "sheet-meta").text == "작성자 김개발 · 2026-W40 · 2026-09-28 ~ 2026-10-04"
@@ -138,13 +142,9 @@ def test_sheet_meta_parts_do_not_wrap_inside() -> None:
     assert "white-space: nowrap" in _declarations(_read("report.css"), ".sheet__meta-part")
 
 
-def test_long_author_part_may_wrap(web_ctx: WebContext) -> None:
+def test_author_part_may_wrap_inside(web_ctx: WebContext) -> None:
     """작성자는 길이를 모르므로 조각 안에서도 줄이 바뀐다(좁은 폭에서 제목을 밀어내지 않게)."""
-    report = dataclasses.replace(web_ctx.cfg.report, author="김개발")
-    ctx = dataclasses.replace(web_ctx, cfg=dataclasses.replace(web_ctx.cfg, report=report))
-
-    with TestClient(create_app(ctx), base_url=LOCAL_BASE_URL) as client:
-        html = client.get("/report?week=2026-W40").text
+    html = _report_with_author(web_ctx, "김개발")
 
     assert [e.text for e in by_class(html, "sheet__meta-part--author")] == ["작성자 김개발"]
     css = _declarations(_read("report.css"), ".sheet__meta-part--author")
