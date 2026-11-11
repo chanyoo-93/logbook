@@ -12,3 +12,7 @@
 {%- set cat = key|category_class -%}
 <span class="pill{% if cat %} {{ cat }}{% endif %}{% if extra %} {{ extra }}{% endif %}">{{ key }}</span>
 {%- endmacro %}
+{# 제목 글: 주차·날짜 조각을 줄바꿈 없는 span으로 감싸 하이픈 뒤에서 쪼개지지 않게 한다. 글자는 그대로 자동 이스케이프된다. #}
+{% macro keep_dates(text) -%}
+{% for part, is_date in text|date_parts %}{% if is_date %}<span class="date-chunk">{{ part }}</span>{% else %}{{ part }}{% endif %}{% endfor %}
+{%- endmacro %}

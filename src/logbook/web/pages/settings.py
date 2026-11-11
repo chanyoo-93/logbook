@@ -153,11 +153,19 @@ class CategorySectionView:
     message: str = ""
 
 
+# 설정 정보 글꼴 줄 미리보기: 글꼴마다 실제로 쓰이는 곳의 문구(2026-11-09 D1·D4).
+# 제목 글꼴은 큰 숫자, 문서 글꼴은 보고서 줄, 본문 글꼴은 기록 요약에 쓰인다.
+HEADING_PREVIEW = "이번 주 공수 38h 20m"
+DOCUMENT_PREVIEW = "결제 승인 오류 수정 · 3h"
+BODY_PREVIEW = "기록 7건 · 8h 55m"
+
+
 @dataclass(frozen=True)
 class FontRowView:
     label: str
     name: str  # 설정 값. 비어 있으면 '기본 글꼴'
     preview_class: str
+    preview: str  # 그 글꼴이 쓰이는 곳의 고정 문구(한글·영문·숫자를 담는다)
 
 
 @dataclass(frozen=True)
@@ -244,12 +252,23 @@ def info_view(ctx: WebContext, s: Session) -> SettingsInfoView:
         daily_target=format_duration(cfg.daily_target_minutes),
         fonts=(
             FontRowView(
-                "제목 글꼴", cfg.web.heading_font or DEFAULT_FONT_LABEL, "font-preview--heading"
+                "제목 글꼴",
+                cfg.web.heading_font or DEFAULT_FONT_LABEL,
+                "font-preview--heading",
+                HEADING_PREVIEW,
             ),
             FontRowView(
-                "문서 글꼴", cfg.web.document_font or DEFAULT_FONT_LABEL, "font-preview--document"
+                "문서 글꼴",
+                cfg.web.document_font or DEFAULT_FONT_LABEL,
+                "font-preview--document",
+                DOCUMENT_PREVIEW,
             ),
-            FontRowView("본문 글꼴", cfg.web.body_font or DEFAULT_FONT_LABEL, "font-preview--body"),
+            FontRowView(
+                "본문 글꼴",
+                cfg.web.body_font or DEFAULT_FONT_LABEL,
+                "font-preview--body",
+                BODY_PREVIEW,
+            ),
         ),
     )
 

@@ -5,6 +5,7 @@ Starlette 기본 환경의 select_autoescape()는 `.j2`를 이스케이프하지
 템플릿에서 `|safe`와 `Markup()`을 쓰지 않는다.
 """
 
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -29,6 +30,28 @@ def category_class(key: object) -> str:
     return ""
 
 
+# 제목 속 주차·날짜(2026-W47, 2026-11-09, 11-16)와 붙은 괄호.
+# 하이픈 뒤에서 줄이 바뀌지 않게 한 조각으로 둔다. 더 긴 숫자열(100-20-30 등) 한가운데는
+# 날짜로 보지 않도록 앞뒤가 숫자·하이픈이 아니어야 한다(ASCII 숫자만)
+_DATE_CHUNK = re.compile(
+    r"\(?(?<![\d-])(?:\d{4}-W\d{2}|\d{4}-\d{2}-\d{2}|\d{2}-\d{2})(?![\d-])\)?", re.ASCII
+)
+
+
+def date_parts(text: str) -> list[tuple[str, bool]]:
+    """글을 (조각, 날짜인가) 목록으로 나눈다. 조각을 이으면 원래 글이다(2026-11-09 결정 D5)."""
+    parts: list[tuple[str, bool]] = []
+    end = 0
+    for match in _DATE_CHUNK.finditer(text):
+        if match.start() > end:
+            parts.append((text[end : match.start()], False))
+        parts.append((match.group(), True))
+        end = match.end()
+    if end < len(text):
+        parts.append((text[end:], False))
+    return parts
+
+
 def _environment() -> jinja2.Environment:
     env = jinja2.Environment(
         loader=jinja2.PackageLoader("logbook.web", "templates"),
@@ -43,6 +66,7 @@ def _environment() -> jinja2.Environment:
     env.globals["COLORS_CSS_URL"] = COLORS_CSS_URL
     env.filters["category_class"] = category_class  # 형식이 맞는 카테고리 키만 꼬리표 색 class
     env.filters["duration"] = format_duration  # 분 -> '1h 30m' (CLI와 같은 표기)
+    env.filters["date_parts"] = date_parts  # 제목 속 날짜 조각(marks.html의 keep_dates가 쓴다)
     return env
 
 

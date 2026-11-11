@@ -1,5 +1,6 @@
 """보고서 표 보기(#report-sheet)와 원문 탭 테스트 (오늘 = 2026-10-01, W40)."""
 
+import dataclasses
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -7,9 +8,13 @@ from sqlalchemy import Engine
 
 from logbook.core.report import TEMPLATE_NAME
 from logbook.core.weeks import Week
+from logbook.web.app import create_app
+from logbook.web.context import WebContext
 from logbook.web.pages.report import category_totals
 from tests.helpers import FIXED_NOW, FakeCollect
+from tests.web.conftest import LOCAL_BASE_URL
 from tests.web.helpers import add_log, add_project, add_task, by_class, by_id, parse_html
+from tests.web.test_css_layout import _declarations, _read
 
 W40 = Week(2026, 40)
 W41 = Week(2026, 41)
@@ -104,6 +109,46 @@ def test_sheet_head_and_sections(client: TestClient, web_engine: Engine) -> None
     ]
     assert "2026-W40" in by_id(html, "sheet-meta").text
     assert "2026-09-28 ~ 2026-10-04" in by_id(html, "sheet-meta").text
+
+
+def _meta_parts(html: str) -> list[str]:
+    return [e.text for e in by_class(html, "sheet__meta-part")]
+
+
+def _report_with_author(web_ctx: WebContext, author: str) -> str:
+    """설정 작성자를 author로 바꾼 앱에서 2026-W40 보고서 화면 HTML."""
+    report = dataclasses.replace(web_ctx.cfg.report, author=author)
+    ctx = dataclasses.replace(web_ctx, cfg=dataclasses.replace(web_ctx.cfg, report=report))
+    with TestClient(create_app(ctx), base_url=LOCAL_BASE_URL) as client:
+        return client.get("/report?week=2026-W40").text
+
+
+def test_sheet_meta_breaks_only_between_parts(web_ctx: WebContext) -> None:
+    """메타 줄은 작성자·주차·기간 조각 사이(` · `)에서만 줄이 바뀐다(D2). 글자는 그대로."""
+    html = _report_with_author(web_ctx, "김개발")
+
+    assert _meta_parts(html) == ["작성자 김개발", "2026-W40", "2026-09-28 ~ 2026-10-04"]
+    assert by_id(html, "sheet-meta").text == "작성자 김개발 · 2026-W40 · 2026-09-28 ~ 2026-10-04"
+
+
+def test_sheet_meta_without_author_has_two_parts(client: TestClient) -> None:
+    html = client.get("/report?week=2026-W40").text
+
+    assert _meta_parts(html) == ["2026-W40", "2026-09-28 ~ 2026-10-04"]
+    assert by_id(html, "sheet-meta").text == "2026-W40 · 2026-09-28 ~ 2026-10-04"
+
+
+def test_sheet_meta_parts_do_not_wrap_inside() -> None:
+    assert "white-space: nowrap" in _declarations(_read("report.css"), ".sheet__meta-part")
+
+
+def test_author_part_may_wrap_inside(web_ctx: WebContext) -> None:
+    """작성자는 길이를 모르므로 조각 안에서도 줄이 바뀐다(좁은 폭에서 제목을 밀어내지 않게)."""
+    html = _report_with_author(web_ctx, "김개발")
+
+    assert [e.text for e in by_class(html, "sheet__meta-part--author")] == ["작성자 김개발"]
+    css = _declarations(_read("report.css"), ".sheet__meta-part--author")
+    assert "white-space: normal" in css
 
 
 def test_hours_table_has_category_columns_rows_and_totals(

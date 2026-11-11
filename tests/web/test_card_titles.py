@@ -88,3 +88,7 @@ def test_task_form_is_not_a_card_inside_the_card() -> None:
 @pytest.mark.parametrize("selector", [".board__title", ".plan__title", ".task-page__title"])
 def test_old_title_rules_are_gone(selector: str) -> None:
     assert selector not in _read("tasks.css")
+
+
+def test_plan_project_headings_balance_their_lines() -> None:
+    assert "text-wrap: balance" in _declarations(_read("tasks.css"), ".plan__project")
