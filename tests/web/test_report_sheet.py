@@ -142,13 +142,29 @@ def test_sheet_meta_parts_do_not_wrap_inside() -> None:
     assert "white-space: nowrap" in _declarations(_read("report.css"), ".sheet__meta-part")
 
 
-def test_author_part_may_wrap_inside(web_ctx: WebContext) -> None:
-    """작성자는 길이를 모르므로 조각 안에서도 줄이 바뀐다(좁은 폭에서 제목을 밀어내지 않게)."""
-    html = _report_with_author(web_ctx, "김개발")
+LONG_AUTHOR = "AlexanderMaximilianJonathanChristopherSmithJohnson"
 
-    assert [e.text for e in by_class(html, "sheet__meta-part--author")] == ["작성자 김개발"]
-    css = _declarations(_read("report.css"), ".sheet__meta-part--author")
-    assert "white-space: normal" in css
+
+def test_long_author_part_is_truncated_with_ellipsis(web_ctx: WebContext) -> None:
+    """작성자는 한 줄이고 칸보다 길면 화면에서만 `…`로 자른다(L1). 글자는 이름 전체 그대로."""
+    html = _report_with_author(web_ctx, LONG_AUTHOR)
+
+    assert [e.text for e in by_class(html, "sheet__meta-part--author")] == [f"작성자 {LONG_AUTHOR}"]
+    css = _read("report.css")
+    # 작성자 조각은 두 class를 함께 가진다(.sheet__meta-part의 nowrap을 물려받음)
+    author = _declarations(css, ".sheet__meta-part") | _declarations(
+        css, ".sheet__meta-part--author"
+    )
+    for rule in (
+        "display: inline-block",  # 인라인 요소에는 말줄임이 걸리지 않는다
+        "max-width: 100%",
+        "overflow: hidden",
+        "text-overflow: ellipsis",
+        "white-space: nowrap",
+    ):
+        assert rule in author
+    # flex 항목인 머리 글 묶음이 이름 폭만큼 넓어지지 않게
+    assert "min-width: 0" in _declarations(css, ".sheet__head-text")
 
 
 def test_hours_table_has_category_columns_rows_and_totals(
