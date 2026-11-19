@@ -149,20 +149,23 @@ def test_long_author_part_is_truncated_with_ellipsis(web_ctx: WebContext) -> Non
     """작성자는 한 줄이고 칸보다 길면 화면에서만 `…`로 자른다(L1). 글자는 이름 전체 그대로."""
     html = _report_with_author(web_ctx, LONG_AUTHOR)
 
-    assert [e.text for e in by_class(html, "sheet__meta-part--author")] == [f"작성자 {LONG_AUTHOR}"]
+    (part,) = by_class(html, "sheet__meta-part--author")
+    assert part.text == f"작성자 {LONG_AUTHOR}"
+    # 공용 class의 nowrap을 물려받는다
+    classes = set(str(part.attrs.get("class") or "").split())
+    assert {"sheet__meta-part", "sheet__meta-part--author"} <= classes
     css = _read("report.css")
-    # 작성자 조각은 두 class를 함께 가진다(.sheet__meta-part의 nowrap을 물려받음)
-    author = _declarations(css, ".sheet__meta-part") | _declarations(
-        css, ".sheet__meta-part--author"
-    )
+    assert "white-space: nowrap" in _declarations(css, ".sheet__meta-part")
+    # 말줄임은 작성자 조각에만(주차·기간 조각에는 걸리지 않게)
+    author = _declarations(css, ".sheet__meta-part--author")
     for rule in (
         "display: inline-block",  # 인라인 요소에는 말줄임이 걸리지 않는다
         "max-width: 100%",
         "overflow: hidden",
         "text-overflow: ellipsis",
-        "white-space: nowrap",
     ):
         assert rule in author
+        assert rule not in _declarations(css, ".sheet__meta-part")
     # flex 항목인 머리 글 묶음이 이름 폭만큼 넓어지지 않게
     assert "min-width: 0" in _declarations(css, ".sheet__head-text")
 

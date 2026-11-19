@@ -9,7 +9,7 @@
 ## 결정
 
 - **L1 (2026-11-17 사용자):** 작성자 조각은 한 줄로 두고, 칸보다 길면 끝을 `…`로 자른다(글자 단위 줄바꿈 대신). 2026-11-09 D2의 "작성자는 조각 안에서도 줄바꿈"을 대신한다.
-  - 화면만 자른다. 복사본(`text/plain`, `text/html`)과 DOM 글자는 이름 전체 그대로다(화면 읽기 프로그램도 전체를 읽는다).
+  - 화면(인쇄 포함)만 자른다. 복사본(`text/plain`, `text/html`)과 DOM 글자는 이름 전체 그대로다(화면 읽기 프로그램도 전체를 읽는다).
   - 주차·기간 조각은 그대로(조각 안 줄바꿈 없음).
   - 칸에 들어가는 이름(한글 이름, 짧은 영문)은 지금과 같아 보인다.
 
@@ -31,5 +31,6 @@
 
 ## 마무리
 
-- [ ] 전체 pytest, ruff check·format, mypy core
-- [ ] final-reviewer 1회(Sonnet high) → PR(develop) → logbook QA 점검 요청
+- [x] 전체 pytest(3362 passed), ruff check·format, mypy core
+- [x] final-reviewer 1회(Sonnet high): 병합 가능(MEDIUM 1, LOW 4). 반영: 테스트가 말줄임 선언을 작성자 규칙에서만 찾고 두 class를 확인, 문구를 "화면(인쇄 포함)"으로. 그대로 둠: 잘린 이름 title(복사 HTML에 속성이 늘어남), 구분점이 줄 맨 앞에 오는 모양(D2부터, 고치면 복사 글자가 바뀜)
+- [ ] PR(develop) → logbook QA 점검 요청
